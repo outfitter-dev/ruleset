@@ -6,13 +6,27 @@ import { ConsoleLogger } from './interfaces';
 import { type LinterConfig, type LintResult, lint } from './linter';
 import { parse } from './parser';
 
-// biome-ignore lint/performance/noBarrelFile: This is the package entry point
-export { compile } from './compiler';
-export { CursorPlugin, destinations, WindsurfPlugin } from './destinations';
+export { compile, compile as Compiler } from './compiler';
+export { GlobalConfig } from './config/global-config';
+export {
+  DESTINATION_IDS,
+  FILE_EXTENSIONS,
+  RESOURCE_LIMITS,
+} from './config/limits';
+export {
+  destinations,
+  destinations as DestinationPluginRegistry,
+} from './destinations';
+export { ClaudeCodePlugin } from './destinations/claude-code-plugin';
+export { CursorPlugin } from './destinations/cursor-plugin';
+export { WindsurfPlugin } from './destinations/windsurf-plugin';
+export { InstallationManager } from './installation/installation-manager';
 // Export all public APIs
 export * from './interfaces';
 export { type LinterConfig, type LintResult, lint } from './linter';
-export { parse } from './parser';
+export { parse, parse as Parser } from './parser';
+export { RulesetManager } from './rulesets/ruleset-manager';
+export * from './utils/security';
 
 /**
  * Reads a source file from disk.
@@ -158,10 +172,21 @@ function processLintResults(
 function determineDestinations(parsedDoc: ParsedDoc): string[] {
   const fm = (parsedDoc.source.frontmatter ?? {}) as Record<string, unknown>;
   const value = fm.destinations as unknown;
+
+  // Support object mapping: { cursor: {...}, windsurf: {...} }
   if (value && typeof value === 'object' && !Array.isArray(value)) {
-    const keys = Object.keys(value as Record<string, unknown>);
+    const obj = value as Record<string, unknown>;
+    // Support schema: { include: ["cursor", "windsurf"], ... }
+    const include = obj.include as unknown;
+    if (Array.isArray(include) && include.every((v) => typeof v === 'string')) {
+      return include as string[];
+    }
+    const keys = Object.keys(obj);
     return keys.length > 0 ? keys : Array.from(destinations.keys());
   }
+
+  // Simple array form is not supported in v0.1.0 – default to all destinations
+
   return Array.from(destinations.keys());
 }
 
@@ -334,21 +359,4 @@ export async function runRulesetsV0(
   await processDestinations(parsedDoc, destinationIds, projectConfig, logger);
 
   logger.info('Rulesets v0.1.0 processing completed successfully!');
-}
-
-// CLI entry point for testing
-// TODO: Replace with proper CLI using commander or yargs
-if (require.main === module) {
-  const logger = new ConsoleLogger();
-  const sourceFile = process.argv[2] || './my-rules.mix.md';
-
-  runRulesetsV0(sourceFile, logger)
-    .then(() => {
-      logger.info('Done!');
-      process.exit(0);
-    })
-    .catch((error) => {
-      logger.error('Failed:', error);
-      process.exit(1);
-    });
 }

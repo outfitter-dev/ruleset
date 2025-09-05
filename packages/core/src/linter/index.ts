@@ -125,22 +125,38 @@ function validateRulesetsVersion(
  * @param config - Linter configuration
  * @returns Array of lint results for destination issues
  */
+function validateIncludeList(ids: string[], allowed?: string[]): LintResult[] {
+  const out: LintResult[] = [];
+  if (!allowed || allowed.length === 0) {
+    return out;
+  }
+  for (const destId of ids) {
+    if (!allowed.includes(destId)) {
+      out.push({
+        message: `Unknown destination "${destId}". Allowed destinations: ${allowed.join(', ')}.`,
+        line: 1,
+        column: 1,
+        severity: 'warning',
+      });
+    }
+  }
+  return out;
+}
+
 function validateDestinations(
   frontmatter: Record<string, unknown>,
   config: LinterConfig
 ): LintResult[] {
   const results: LintResult[] = [];
 
-  if (!frontmatter.destinations) {
+  const value = (frontmatter as Record<string, unknown>).destinations;
+  if (!value) {
     return results;
   }
 
-  if (
-    typeof frontmatter.destinations !== 'object' ||
-    Array.isArray(frontmatter.destinations)
-  ) {
+  if (typeof value !== 'object' || Array.isArray(value)) {
     results.push({
-      message: `Invalid ${getFieldName('/destinations')}. Expected an object mapping destination IDs to configuration.`,
+      message: `Invalid ${getFieldName('/destinations')}. Expected an object mapping destination IDs to configuration, or { include: string[] }.`,
       line: 1,
       column: 1,
       severity: 'error',
@@ -148,10 +164,19 @@ function validateDestinations(
     return results;
   }
 
-  // Validate allowed destinations if configured
-  const dests = frontmatter.destinations as Record<string, unknown>;
+  const obj = value as Record<string, unknown> & { include?: unknown };
+  if (Array.isArray(obj.include)) {
+    const ids = (obj.include as unknown[]).filter(
+      (v): v is string => typeof v === 'string'
+    );
+    results.push(
+      ...validateIncludeList(ids, config.allowedDestinations ?? undefined)
+    );
+    return results;
+  }
+
   if (config.allowedDestinations && config.allowedDestinations.length > 0) {
-    for (const destId of Object.keys(dests)) {
+    for (const destId of Object.keys(obj)) {
       if (!config.allowedDestinations.includes(destId)) {
         results.push({
           message: `Unknown destination "${destId}". Allowed destinations: ${config.allowedDestinations.join(', ')}.`,

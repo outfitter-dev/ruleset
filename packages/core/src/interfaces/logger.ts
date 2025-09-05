@@ -7,27 +7,32 @@ export type Logger = {
 
 // Basic console logger implementation for v0
 export class ConsoleLogger implements Logger {
+  private writeOut(line: string): void {
+    process.stdout.write(line.endsWith('\n') ? line : `${line}\n`);
+  }
+  private writeErr(line: string): void {
+    process.stderr.write(line.endsWith('\n') ? line : `${line}\n`);
+  }
   debug(message: string, ...args: unknown[]): void {
     if (process.env.RULESETS_LOG_LEVEL === 'debug') {
-      // biome-ignore lint/suspicious/noConsole: This is a logger implementation
-      console.debug(`[DEBUG] ${message}`, ...args);
+      this.writeOut(`[DEBUG] ${message} ${args.map(String).join(' ')}`);
     }
   }
   info(message: string, ...args: unknown[]): void {
-    // biome-ignore lint/suspicious/noConsole: This is a logger implementation
-    console.info(`[INFO] ${message}`, ...args);
+    this.writeOut(`[INFO] ${message} ${args.map(String).join(' ')}`);
   }
   warn(message: string, ...args: unknown[]): void {
-    // biome-ignore lint/suspicious/noConsole: This is a logger implementation
-    console.warn(`[WARN] ${message}`, ...args);
+    this.writeErr(`[WARN] ${message} ${args.map(String).join(' ')}`);
   }
   error(message: string | Error, ...args: unknown[]): void {
     if (message instanceof Error) {
-      // biome-ignore lint/suspicious/noConsole: This is a logger implementation
-      console.error(`[ERROR] ${message.message}`, message.stack, ...args);
+      this.writeErr(
+        `[ERROR] ${message.message}\n${message.stack ?? ''} ${args
+          .map(String)
+          .join(' ')}`
+      );
     } else {
-      // biome-ignore lint/suspicious/noConsole: This is a logger implementation
-      console.error(`[ERROR] ${message}`, ...args);
+      this.writeErr(`[ERROR] ${message} ${args.map(String).join(' ')}`);
     }
   }
 }

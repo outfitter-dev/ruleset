@@ -1,4 +1,18 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.2.2/schema.json",
-  "extends": ["ultracite"]
+  "extends": ["ultracite"],
+  "overrides": [
+    {
+      // Permit barrel entry points for package surfaces (mixd-v0)
+      "includes": [
+        "packages/core/src/index.ts",
+        "packages/core/src/interfaces/index.ts"
+      ],
+      "linter": {
+        "rules": {
+          "performance": { "noBarrelFile": "off" }
+        }
+      }
+    }
+  ]
 }

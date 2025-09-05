@@ -1,5 +1,6 @@
 ---
-mixdown: v0
+rulesets:
+  version: "0.1.0"
 title: My First Mixdown Rule
 description: A simple rule for testing v0.
 destinations:

@@ -17,7 +17,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsup && tsc --emitDeclarationOnly",
+    "build": "rm -rf dist && tsup && tsc -p tsconfig.json --emitDeclarationOnly",
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:watch": "vitest watch",
@@ -25,7 +25,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "@iarna/toml": "^2.2.5"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
