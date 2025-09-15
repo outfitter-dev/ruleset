@@ -3,13 +3,14 @@
   "version": "0.1.0",
   "description": "CLI for Rulesets - AI rules compiler",
   "type": "module",
+  "types": "./dist/index.d.ts",
   "bin": {
     "rulesets": "./dist/index.js"
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "files": [

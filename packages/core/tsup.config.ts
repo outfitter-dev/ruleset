@@ -8,7 +8,7 @@ export default defineConfig({
   clean: true,
   splitting: false,
   shims: true,
-  external: ['js-yaml'], // Only direct dependencies that consumers must install
+  external: ['js-yaml', '@iarna/toml'], // Only direct dependencies that consumers must install
   outExtension({ format }) {
     return {
       js: format === 'esm' ? '.mjs' : '.cjs',

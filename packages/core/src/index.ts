@@ -45,7 +45,7 @@ async function readSourceFile(
     logger.debug(`Read ${content.length} characters from ${sourceFilePath}`);
     return content;
   } catch (error) {
-    logger.error(`Failed to read source file: ${sourceFilePath}`, error);
+    logger.error(`Failed to read source file: ${sourceFilePath}`);
     throw error;
   }
 }
@@ -76,7 +76,7 @@ function parseSourceContent(
 
     return parsedDoc;
   } catch (error) {
-    logger.error('Failed to parse source file', error);
+    logger.error('Failed to parse source file');
     throw error;
   }
 }
@@ -120,7 +120,7 @@ function lintParsedDocument(
 
     return lintResults;
   } catch (error) {
-    logger.error('Failed during linting', error);
+    logger.error('Failed during linting');
     throw error;
   }
 }

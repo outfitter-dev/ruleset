@@ -229,7 +229,7 @@ function validateRecommendedFields(
  *
  * @param parsedDoc - The parsed document to lint
  * @param config - Optional linter configuration
- * @returns A promise that resolves to an array of lint results
+ * @returns An array of lint results
  */
 // TODO: Add validation for stem properties
 // TODO: Add validation for variables and imports

@@ -76,7 +76,7 @@ export class WindsurfPlugin implements DestinationPlugin {
     try {
       await fs.mkdir(dir, { recursive: true });
     } catch (error) {
-      logger.error(`Failed to create directory: ${dir}`, error);
+      logger.error(`Failed to create directory: ${dir}`);
       throw error;
     }
 
@@ -94,7 +94,7 @@ export class WindsurfPlugin implements DestinationPlugin {
         `Format: ${typeof cfg.format === 'string' ? cfg.format : 'markdown'}`
       );
     } catch (error) {
-      logger.error(`Failed to write file: ${resolvedPath}`, error);
+      logger.error(`Failed to write file: ${resolvedPath}`);
       throw error;
     }
   }

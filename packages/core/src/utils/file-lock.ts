@@ -75,7 +75,7 @@ export class FileLock {
     try {
       const stat = await fs.stat(this.lockPath);
       const age = Date.now() - stat.mtime.getTime();
-      return age > limits.timeout * limits.staleThresholdMultiplier; // Consider stale if threshold multiplier
+      return age > limits.staleThreshold; // Consider stale if older than threshold
     } catch {
       return true; // If we can't stat it, consider it stale
     }

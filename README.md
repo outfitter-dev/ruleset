@@ -28,6 +28,8 @@ rulesets compile
 
 ## Installation
 
+Requires Node.js 18+.
+
 ```bash
 npm install -g @rulesets/cli
 ```
@@ -47,9 +49,11 @@ rulesets init
 ```
 
 This creates:
+
 - `.rulesets/config.json` - Configuration file
 - `rules/` - Directory for your rule files
 - Example rule file to get started
+
 
 ### Write Rules
 
@@ -111,7 +115,7 @@ Rulesets compiles to these AI tool formats:
 
 ## Project Structure
 
-```
+```text
 your-project/
 ├── .rulesets/
 │   ├── config.json      # Rulesets configuration
@@ -154,8 +158,8 @@ your-project/
 | `rulesets init` | Initialize Rulesets in current project |
 | `rulesets compile [source]` | Compile source rules to destinations |
 | `rulesets list` | List installed rulesets |
-| `rulesets install <package>` | Install a ruleset package |
-| `rulesets sync` | Sync installed rulesets |
+| `rulesets install <package>` | Install a ruleset package (placeholder) |
+| `rulesets sync` | Sync installed rulesets (placeholder) |
 
 ## Development
 
