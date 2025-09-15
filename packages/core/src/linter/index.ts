@@ -176,7 +176,7 @@ function validateDestinations(
     return results;
   }
 
-  if (Object.hasOwn(obj, 'include')) {
+  if (Object.prototype.hasOwnProperty.call(obj, 'include')) {
     results.push({
       message: `Invalid ${getFieldName('/destinations')}. The "include" property must be an array of strings.`,
       line: 1,
