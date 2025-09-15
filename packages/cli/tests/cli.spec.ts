@@ -23,13 +23,6 @@ const cliPath = isInCliPackage
   ? join(CLI_CWD, 'dist/index.js') // Running from packages/cli
   : join(CLI_CWD, 'packages/cli/dist/index.js'); // Running from root
 
-// Verify the CLI exists
-if (!existsSync(cliPath)) {
-  console.error(`CLI not found at ${cliPath}`);
-  console.error(`Current working directory: ${CLI_CWD}`);
-  console.error(`isInCliPackage: ${isInCliPackage}`);
-}
-
 function runCli(args: string[], opts: { cwd?: string } = {}) {
   // Use the built CLI to avoid module resolution issues
   const res = spawnSync('node', [cliPath, ...args], {
@@ -51,11 +44,7 @@ afterAll(() => {
 
 describe('rulesets CLI smoke', () => {
   it('prints version', () => {
-    const { code, stdout, stderr } = runCli(['--version']);
-    if (code !== 0) {
-      console.error('CLI failed with stderr:', stderr);
-      console.error('CLI failed with stdout:', stdout);
-    }
+    const { code, stdout } = runCli(['--version']);
     expect(code).toBe(0);
     expect(stdout).toMatch(VERSION_RE);
   });
