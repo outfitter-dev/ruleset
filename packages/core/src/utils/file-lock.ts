@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs';
+import { dirname } from 'node:path';
 import { RESOURCE_LIMITS } from '../config/limits';
 
 const { fileLock: limits } = RESOURCE_LIMITS;
@@ -17,6 +18,9 @@ export class FileLock {
    */
   async acquire(timeout = limits.timeout): Promise<boolean> {
     const startTime = Date.now();
+
+    // Ensure parent directory exists to avoid ENOENT spin
+    await fs.mkdir(dirname(this.lockPath), { recursive: true });
 
     while (Date.now() - startTime < timeout) {
       try {
@@ -96,7 +100,9 @@ export async function withFileLock<T>(
 
   const acquired = await lock.acquire();
   if (!acquired) {
-    throw new Error(`Failed to acquire lock for ${filePath}`);
+    throw new Error(
+      `Failed to acquire lock for ${filePath} within ${limits.timeout} ms`
+    );
   }
 
   try {

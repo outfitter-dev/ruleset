@@ -56,13 +56,21 @@ export class WindsurfPlugin implements DestinationPlugin {
     try {
       const stats = await fs.stat(resolvedPath);
       if (stats.isDirectory()) {
-        resolvedPath = path.join(resolvedPath, 'rules.md');
+        const ext =
+          typeof cfg.format === 'string' && cfg.format.toLowerCase() === 'xml'
+            ? 'rules.xml'
+            : 'rules.md';
+        resolvedPath = path.join(resolvedPath, ext);
         logger.debug(`Directory detected, using filename: ${resolvedPath}`);
       }
     } catch {
       // File/directory doesn't exist yet - check if path looks like a directory
       if (outputPath.endsWith('/') || outputPath.endsWith(path.sep)) {
-        resolvedPath = path.join(resolvedPath, 'rules.md');
+        const ext =
+          typeof cfg.format === 'string' && cfg.format.toLowerCase() === 'xml'
+            ? 'rules.xml'
+            : 'rules.md';
+        resolvedPath = path.join(resolvedPath, ext);
         logger.debug(
           `Directory path detected, using filename: ${resolvedPath}`
         );
@@ -76,7 +84,9 @@ export class WindsurfPlugin implements DestinationPlugin {
     try {
       await fs.mkdir(dir, { recursive: true });
     } catch (error) {
-      logger.error(`Failed to create directory: ${dir}`);
+      logger.error(
+        `Failed to create directory: ${dir}. ${error instanceof Error ? error.message : String(error)}`
+      );
       throw error;
     }
 
@@ -94,7 +104,9 @@ export class WindsurfPlugin implements DestinationPlugin {
         `Format: ${typeof cfg.format === 'string' ? cfg.format : 'markdown'}`
       );
     } catch (error) {
-      logger.error(`Failed to write file: ${resolvedPath}`);
+      logger.error(
+        `Failed to write file: ${resolvedPath}. ${error instanceof Error ? error.message : String(error)}`
+      );
       throw error;
     }
   }

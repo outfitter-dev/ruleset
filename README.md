@@ -8,7 +8,7 @@ Rulesets is a universal rules compiler that lets you write AI assistant rules on
 
 ```bash
 # Install globally
-npm install -g @rulesets/cli
+npm install -g @rulesets/cli@latest
 
 # Initialize in your project
 rulesets init
@@ -30,14 +30,16 @@ rulesets compile
 
 Requires Node.js 18+.
 
+Note: For local development in this monorepo you'll also need Bun ≥1.1. End users running the published CLI only need Node.js.
+
 ```bash
-npm install -g @rulesets/cli
+npm install -g @rulesets/cli@latest
 ```
 
 Or use with npx:
 
 ```bash
-npx @rulesets/cli init
+npx @rulesets/cli@latest init
 ```
 
 ## Usage
@@ -109,9 +111,11 @@ Rulesets compiles to these AI tool formats:
 
 | Tool | Output Location | Format |
 |------|----------------|--------|
-| Cursor | `.cursor/rules/*.md` | Markdown |
-| Windsurf | `.windsurf/rules/*.md` | Markdown |
-| Claude Code | `CLAUDE.md` | Markdown |
+| Cursor | `.rulesets/dist/cursor/*.md` | Markdown |
+| Windsurf | `.rulesets/dist/windsurf/*.md` | Markdown |
+| Claude Code | `.rulesets/dist/claude-code/*.md` | Markdown |
+
+Note: `rulesets compile` writes to `.rulesets/dist/…`. A future `rulesets sync` may copy outputs into tool‑specific locations.
 
 ## Project Structure
 
@@ -145,10 +149,10 @@ your-project/
 
 ### Known Limitations
 
-- **Array Form for Destinations**: In v0.1.0, simple array form for destinations in frontmatter is not yet supported. Use the object form with `include`/`exclude` properties instead.
+- **Array Form for Destinations (frontmatter only)**: In v0.1.0, the simple array form is not supported in per‑file frontmatter. Use the object form with `include`/`exclude`. The array form is supported in `.rulesets/config.json` (see Configuration).
 - **Resource Limits**: Files exceeding the following limits will be skipped:
-  - Maximum file size: 1MB
-  - Maximum line length: 10,000 characters
+  - Maximum pack file size: 10MB
+  - Maximum ruleset file size: 5MB
   - Maximum nesting depth in frontmatter: 10 levels
 
 ## CLI Commands
@@ -157,13 +161,14 @@ your-project/
 |---------|-------------|
 | `rulesets init` | Initialize Rulesets in current project |
 | `rulesets compile [source]` | Compile source rules to destinations |
+| Flags (compile) | `-d, --destination <name>` filter destinations; `-w, --watch` watch for changes |
 | `rulesets list` | List installed rulesets |
 | `rulesets install <package>` | Install a ruleset package (placeholder) |
 | `rulesets sync` | Sync installed rulesets (placeholder) |
 
 ## Development
 
-This is a monorepo using Bun workspaces:
+This is a monorepo using Bun workspaces (Bun ≥1.1 required; Node.js ≥18 if you want to test the built CLI locally):
 
 ```bash
 # Clone the repository

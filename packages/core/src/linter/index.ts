@@ -105,7 +105,8 @@ function validateRulesetsVersion(
   } else if (
     typeof frontmatter.rulesets !== 'object' ||
     !frontmatter.rulesets ||
-    !(frontmatter.rulesets as Record<string, unknown>).version
+    typeof (frontmatter.rulesets as Record<string, unknown>).version !==
+      'string'
   ) {
     results.push({
       message: `Invalid ${getFieldName('/rulesets')}. Expected object with version property, got ${typeof frontmatter.rulesets}.`,
@@ -175,8 +176,18 @@ function validateDestinations(
     return results;
   }
 
+  if (Object.hasOwn(obj, 'include')) {
+    results.push({
+      message: `Invalid ${getFieldName('/destinations')}. The "include" property must be an array of strings.`,
+      line: 1,
+      column: 1,
+      severity: 'error',
+    });
+    return results;
+  }
+
   if (config.allowedDestinations && config.allowedDestinations.length > 0) {
-    for (const destId of Object.keys(obj)) {
+    for (const destId of Object.keys(obj).filter((k) => k !== 'include')) {
       if (!config.allowedDestinations.includes(destId)) {
         results.push({
           message: `Unknown destination "${destId}". Allowed destinations: ${config.allowedDestinations.join(', ')}.`,
