@@ -18,8 +18,8 @@ const NON_WS_RE = /\S/;
 
 // Determine the correct CLI path based on where tests are run from
 const cliPath = existsSync(join(CLI_CWD, 'src/index.ts'))
-  ? join(CLI_CWD, 'src/index.ts')  // Running from packages/cli
-  : join(CLI_CWD, 'packages/cli/src/index.ts');  // Running from root
+  ? join(CLI_CWD, 'src/index.ts') // Running from packages/cli
+  : join(CLI_CWD, 'packages/cli/src/index.ts'); // Running from root
 
 function runCli(args: string[], opts: { cwd?: string } = {}) {
   const res = spawnSync('bun', [cliPath, ...args], {
