@@ -13,6 +13,7 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "noEmit": false,
+    "emitDeclarationOnly": false,
     "skipLibCheck": true,
     "resolveJsonModule": true
   },

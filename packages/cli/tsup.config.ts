@@ -8,8 +8,16 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   clean: true,
-  external: ['@rulesets/core'],
-  shims: true,
+  external: [
+    '@rulesets/core',
+    'chalk',
+    'commander',
+    'ora',
+    'node:fs',
+    'node:path',
+    'node:url',
+    'node:os'
+  ],
   bundle: true,
   splitting: false,
 });
