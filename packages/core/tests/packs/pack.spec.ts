@@ -86,8 +86,6 @@ describe('Pack System', () => {
 
       // Debug output to see what's happening
       if (!errors.includes('Pack name is required')) {
-        console.log('Pack metadata:', pack.metadata);
-        console.log('Errors found:', errors);
       }
 
       expect(errors).toContain('Pack name is required');
