@@ -7,6 +7,11 @@ import type {
   Logger,
 } from '../interfaces';
 
+type WindsurfConfig = {
+  outputPath?: string;
+  format?: 'markdown' | 'xml' | string;
+};
+
 export class WindsurfPlugin implements DestinationPlugin {
   get name(): string {
     return 'windsurf';
@@ -31,6 +36,69 @@ export class WindsurfPlugin implements DestinationPlugin {
     };
   }
 
+  private getDefaultFilename(format: string | undefined): string {
+    return format?.toLowerCase() === 'xml' ? 'rules.xml' : 'rules.md';
+  }
+
+  private async resolveOutputPath(
+    outputPath: string,
+    config: WindsurfConfig,
+    logger: Logger
+  ): Promise<string> {
+    let resolvedPath = path.resolve(outputPath);
+
+    // Check if destPath is a directory and append default filename
+    try {
+      const stats = await fs.stat(resolvedPath);
+      if (stats.isDirectory()) {
+        const filename = this.getDefaultFilename(config.format);
+        resolvedPath = path.join(resolvedPath, filename);
+        logger.debug(`Directory detected, using filename: ${resolvedPath}`);
+      }
+    } catch {
+      // File/directory doesn't exist yet - check if path looks like a directory
+      if (outputPath.endsWith('/') || outputPath.endsWith(path.sep)) {
+        const filename = this.getDefaultFilename(config.format);
+        resolvedPath = path.join(resolvedPath, filename);
+        logger.debug(
+          `Directory path detected, using filename: ${resolvedPath}`
+        );
+      }
+    }
+
+    return resolvedPath;
+  }
+
+  private async ensureDirectory(
+    dirPath: string,
+    logger: Logger
+  ): Promise<void> {
+    try {
+      await fs.mkdir(dirPath, { recursive: true });
+    } catch (error) {
+      logger.error(
+        `Failed to create directory: ${dirPath}. ${error instanceof Error ? error.message : String(error)}`
+      );
+      throw error;
+    }
+  }
+
+  private async writeFile(
+    filePath: string,
+    content: string,
+    logger: Logger
+  ): Promise<void> {
+    try {
+      await fs.writeFile(filePath, content, { encoding: 'utf8' });
+      logger.info(`Successfully wrote Windsurf rules to: ${filePath}`);
+    } catch (error) {
+      logger.error(
+        `Failed to write file: ${filePath}. ${error instanceof Error ? error.message : String(error)}`
+      );
+      throw error;
+    }
+  }
+
   // TODO: Add Windsurf-specific formatting and transformations
   async write(ctx: {
     compiled: CompiledDoc;
@@ -39,75 +107,29 @@ export class WindsurfPlugin implements DestinationPlugin {
     logger: Logger;
   }): Promise<void> {
     const { compiled, destPath, config, logger } = ctx;
-
-    // Determine the output path with local type-narrowing
-    type WindsurfConfig = {
-      outputPath?: string;
-      format?: 'markdown' | 'xml' | string;
-    };
     const cfg = config as WindsurfConfig;
+
+    // Determine the output path
     const outputPath =
       typeof cfg.outputPath === 'string' && cfg.outputPath.trim() !== ''
         ? cfg.outputPath
         : destPath;
-    let resolvedPath = path.resolve(outputPath);
 
-    // Check if destPath is a directory and append default filename
-    try {
-      const stats = await fs.stat(resolvedPath);
-      if (stats.isDirectory()) {
-        const ext =
-          typeof cfg.format === 'string' && cfg.format.toLowerCase() === 'xml'
-            ? 'rules.xml'
-            : 'rules.md';
-        resolvedPath = path.join(resolvedPath, ext);
-        logger.debug(`Directory detected, using filename: ${resolvedPath}`);
-      }
-    } catch {
-      // File/directory doesn't exist yet - check if path looks like a directory
-      if (outputPath.endsWith('/') || outputPath.endsWith(path.sep)) {
-        const ext =
-          typeof cfg.format === 'string' && cfg.format.toLowerCase() === 'xml'
-            ? 'rules.xml'
-            : 'rules.md';
-        resolvedPath = path.join(resolvedPath, ext);
-        logger.debug(
-          `Directory path detected, using filename: ${resolvedPath}`
-        );
-      }
-    }
-
+    const resolvedPath = await this.resolveOutputPath(outputPath, cfg, logger);
     logger.info(`Writing Windsurf rules to: ${resolvedPath}`);
 
     // Ensure directory exists
     const dir = path.dirname(resolvedPath);
-    try {
-      await fs.mkdir(dir, { recursive: true });
-    } catch (error) {
-      logger.error(
-        `Failed to create directory: ${dir}. ${error instanceof Error ? error.message : String(error)}`
-      );
-      throw error;
-    }
+    await this.ensureDirectory(dir, logger);
 
-    // For v0, write the raw content
-    try {
-      await fs.writeFile(resolvedPath, compiled.output.content, {
-        encoding: 'utf8',
-      });
-      logger.info(`Successfully wrote Windsurf rules to: ${resolvedPath}`);
+    // Write the content
+    await this.writeFile(resolvedPath, compiled.output.content, logger);
 
-      // Log additional context for debugging
-      logger.debug(`Destination: ${compiled.context.destinationId}`);
-      logger.debug(`Config: ${JSON.stringify(config)}`);
-      logger.debug(
-        `Format: ${typeof cfg.format === 'string' ? cfg.format : 'markdown'}`
-      );
-    } catch (error) {
-      logger.error(
-        `Failed to write file: ${resolvedPath}. ${error instanceof Error ? error.message : String(error)}`
-      );
-      throw error;
-    }
+    // Log additional context for debugging
+    logger.debug(`Destination: ${compiled.context.destinationId}`);
+    logger.debug(`Config: ${JSON.stringify(config)}`);
+    logger.debug(
+      `Format: ${typeof cfg.format === 'string' ? cfg.format : 'markdown'}`
+    );
   }
 }
