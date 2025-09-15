@@ -17,12 +17,15 @@ const VERSION_RE = /\d+\.\d+\.\d+/;
 const NON_WS_RE = /\S/;
 
 // Determine the correct CLI path based on where tests are run from
-const cliPath = existsSync(join(CLI_CWD, 'src/index.ts'))
-  ? join(CLI_CWD, 'src/index.ts') // Running from packages/cli
-  : join(CLI_CWD, 'packages/cli/src/index.ts'); // Running from root
+// Check if we're in packages/cli or at the root
+const isInCliPackage = CLI_CWD.endsWith('packages/cli');
+const cliPath = isInCliPackage
+  ? join(CLI_CWD, 'dist/index.js') // Running from packages/cli
+  : join(CLI_CWD, 'packages/cli/dist/index.js'); // Running from root
 
 function runCli(args: string[], opts: { cwd?: string } = {}) {
-  const res = spawnSync('bun', [cliPath, ...args], {
+  // Use the built CLI to avoid module resolution issues
+  const res = spawnSync('node', [cliPath, ...args], {
     cwd: opts.cwd ?? CLI_CWD,
     env: { ...process.env, HOME: TEMP_HOME },
     encoding: 'utf-8',
