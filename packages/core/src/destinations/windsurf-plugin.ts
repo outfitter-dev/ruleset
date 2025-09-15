@@ -40,30 +40,37 @@ export class WindsurfPlugin implements DestinationPlugin {
     return format?.toLowerCase() === 'xml' ? 'rules.xml' : 'rules.md';
   }
 
+  private async isDirectory(dirPath: string): Promise<boolean> {
+    try {
+      const stats = await fs.stat(dirPath);
+      return stats.isDirectory();
+    } catch {
+      return false;
+    }
+  }
+
+  private looksLikeDirectory(pathStr: string): boolean {
+    return pathStr.endsWith('/') || pathStr.endsWith(path.sep);
+  }
+
   private async resolveOutputPath(
     outputPath: string,
     config: WindsurfConfig,
     logger: Logger
   ): Promise<string> {
-    let resolvedPath = path.resolve(outputPath);
+    const resolvedPath = path.resolve(outputPath);
 
-    // Check if destPath is a directory and append default filename
-    try {
-      const stats = await fs.stat(resolvedPath);
-      if (stats.isDirectory()) {
-        const filename = this.getDefaultFilename(config.format);
-        resolvedPath = path.join(resolvedPath, filename);
-        logger.debug(`Directory detected, using filename: ${resolvedPath}`);
-      }
-    } catch {
-      // File/directory doesn't exist yet - check if path looks like a directory
-      if (outputPath.endsWith('/') || outputPath.endsWith(path.sep)) {
-        const filename = this.getDefaultFilename(config.format);
-        resolvedPath = path.join(resolvedPath, filename);
-        logger.debug(
-          `Directory path detected, using filename: ${resolvedPath}`
-        );
-      }
+    const isDir = await this.isDirectory(resolvedPath);
+    const looksLikeDir = this.looksLikeDirectory(outputPath);
+
+    if (isDir || looksLikeDir) {
+      const filename = this.getDefaultFilename(config.format);
+      const finalPath = path.join(resolvedPath, filename);
+      const message = isDir
+        ? `Directory detected, using filename: ${finalPath}`
+        : `Directory path detected, using filename: ${finalPath}`;
+      logger.debug(message);
+      return finalPath;
     }
 
     return resolvedPath;
