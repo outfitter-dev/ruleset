@@ -16,8 +16,13 @@ const TEMP_HOME = mkdtempSync(join(tmpdir(), 'rulesets-cli-test-'));
 const VERSION_RE = /\d+\.\d+\.\d+/;
 const NON_WS_RE = /\S/;
 
+// Determine the correct CLI path based on where tests are run from
+const cliPath = existsSync(join(CLI_CWD, 'src/index.ts'))
+  ? join(CLI_CWD, 'src/index.ts')  // Running from packages/cli
+  : join(CLI_CWD, 'packages/cli/src/index.ts');  // Running from root
+
 function runCli(args: string[], opts: { cwd?: string } = {}) {
-  const res = spawnSync('bun', [join(CLI_CWD, 'src', 'index.ts'), ...args], {
+  const res = spawnSync('bun', [cliPath, ...args], {
     cwd: opts.cwd ?? CLI_CWD,
     env: { ...process.env, HOME: TEMP_HOME },
     encoding: 'utf-8',

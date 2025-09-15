@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "dev": "bun run src/index.ts",
-    "build": "bun build src/index.ts --target=node --outdir=dist --sourcemap=external --external @rulesets/core && tsc --emitDeclarationOnly",
+    "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "clean": "rm -rf dist"
@@ -31,6 +31,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
+    "tsup": "^8.5.0",
     "typescript": "^5.9.2"
   },
   "engines": {
