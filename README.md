@@ -139,6 +139,14 @@ your-project/
 }
 ```
 
+### Known Limitations
+
+- **Array Form for Destinations**: In v0.1.0, simple array form for destinations in frontmatter is not yet supported. Use the object form with `include`/`exclude` properties instead.
+- **Resource Limits**: Files exceeding the following limits will be skipped:
+  - Maximum file size: 1MB
+  - Maximum line length: 10,000 characters
+  - Maximum nesting depth in frontmatter: 10 levels
+
 ## CLI Commands
 
 | Command | Description |

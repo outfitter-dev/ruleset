@@ -103,7 +103,9 @@ async function compileFile(file: string, ctx: CompileContext): Promise<void> {
   const parsed = parse(content);
   for (const dest of ctx.destinations) {
     if (!destinations.has(dest)) {
-      logger.info(chalk.red(`  - No plugin found for destination: ${dest}`));
+      logger.info(chalk.red(`  - No plugin found for destination: ${dest}`), {
+        destination: dest,
+      });
       continue;
     }
     const compiled = compile(parsed, dest, {});
@@ -146,11 +148,13 @@ async function startWatcher(ctx: CompileContext): Promise<void> {
     if (!(filename.endsWith('.md') || filename.endsWith('.mix.md'))) {
       return;
     }
-    logger.info(chalk.dim(`\nFile changed: ${filename}`));
+    logger.info(chalk.dim(`\nFile changed: ${filename}`), { file: filename });
     const changedFile = join(ctx.sourcePath, filename);
     try {
       await compileFile(changedFile, ctx);
-      logger.info(chalk.green('  ✓ Recompiled successfully'));
+      logger.info(chalk.green('  ✓ Recompiled successfully'), {
+        file: filename,
+      });
 
       // Reset error count on success
       errorCount = 0;
@@ -160,7 +164,9 @@ async function startWatcher(ctx: CompileContext): Promise<void> {
       }
     } catch (error) {
       errorCount++;
-      logger.error(chalk.red(`  ✗ Failed to recompile: ${String(error)}`));
+      logger.error(chalk.red(`  ✗ Failed to recompile: ${String(error)}`), {
+        file: filename,
+      });
 
       // Implement circuit breaker pattern
       if (errorCount >= limits.maxConsecutiveErrors) {
@@ -169,10 +175,36 @@ async function startWatcher(ctx: CompileContext): Promise<void> {
             `\n⚠️  Too many consecutive errors. Pausing watcher for ${Math.floor(limits.errorResetTime / limits.msToSeconds)} seconds...`
           )
         );
+
+        // Store current file state before closing watcher
+        const pendingChanges = new Set<string>();
+        const checkInterval = setInterval(() => {
+          // Track any files that change while watcher is paused
+          for (const file of ctx.sources) {
+            const stats = fs.statSync(file, { throwIfNoEntry: false });
+            if (stats && stats.mtimeMs > Date.now() - limits.errorResetTime) {
+              pendingChanges.add(file);
+            }
+          }
+        }, limits.msToSeconds);
+
         watcher.close();
 
         setTimeout(() => {
+          clearInterval(checkInterval);
           logger.info(chalk.cyan('Resuming watcher...'));
+
+          // Process any changes that occurred during pause
+          if (pendingChanges.size > 0) {
+            logger.info(
+              chalk.yellow(
+                `Processing ${pendingChanges.size} file(s) that changed during pause...`
+              )
+            );
+            ctx.modifiedSources = Array.from(pendingChanges);
+            // Note: Files will be recompiled when watcher restarts
+          }
+
           startWatcher(ctx);
         }, limits.errorResetTime);
         return;

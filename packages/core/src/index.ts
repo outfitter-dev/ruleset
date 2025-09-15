@@ -204,14 +204,9 @@ function compileForDestination(
   parsedDoc: ParsedDoc,
   destinationId: string,
   projectConfig: Record<string, unknown>,
-  logger: Logger
+  _logger: Logger
 ): CompiledDoc {
-  try {
-    return compile(parsedDoc, destinationId, projectConfig);
-  } catch (error) {
-    logger.error(`Failed to compile for destination: ${destinationId}`, error);
-    throw error;
-  }
+  return compile(parsedDoc, destinationId, projectConfig);
 }
 
 /**
@@ -251,18 +246,22 @@ async function writeToDestination(
     defaultPath;
 
   // Write using the plugin
-  try {
-    await plugin.write({
-      compiled: compiledDoc,
-      destPath,
-      config: destConfig,
-      logger,
-    });
-  } catch (error) {
-    logger.error(`Failed to write ${destinationId} output`, error);
-    throw error;
-  }
+  await plugin.write({
+    compiled: compiledDoc,
+    destPath,
+    config: destConfig,
+    logger,
+  });
 }
+
+/**
+ * Result from processing destinations
+ */
+export type DestinationResult = {
+  destinationId: string;
+  success: boolean;
+  error?: Error;
+};
 
 /**
  * Processes compilation and writing for all destinations.
@@ -271,32 +270,65 @@ async function writeToDestination(
  * @param destinationIds - Array of destination IDs to process
  * @param projectConfig - Project configuration
  * @param logger - Logger instance for reporting
- * @returns Promise that resolves when all destinations are processed
+ * @returns Promise that resolves with results for each destination
  */
 async function processDestinations(
   parsedDoc: ParsedDoc,
   destinationIds: string[],
   projectConfig: Record<string, unknown>,
   logger: Logger
-): Promise<void> {
+): Promise<DestinationResult[]> {
   logger.info(`Compiling for destinations: ${destinationIds.join(', ')}`);
 
   const frontmatter = parsedDoc.source.frontmatter || {};
+  const results: DestinationResult[] = [];
 
   for (const destinationId of destinationIds) {
-    logger.info(`Processing destination: ${destinationId}`);
+    logger.info(`Processing destination: ${destinationId}`, {
+      destination: destinationId,
+    });
 
-    // Compile for this destination
-    const compiledDoc = compileForDestination(
-      parsedDoc,
-      destinationId,
-      projectConfig,
-      logger
-    );
+    try {
+      // Compile for this destination
+      const compiledDoc = compileForDestination(
+        parsedDoc,
+        destinationId,
+        projectConfig,
+        logger
+      );
 
-    // Write to destination
-    await writeToDestination(compiledDoc, destinationId, frontmatter, logger);
+      // Write to destination
+      await writeToDestination(compiledDoc, destinationId, frontmatter, logger);
+
+      results.push({ destinationId, success: true });
+      logger.info(`  ✓ Successfully compiled for ${destinationId}`, {
+        destination: destinationId,
+      });
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      results.push({ destinationId, success: false, error: err });
+      logger.error(
+        `  ✗ Failed to compile for ${destinationId}: ${err.message}`,
+        { destination: destinationId }
+      );
+    }
   }
+
+  // Report overall results
+  const successful = results.filter((r) => r.success).length;
+  const failed = results.filter((r) => !r.success).length;
+
+  if (successful > 0 && failed > 0) {
+    logger.warn(
+      `Partial success: ${successful}/${destinationIds.length} destinations compiled successfully`
+    );
+  } else if (failed === destinationIds.length) {
+    logger.error(`All ${failed} destinations failed to compile`);
+  } else {
+    logger.info(`All ${successful} destinations compiled successfully`);
+  }
+
+  return results;
 }
 
 /**
@@ -356,7 +388,23 @@ export async function runRulesetsV0(
   const destinationIds = determineDestinations(parsedDoc);
 
   // Step 5: Compile and write for each destination
-  await processDestinations(parsedDoc, destinationIds, projectConfig, logger);
+  const results = await processDestinations(
+    parsedDoc,
+    destinationIds,
+    projectConfig,
+    logger
+  );
 
-  logger.info('Rulesets v0.1.0 processing completed successfully!');
+  // Check for failures
+  const failedDestinations = results.filter((r) => !r.success);
+  if (failedDestinations.length > 0) {
+    const partialSuccess = results.some((r) => r.success);
+    if (partialSuccess) {
+      logger.warn('Rulesets v0.1.0 processing completed with partial success');
+    } else {
+      throw new Error('Rulesets v0.1.0 processing failed for all destinations');
+    }
+  } else {
+    logger.info('Rulesets v0.1.0 processing completed successfully!');
+  }
 }

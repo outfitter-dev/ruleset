@@ -69,3 +69,38 @@ export function sanitizePath(filePath: string): string {
     .replace(/[\r\n]/g, '') // Remove line breaks
     .trim();
 }
+
+/**
+ * Validates the nesting depth of an object
+ * @param obj The object to validate
+ * @param maxDepth Maximum allowed nesting depth
+ * @param currentDepth Current recursion depth
+ * @returns true if the object depth is within limits, false otherwise
+ */
+export function validateObjectDepth(
+  obj: unknown,
+  maxDepth: number,
+  currentDepth = 0
+): boolean {
+  if (currentDepth > maxDepth) {
+    return false;
+  }
+
+  if (obj === null || obj === undefined) {
+    return true;
+  }
+
+  if (typeof obj !== 'object') {
+    return true;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.every((item) =>
+      validateObjectDepth(item, maxDepth, currentDepth + 1)
+    );
+  }
+
+  return Object.values(obj).every((value) =>
+    validateObjectDepth(value, maxDepth, currentDepth + 1)
+  );
+}

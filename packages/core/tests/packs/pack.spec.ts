@@ -86,6 +86,7 @@ describe('Pack System', () => {
 
       // Debug output to see what's happening
       if (!errors.includes('Pack name is required')) {
+        // This block is intentionally empty - validation check only
       }
 
       expect(errors).toContain('Pack name is required');

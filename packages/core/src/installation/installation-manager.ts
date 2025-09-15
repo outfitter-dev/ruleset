@@ -234,8 +234,13 @@ export class InstallationManager {
 
     // Remove old version if exists
     if (existingContent.includes(`<!-- RULESET: ${rulesetName} -->`)) {
+      // Escape special regex characters in rulesetName to prevent injection
+      const escapedRulesetName = rulesetName.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      );
       const regex = new RegExp(
-        `<!-- RULESET: ${rulesetName} -->.*?(?=<!-- RULESET:|$)`,
+        `<!-- RULESET: ${escapedRulesetName} -->.*?(?=<!-- RULESET:|$)`,
         'gs'
       );
       existingContent = existingContent.replace(regex, '');
