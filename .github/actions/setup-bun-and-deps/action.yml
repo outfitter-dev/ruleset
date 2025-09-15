@@ -31,6 +31,10 @@ runs:
       run: bun install --frozen-lockfile
       shell: bash
 
+    - name: Debug - Check CLI files
+      run: ls -la packages/cli/src/lib/ || echo "lib directory not found"
+      shell: bash
+
     - name: Build
       if: inputs.run-build == 'true'
       run: bun run build

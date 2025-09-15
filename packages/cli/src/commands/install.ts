@@ -1,8 +1,8 @@
 import { GlobalConfig, InstallationManager } from '@rulesets/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
-import { logger } from '../lib/logger';
-import { createSpinner } from '../lib/spinner';
+import { logger } from '../utils/logger';
+import { createSpinner } from '../utils/spinner';
 
 export function installCommand(): Command {
   return new Command('install')

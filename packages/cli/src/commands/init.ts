@@ -3,8 +3,8 @@ import { join } from 'node:path';
 import { GlobalConfig } from '@rulesets/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
-import { logger } from '../lib/logger';
-import { createSpinner } from '../lib/spinner';
+import { logger } from '../utils/logger';
+import { createSpinner } from '../utils/spinner';
 // import { fileURLToPath } from 'node:url';
 
 // const __dirname = path.dirname(fileURLToPath(import.meta.url));

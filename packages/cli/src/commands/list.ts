@@ -2,7 +2,7 @@ import { relative } from 'node:path';
 import { GlobalConfig, RulesetManager } from '@rulesets/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
-import { logger } from '../lib/logger';
+import { logger } from '../utils/logger';
 
 type ListedRuleset = {
   name?: string;

@@ -10,8 +10,8 @@ import {
 } from '@rulesets/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
-import { logger } from '../lib/logger';
-import { createSpinner } from '../lib/spinner';
+import { logger } from '../utils/logger';
+import { createSpinner } from '../utils/spinner';
 
 // TLDR: Compile rules from a file or directory into per-destination outputs (mixd-v0)
 const MIX_EXT_RE = /\.mix\.md$/i; // mixd-perf: precompiled regex for extension replacement

@@ -16,7 +16,7 @@ export default defineConfig({
     'node:fs',
     'node:path',
     'node:url',
-    'node:os'
+    'node:os',
   ],
   bundle: true,
   splitting: false,
