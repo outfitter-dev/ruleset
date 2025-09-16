@@ -1,3 +1,4 @@
+import type { Stats } from 'node:fs';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type {
@@ -7,9 +8,11 @@ import type {
   Logger,
 } from '../interfaces';
 
+type WindsurfFormat = 'markdown' | 'xml';
+
 type WindsurfConfig = {
   outputPath?: string;
-  format?: 'markdown' | 'xml' | string;
+  format?: unknown;
 };
 
 export class WindsurfPlugin implements DestinationPlugin {
@@ -36,17 +39,14 @@ export class WindsurfPlugin implements DestinationPlugin {
     };
   }
 
-  private getDefaultFilename(format: string | undefined): string {
-    return format?.toLowerCase() === 'xml' ? 'rules.xml' : 'rules.md';
+  private static normaliseFormat(format: unknown): WindsurfFormat {
+    return typeof format === 'string' && format.toLowerCase() === 'xml'
+      ? 'xml'
+      : 'markdown';
   }
 
-  private async isDirectory(dirPath: string): Promise<boolean> {
-    try {
-      const stats = await fs.stat(dirPath);
-      return stats.isDirectory();
-    } catch {
-      return false;
-    }
+  private static defaultFilename(format: WindsurfFormat): string {
+    return format === 'xml' ? 'rules.xml' : 'rules.md';
   }
 
   private looksLikeDirectory(pathStr: string): boolean {
@@ -55,16 +55,31 @@ export class WindsurfPlugin implements DestinationPlugin {
 
   private async resolveOutputPath(
     outputPath: string,
-    config: WindsurfConfig,
+    format: WindsurfFormat,
     logger: Logger
   ): Promise<string> {
     const resolvedPath = path.resolve(outputPath);
 
-    const isDir = await this.isDirectory(resolvedPath);
+    let stats: Stats | null = null;
+    try {
+      stats = await fs.stat(resolvedPath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
+    }
+
+    const isDir = stats?.isDirectory() ?? false;
     const looksLikeDir = this.looksLikeDirectory(outputPath);
 
+    if (looksLikeDir && stats && !isDir) {
+      throw new Error(
+        `Output path "${outputPath}" looks like a directory but points to an existing file.`
+      );
+    }
+
     if (isDir || looksLikeDir) {
-      const filename = this.getDefaultFilename(config.format);
+      const filename = WindsurfPlugin.defaultFilename(format);
       const finalPath = path.join(resolvedPath, filename);
       const message = isDir
         ? `Directory detected, using filename: ${finalPath}`
@@ -84,7 +99,11 @@ export class WindsurfPlugin implements DestinationPlugin {
       await fs.mkdir(dirPath, { recursive: true });
     } catch (error) {
       logger.error(
-        `Failed to create directory: ${dirPath}. ${error instanceof Error ? error.message : String(error)}`
+        error instanceof Error
+          ? error
+          : new Error(
+              `Failed to create directory: ${dirPath}. ${String(error)}`
+            )
       );
       throw error;
     }
@@ -95,13 +114,25 @@ export class WindsurfPlugin implements DestinationPlugin {
     content: string,
     logger: Logger
   ): Promise<void> {
+    let tmpPath: string | undefined;
     try {
-      await fs.writeFile(filePath, content, { encoding: 'utf8' });
+      tmpPath = `${filePath}.tmp-${process.pid}-${Date.now()}`;
+      await fs.writeFile(tmpPath, content, { encoding: 'utf8' });
+      await fs.rename(tmpPath, filePath);
       logger.info(`Successfully wrote Windsurf rules to: ${filePath}`);
     } catch (error) {
       logger.error(
-        `Failed to write file: ${filePath}. ${error instanceof Error ? error.message : String(error)}`
+        error instanceof Error
+          ? error
+          : new Error(`Failed to write file: ${filePath}. ${String(error)}`)
       );
+      if (tmpPath) {
+        try {
+          await fs.rm(tmpPath, { force: true });
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
       throw error;
     }
   }
@@ -115,6 +146,7 @@ export class WindsurfPlugin implements DestinationPlugin {
   }): Promise<void> {
     const { compiled, destPath, config, logger } = ctx;
     const cfg = config as WindsurfConfig;
+    const format = WindsurfPlugin.normaliseFormat(cfg.format);
 
     // Determine the output path
     const outputPath =
@@ -122,7 +154,11 @@ export class WindsurfPlugin implements DestinationPlugin {
         ? cfg.outputPath
         : destPath;
 
-    const resolvedPath = await this.resolveOutputPath(outputPath, cfg, logger);
+    const resolvedPath = await this.resolveOutputPath(
+      outputPath,
+      format,
+      logger
+    );
     logger.info(`Writing Windsurf rules to: ${resolvedPath}`);
 
     // Ensure directory exists
@@ -134,9 +170,9 @@ export class WindsurfPlugin implements DestinationPlugin {
 
     // Log additional context for debugging
     logger.debug(`Destination: ${compiled.context.destinationId}`);
-    logger.debug(`Config: ${JSON.stringify(config)}`);
     logger.debug(
-      `Format: ${typeof cfg.format === 'string' ? cfg.format : 'markdown'}`
+      `Config: ${JSON.stringify({ outputPath: cfg.outputPath, format })}`
     );
+    logger.debug(`Format: ${format}`);
   }
 }

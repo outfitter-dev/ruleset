@@ -32,6 +32,11 @@ function getFieldName(path: string): string {
   return FIELD_NAMES[path] || path;
 }
 
+const objectHasOwn = Object.prototype.hasOwnProperty;
+
+const hasOwn = (value: object, key: PropertyKey): boolean =>
+  objectHasOwn.call(value, key);
+
 /**
  * Converts parsing errors to lint results.
  *
@@ -104,12 +109,20 @@ function validateRulesetsVersion(
     });
   } else if (
     typeof frontmatter.rulesets !== 'object' ||
-    !frontmatter.rulesets ||
-    typeof (frontmatter.rulesets as Record<string, unknown>).version !==
-      'string'
+    !frontmatter.rulesets
   ) {
     results.push({
-      message: `Invalid ${getFieldName('/rulesets')}. Expected object with version property, got ${typeof frontmatter.rulesets}.`,
+      message: `Invalid ${getFieldName('/rulesets')}. Expected object with "version" property.`,
+      line: 1,
+      column: 1,
+      severity: 'error',
+    });
+  } else if (
+    typeof (frontmatter.rulesets as Record<string, unknown>).version !==
+    'string'
+  ) {
+    results.push({
+      message: `Invalid ${getFieldName('/rulesets/version')}. Expected a string (e.g., "0.1.0").`,
       line: 1,
       column: 1,
       severity: 'error',
@@ -131,8 +144,9 @@ function validateIncludeList(ids: string[], allowed?: string[]): LintResult[] {
   if (!allowed || allowed.length === 0) {
     return out;
   }
-  for (const destId of ids) {
-    if (!allowed.includes(destId)) {
+  const allowedSet = new Set(allowed);
+  for (const destId of new Set(ids)) {
+    if (!allowedSet.has(destId)) {
       out.push({
         message: `Unknown destination "${destId}". Allowed destinations: ${allowed.join(', ')}.`,
         line: 1,
@@ -144,6 +158,63 @@ function validateIncludeList(ids: string[], allowed?: string[]): LintResult[] {
   return out;
 }
 
+function validateIncludeConfig(
+  includeArr: unknown[],
+  obj: Record<string, unknown>,
+  allowedDestinations?: string[]
+): LintResult[] {
+  const results: LintResult[] = [];
+  const invalidIndices = includeArr
+    .map((entry, index) => (typeof entry === 'string' ? -1 : index))
+    .filter((index) => index !== -1);
+  if (invalidIndices.length > 0) {
+    results.push({
+      message: `Invalid ${getFieldName('/destinations')}. "include" must be an array of strings; non-string entries at indices [${invalidIndices.join(', ')}].`,
+      line: 1,
+      column: 1,
+      severity: 'error',
+    });
+  }
+
+  const extraKeys = Object.keys(obj).filter((key) => key !== 'include');
+  if (extraKeys.length > 0) {
+    results.push({
+      message: `Invalid ${getFieldName('/destinations')}. Do not mix { include: [...] } with per-destination mappings (${extraKeys.join(', ')}).`,
+      line: 1,
+      column: 1,
+      severity: 'error',
+    });
+  }
+
+  const ids = includeArr.filter(
+    (entry): entry is string => typeof entry === 'string'
+  );
+  results.push(...validateIncludeList(ids, allowedDestinations));
+  return results;
+}
+
+function validateDestinationMappings(
+  obj: Record<string, unknown>,
+  allowedDestinations?: string[]
+): LintResult[] {
+  const results: LintResult[] = [];
+  if (!allowedDestinations || allowedDestinations.length === 0) {
+    return results;
+  }
+  const allowedSet = new Set(allowedDestinations);
+  for (const destId of Object.keys(obj).filter((key) => key !== 'include')) {
+    if (!allowedSet.has(destId)) {
+      results.push({
+        message: `Unknown destination "${destId}". Allowed destinations: ${allowedDestinations.join(', ')}.`,
+        line: 1,
+        column: 1,
+        severity: 'warning',
+      });
+    }
+  }
+  return results;
+}
+
 function validateDestinations(
   frontmatter: Record<string, unknown>,
   config: LinterConfig
@@ -151,11 +222,11 @@ function validateDestinations(
   const results: LintResult[] = [];
 
   const value = (frontmatter as Record<string, unknown>).destinations;
-  if (!value) {
+  if (value === undefined) {
     return results;
   }
 
-  if (typeof value !== 'object' || Array.isArray(value)) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
     results.push({
       message: `Invalid ${getFieldName('/destinations')}. Expected an object mapping destination IDs to configuration, or { include: string[] }.`,
       line: 1,
@@ -167,16 +238,13 @@ function validateDestinations(
 
   const obj = value as Record<string, unknown> & { include?: unknown };
   if (Array.isArray(obj.include)) {
-    const ids = (obj.include as unknown[]).filter(
-      (v): v is string => typeof v === 'string'
-    );
     results.push(
-      ...validateIncludeList(ids, config.allowedDestinations ?? undefined)
+      ...validateIncludeConfig(obj.include, obj, config.allowedDestinations)
     );
     return results;
   }
 
-  if ('include' in obj && !Array.isArray(obj.include)) {
+  if (hasOwn(obj, 'include') && !Array.isArray(obj.include)) {
     results.push({
       message: `Invalid ${getFieldName('/destinations')}. The "include" property must be an array of strings.`,
       line: 1,
@@ -186,18 +254,7 @@ function validateDestinations(
     return results;
   }
 
-  if (config.allowedDestinations && config.allowedDestinations.length > 0) {
-    for (const destId of Object.keys(obj).filter((k) => k !== 'include')) {
-      if (!config.allowedDestinations.includes(destId)) {
-        results.push({
-          message: `Unknown destination "${destId}". Allowed destinations: ${config.allowedDestinations.join(', ')}.`,
-          line: 1,
-          column: 1,
-          severity: 'warning',
-        });
-      }
-    }
-  }
+  results.push(...validateDestinationMappings(obj, config.allowedDestinations));
 
   return results;
 }
