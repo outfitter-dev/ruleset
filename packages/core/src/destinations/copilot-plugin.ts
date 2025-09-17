@@ -29,6 +29,43 @@ export class CopilotPlugin implements DestinationPlugin {
     };
   }
 
+  private async pathLooksLikeDirectory(candidate: string): Promise<boolean> {
+    if (candidate.endsWith(path.sep)) {
+      return true;
+    }
+    try {
+      const stats = await fs.stat(candidate);
+      return stats.isDirectory();
+    } catch {
+      return path.extname(candidate) === '';
+    }
+  }
+
+  private async resolveOutputPath(opts: {
+    baseDir: string;
+    rawOutput: string;
+    destHasExt: boolean;
+    resolvedDest: string;
+    fallbackName: string;
+  }): Promise<string> {
+    const { baseDir, rawOutput, destHasExt, resolvedDest, fallbackName } = opts;
+    if (rawOutput.length === 0) {
+      return destHasExt
+        ? resolvedDest
+        : path.resolve(resolvedDest, fallbackName);
+    }
+
+    const resolvedRaw = path.isAbsolute(rawOutput)
+      ? rawOutput
+      : path.resolve(baseDir, rawOutput);
+
+    if (await this.pathLooksLikeDirectory(resolvedRaw)) {
+      return path.resolve(resolvedRaw, fallbackName);
+    }
+
+    return resolvedRaw;
+  }
+
   async write(ctx: {
     compiled: CompiledDoc;
     destPath: string;
@@ -46,24 +83,25 @@ export class CopilotPlugin implements DestinationPlugin {
 
     const rawOutput =
       typeof cfg.outputPath === 'string' ? cfg.outputPath.trim() : '';
-    const fallbackName = compiled.source.path
+    const rawName = compiled.source.path
       ? path.basename(compiled.source.path)
-      : 'instructions.md';
+      : 'instructions';
+    const fallbackName = path.extname(rawName) ? rawName : `${rawName}.md`;
 
-    let outputPath: string;
-    if (rawOutput.length > 0) {
-      outputPath = path.isAbsolute(rawOutput)
-        ? rawOutput
-        : path.resolve(baseDir, rawOutput);
-    } else if (destHasExt) {
-      outputPath = resolvedDest;
-    } else {
-      outputPath = path.resolve(resolvedDest, fallbackName);
-    }
+    const outputPath = await this.resolveOutputPath({
+      baseDir,
+      rawOutput,
+      destHasExt,
+      resolvedDest,
+      fallbackName,
+    });
 
     const dir = path.dirname(outputPath);
 
-    logger.info('Writing copilot rules', { outputPath });
+    logger.info('Writing copilot rules', {
+      outputPath,
+      destinationId: compiled.context.destinationId,
+    });
 
     try {
       await fs.mkdir(dir, { recursive: true });

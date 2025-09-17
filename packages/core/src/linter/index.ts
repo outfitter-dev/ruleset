@@ -22,20 +22,14 @@ const FIELD_NAMES: Record<string, string> = {
   '/version': 'Document version',
 };
 
-const nativeHasOwn = (
-  Object as typeof Object & {
-    hasOwn?: (value: object, key: PropertyKey) => boolean;
-  }
-).hasOwn;
+const objectConstructor: ObjectConstructor & {
+  hasOwn?: (value: object, key: PropertyKey) => boolean;
+} = Object;
 
 const hasOwn = (value: object, key: PropertyKey): boolean =>
-  typeof nativeHasOwn === 'function'
-    ? nativeHasOwn(value, key)
-    : (
-        Object as unknown as {
-          hasOwn: (target: object, property: PropertyKey) => boolean;
-        }
-      ).hasOwn(value, key);
+  typeof objectConstructor.hasOwn === 'function'
+    ? objectConstructor.hasOwn(value, key)
+    : Object.getOwnPropertyDescriptor(value, key) !== undefined;
 
 /**
  * Gets a human-readable field name for error messages.
@@ -47,7 +41,8 @@ function getFieldName(path: string): string {
   return FIELD_NAMES[path] || path;
 }
 
-const SEMVER_RE = /^\d+\.\d+\.\d+(-[\w.]+)?(\+[\w.]+)?$/;
+const SEMVER_RE =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 
 /**
  * Converts parsing errors to lint results.

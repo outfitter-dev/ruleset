@@ -112,14 +112,19 @@ Rulesets compiles to these AI tool formats:
 | Tool | Output Location | Format |
 |------|----------------|--------|
 | Cursor | `.rulesets/dist/cursor/*.md` | Markdown |
-| Windsurf | `.rulesets/dist/windsurf/*.md` | Markdown (or XML\*) |
+| Windsurf | `.rulesets/dist/windsurf/*.(md\|xml)` | Markdown (or XML\*) |
 | Claude Code | `.rulesets/dist/claude-code/*.md` | Markdown |
 | AGENTS.md | `.rulesets/dist/agents-md/AGENTS.md` | Markdown |
 | GitHub Copilot | `.rulesets/dist/copilot/*.md` | Markdown |
 
-\* Windsurf defaults to Markdown but can emit XML when `format: "xml"` is specified in destination config.
+\* Windsurf defaults to Markdown but can emit XML when `format: "xml"` is specified in destination config (for example, in `.rulesets/config.json`: `{ "destinations": { "windsurf": { "format": "xml" } } }`).
 
-Note: `rulesets compile` writes to `.rulesets/dist/…`. We recommend adding `.rulesets/dist/` (and tool-specific subdirectories) to your `.gitignore` to avoid committing compiled artefacts. A future `rulesets sync` may copy outputs into tool‑specific locations.
+Note: `rulesets compile` writes to `.rulesets/dist/…`. Add these paths to `.gitignore` to avoid committing compiled artefacts. A future `rulesets sync` may copy outputs into tool‑specific locations.
+
+```gitignore
+# Rulesets build output
+.rulesets/dist/
+```
 
 ## Project Structure
 
