@@ -15,6 +15,7 @@ Initial v0.1.0 release of Rulesets - AI rules compiler
   - Plugin architecture for extensibility
 
 - **CLI** (`@rulesets/cli`)
+
   - `init` - Initialize Rulesets in projects
   - `compile` - Compile rules to AI tool formats
   - `list` - List installed rulesets
@@ -24,6 +25,7 @@ Initial v0.1.0 release of Rulesets - AI rules compiler
 ## What's Next
 
 This is our initial release focused on core functionality. Future releases will include:
+
 - Pack system for bundled rulesets
 - npm package distribution
 - Advanced templating and variables

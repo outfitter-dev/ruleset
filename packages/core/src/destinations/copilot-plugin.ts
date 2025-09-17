@@ -25,7 +25,7 @@ export class CopilotPlugin implements DestinationPlugin {
           description: 'Path where the copilot rules should be written',
         },
       },
-      additionalProperties: true,
+      additionalProperties: false,
     };
   }
 
@@ -46,20 +46,24 @@ export class CopilotPlugin implements DestinationPlugin {
 
     const rawOutput =
       typeof cfg.outputPath === 'string' ? cfg.outputPath.trim() : '';
-    const fallbackName =
-      compiled.source.path?.split('/').pop() || 'instructions.md';
+    const fallbackName = compiled.source.path
+      ? path.basename(compiled.source.path)
+      : 'instructions.md';
 
-    const outputPath = rawOutput.length > 0
-      ? path.isAbsolute(rawOutput)
+    let outputPath: string;
+    if (rawOutput.length > 0) {
+      outputPath = path.isAbsolute(rawOutput)
         ? rawOutput
-        : path.resolve(baseDir, rawOutput)
-      : destHasExt
-        ? resolvedDest
-        : path.resolve(resolvedDest, fallbackName);
+        : path.resolve(baseDir, rawOutput);
+    } else if (destHasExt) {
+      outputPath = resolvedDest;
+    } else {
+      outputPath = path.resolve(resolvedDest, fallbackName);
+    }
 
     const dir = path.dirname(outputPath);
 
-    logger.info(`Writing copilot rules to ${outputPath}`);
+    logger.info('Writing copilot rules', { outputPath });
 
     try {
       await fs.mkdir(dir, { recursive: true });
@@ -69,8 +73,7 @@ export class CopilotPlugin implements DestinationPlugin {
         outputPath,
       });
     } catch (error) {
-      const err =
-        error instanceof Error ? error : new Error(String(error));
+      const err = error instanceof Error ? error : new Error(String(error));
       logger.error(err, { plugin: 'copilot', op: 'write', path: outputPath });
       throw err;
     }

@@ -22,14 +22,20 @@ const FIELD_NAMES: Record<string, string> = {
   '/version': 'Document version',
 };
 
-const nativeHasOwn = (Object as typeof Object & {
-  hasOwn?: (value: object, key: PropertyKey) => boolean;
-}).hasOwn;
+const nativeHasOwn = (
+  Object as typeof Object & {
+    hasOwn?: (value: object, key: PropertyKey) => boolean;
+  }
+).hasOwn;
 
 const hasOwn = (value: object, key: PropertyKey): boolean =>
   typeof nativeHasOwn === 'function'
     ? nativeHasOwn(value, key)
-    : Object.prototype.hasOwnProperty.call(value, key);
+    : (
+        Object as unknown as {
+          hasOwn: (target: object, property: PropertyKey) => boolean;
+        }
+      ).hasOwn(value, key);
 
 /**
  * Gets a human-readable field name for error messages.

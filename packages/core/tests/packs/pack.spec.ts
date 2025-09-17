@@ -11,10 +11,13 @@ const RE_COMMANDS = /commands = \[.*"lint".*"test".*\]/s;
 const RE_TS_STRICT = /["']?typescript\.strict["']?\s*=\s*true/;
 const EXPECTED_RESOLVED_COUNT = 3;
 
-const hasOwn = (value: unknown, key: PropertyKey): boolean =>
-  typeof value === 'object' && value !== null
-    ? Object.prototype.hasOwnProperty.call(value, key)
-    : false;
+const objectHasOwn =
+  ((
+    Object as {
+      hasOwn?: (value: object, key: PropertyKey) => boolean;
+    }
+  ).hasOwn as ((value: object, key: PropertyKey) => boolean) | undefined) ??
+  ((value: object, key: PropertyKey) => Reflect.ownKeys(value).includes(key));
 
 describe('Pack System', () => {
   let testDir: string;
@@ -88,11 +91,6 @@ describe('Pack System', () => {
 
       const pack = new Pack(packPath);
       const errors = await pack.validate();
-
-      // Debug output to see what's happening
-      if (!errors.includes('Pack name is required')) {
-        // This block is intentionally empty - validation check only
-      }
 
       expect(errors).toContain('Pack name is required');
       expect(errors).toContain('Invalid version format');
@@ -359,13 +357,13 @@ async function createTestPack(
 
   const packFile = join(packsDir, `${name}.toml`);
 
-  const resolvedName = hasOwn(definition, 'name')
+  const resolvedName = objectHasOwn(definition, 'name')
     ? definition.name
     : name;
-  const resolvedVersion = hasOwn(definition, 'version')
+  const resolvedVersion = objectHasOwn(definition, 'version')
     ? definition.version
     : '1.0.0';
-  const resolvedDescription = hasOwn(definition, 'description')
+  const resolvedDescription = objectHasOwn(definition, 'description')
     ? definition.description
     : '';
 

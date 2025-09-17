@@ -11,7 +11,7 @@ npm install @rulesets/core
 ## Usage
 
 ```typescript
-import { parse, compile, destinations } from '@rulesets/core';
+import { parse, compile, destinations, ConsoleLogger } from '@rulesets/core';
 
 // Parse a source rules file
 const content = `
@@ -34,7 +34,16 @@ const compiled = compile(parsed, 'cursor', {});
 
 // Access destination plugins
 const cursorPlugin = destinations.get('cursor');
+const logger = new ConsoleLogger();
+await cursorPlugin?.write({
+  compiled,
+  destPath: '.rulesets/dist/cursor/my-rules.md',
+  config: {},
+  logger,
+});
 ```
+
+`Stem` and `ParseError` are exported from `@rulesets/core` (see `src/interfaces`) for convenience if you need the detailed types.
 
 ## API
 

@@ -91,7 +91,9 @@ async function buildContext(
   ]);
 
   if (!sourceWithinReal) {
-    throw new Error(`Source path '${source}' resolves outside project directory`);
+    throw new Error(
+      `Source path '${source}' resolves outside project directory`
+    );
   }
 
   if (!outputWithinReal) {

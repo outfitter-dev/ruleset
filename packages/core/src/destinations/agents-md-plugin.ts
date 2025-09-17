@@ -52,14 +52,17 @@ export class AgentsMdPlugin implements DestinationPlugin {
       : path.resolve(resolvedBase, outputSpecifier);
     const dir = path.dirname(outputPath);
 
-    logger.info(`Writing agents-md rules to ${outputPath}`);
+    logger.info('Writing agents-md rules', { outputPath });
 
     try {
       await fs.mkdir(dir, { recursive: true });
       await fs.writeFile(outputPath, compiled.output.content, 'utf-8');
+      logger.debug('Agents-md write complete', {
+        destinationId: compiled.context.destinationId,
+        outputPath,
+      });
     } catch (error) {
-      const err =
-        error instanceof Error ? error : new Error(String(error));
+      const err = error instanceof Error ? error : new Error(String(error));
       logger.error(err, { plugin: 'agents-md', op: 'write', path: outputPath });
       throw err;
     }

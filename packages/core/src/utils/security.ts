@@ -1,13 +1,13 @@
 import { promises as fs } from 'node:fs';
-import { basename, dirname, isAbsolute, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, relative, resolve } from 'node:path';
 
 // TLDR: Security helpers and validators (mixd-v0)
 const MAX_PACKAGE_NAME_LENGTH = 214; // mixd-v0
 const DANGEROUS_CHARS_RE = /[;&|`$<>\\]/; // mixd-perf: precompiled once at module scope
 const VALID_PATTERNS = [
-  /^@[a-z0-9-~][a-z0-9-._~]*\/[a-z0-9-~][a-z0-9-._~]*$/i, // Scoped package
-  /^[a-z0-9-~][a-z0-9-._~]*$/i, // Regular package
-  /^[a-z0-9-]+\/[a-z0-9-]+$/i, // GitHub shorthand
+  /^@[a-z0-9-~][a-z0-9-._~]*\/[a-z0-9-~][a-z0-9-._~]*$/, // Scoped npm (lowercase only)
+  /^[a-z0-9-~][a-z0-9-._~]*$/, // Unscoped npm (lowercase only)
+  /^[a-z0-9-]+\/[a-z0-9-]+$/i, // GitHub shorthand (case-insensitive)
 ];
 
 /**
@@ -31,7 +31,9 @@ export function isPathWithinBoundary(
   return !(relativePath.startsWith('..') || isAbsolute(relativePath));
 }
 
-async function resolveRealPathAllowingNonexistent(pathToResolve: string): Promise<string> {
+async function resolveRealPathAllowingNonexistent(
+  pathToResolve: string
+): Promise<string> {
   const target = resolve(pathToResolve);
   try {
     return await fs.realpath(target);
@@ -40,33 +42,30 @@ async function resolveRealPathAllowingNonexistent(pathToResolve: string): Promis
     if (err.code !== 'ENOENT') {
       throw err;
     }
+  }
 
-    const segments: string[] = [];
-    let current = target;
+  // Ascend until a resolvable ancestor is found, then join the remainder.
+  let current = target;
+  for (;;) {
+    const parent = dirname(current);
 
-    while (true) {
-      const parent = dirname(current);
-      const segment = basename(current);
-      if (segment && segment !== parent) {
-        segments.unshift(segment);
-      }
+    if (parent === current) {
+      // Reached filesystem root without a resolvable ancestor; fall back.
+      return target;
+    }
 
-      if (parent === current) {
-        // Unable to resolve a real path; fall back to the normalized target
-        return target;
-      }
-
-      try {
-        const realParent = await fs.realpath(parent);
-        return resolve(realParent, ...segments);
-      } catch (parentError) {
-        const parentErr = parentError as NodeJS.ErrnoException;
-        if (parentErr.code !== 'ENOENT') {
-          throw parentErr;
-        }
-        current = parent;
+    try {
+      const realParent = await fs.realpath(parent);
+      const remainder = relative(parent, target);
+      return resolve(realParent, remainder);
+    } catch (parentError) {
+      const code = (parentError as NodeJS.ErrnoException).code;
+      if (code && code !== 'ENOENT') {
+        throw parentError;
       }
     }
+
+    current = parent;
   }
 }
 
@@ -116,13 +115,11 @@ export function isValidPackageName(packageName: string): boolean {
   }
 
   // Allow npm scoped packages, GitHub URLs, and regular names
-  return VALID_PATTERNS.some((pattern) =>
-    pattern.test(packageName.toLowerCase())
-  );
+  return VALID_PATTERNS.some((pattern) => pattern.test(packageName));
 }
 
 /**
- * Sanitizes a file path by removing dangerous characters
+ * Sanitizes a file path by stripping NUL/CRLF characters and trimming whitespace
  * @param filePath The file path to sanitize
  * @returns The sanitized file path
  */
@@ -144,7 +141,8 @@ export function sanitizePath(filePath: string): string {
 export function validateObjectDepth(
   obj: unknown,
   maxDepth: number,
-  currentDepth = 0
+  currentDepth = 0,
+  seen: WeakSet<object> = new WeakSet()
 ): boolean {
   if (currentDepth > maxDepth) {
     return false;
@@ -158,13 +156,23 @@ export function validateObjectDepth(
     return true;
   }
 
+  const asObj = obj as object;
+  if (seen.has(asObj)) {
+    return false;
+  }
+  seen.add(asObj);
+
   if (Array.isArray(obj)) {
-    return obj.every((item) =>
-      validateObjectDepth(item, maxDepth, currentDepth + 1)
+    const result = obj.every((item) =>
+      validateObjectDepth(item, maxDepth, currentDepth + 1, seen)
     );
+    seen.delete(asObj);
+    return result;
   }
 
-  return Object.values(obj).every((value) =>
-    validateObjectDepth(value, maxDepth, currentDepth + 1)
+  const result = Object.values(obj).every((value) =>
+    validateObjectDepth(value, maxDepth, currentDepth + 1, seen)
   );
+  seen.delete(asObj);
+  return result;
 }
