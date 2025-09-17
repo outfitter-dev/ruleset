@@ -7,6 +7,10 @@ import type {
   Logger,
 } from '../interfaces';
 
+type AgentsMdConfig = {
+  outputPath?: string;
+};
+
 export class AgentsMdPlugin implements DestinationPlugin {
   get name(): string {
     return 'agents-md';
@@ -31,15 +35,33 @@ export class AgentsMdPlugin implements DestinationPlugin {
     config: Record<string, unknown>;
     logger: Logger;
   }): Promise<void> {
-    const { compiled, destPath, logger } = ctx;
+    const { compiled, destPath, config, logger } = ctx;
+    const cfg = config as AgentsMdConfig;
 
-    // Agents.md uses standard markdown format at project root
-    const outputPath = path.join(destPath, 'AGENTS.md');
+    const basePath =
+      path.extname(destPath).length > 0 ? path.dirname(destPath) : destPath;
+    const resolvedBase = path.isAbsolute(basePath)
+      ? basePath
+      : path.resolve(basePath);
+
+    const rawOutput =
+      typeof cfg.outputPath === 'string' ? cfg.outputPath.trim() : '';
+    const outputSpecifier = rawOutput.length > 0 ? rawOutput : 'AGENTS.md';
+    const outputPath = path.isAbsolute(outputSpecifier)
+      ? outputSpecifier
+      : path.resolve(resolvedBase, outputSpecifier);
     const dir = path.dirname(outputPath);
 
     logger.info(`Writing agents-md rules to ${outputPath}`);
 
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(outputPath, compiled.output.content, 'utf-8');
+    try {
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(outputPath, compiled.output.content, 'utf-8');
+    } catch (error) {
+      const err =
+        error instanceof Error ? error : new Error(String(error));
+      logger.error(err, { plugin: 'agents-md', op: 'write', path: outputPath });
+      throw err;
+    }
   }
 }

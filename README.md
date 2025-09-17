@@ -114,6 +114,8 @@ Rulesets compiles to these AI tool formats:
 | Cursor | `.rulesets/dist/cursor/*.md` | Markdown |
 | Windsurf | `.rulesets/dist/windsurf/*.md` | Markdown |
 | Claude Code | `.rulesets/dist/claude-code/*.md` | Markdown |
+| AGENTS.md | `.rulesets/dist/agents-md/AGENTS.md` | Markdown |
+| GitHub Copilot | `.rulesets/dist/copilot/*.md` | Markdown |
 
 Note: `rulesets compile` writes to `.rulesets/dist/…`. A future `rulesets sync` may copy outputs into tool‑specific locations.
 
@@ -126,7 +128,9 @@ your-project/
 │   └── dist/            # Compiled output
 │       ├── cursor/      # Cursor-specific rules
 │       ├── windsurf/    # Windsurf-specific rules
-│       └── claude-code/ # Claude Code rules
+│       ├── claude-code/ # Claude Code rules
+│       ├── agents-md/   # AGENTS.md rules
+│       └── copilot/     # GitHub Copilot rules
 ├── rules/               # Source rule files
 │   ├── coding-standards.md
 │   ├── git-workflow.md
@@ -141,7 +145,7 @@ your-project/
 ```json
 {
   "version": "0.1.0",
-  "destinations": ["cursor", "windsurf", "claude-code"],
+  "destinations": ["cursor", "windsurf", "claude-code", "agents-md", "copilot"],
   "sources": ["./rules"],
   "output": "./.rulesets/dist"
 }

@@ -17,7 +17,7 @@ export function installCommand(): Command {
       const spinner = createSpinner(`Installing ${packageName}...`);
 
       try {
-        const config = await GlobalConfig.getInstance();
+        const config = GlobalConfig.getInstance();
         const installer = new InstallationManager(config);
 
         const result = await installer.installRuleset(packageName, {

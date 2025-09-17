@@ -11,6 +11,11 @@ const RE_COMMANDS = /commands = \[.*"lint".*"test".*\]/s;
 const RE_TS_STRICT = /["']?typescript\.strict["']?\s*=\s*true/;
 const EXPECTED_RESOLVED_COUNT = 3;
 
+const hasOwn = (value: unknown, key: PropertyKey): boolean =>
+  typeof value === 'object' && value !== null
+    ? Object.prototype.hasOwnProperty.call(value, key)
+    : false;
+
 describe('Pack System', () => {
   let testDir: string;
   let globalDir: string;
@@ -354,13 +359,13 @@ async function createTestPack(
 
   const packFile = join(packsDir, `${name}.toml`);
 
-  const resolvedName = Object.hasOwn(definition, 'name')
+  const resolvedName = hasOwn(definition, 'name')
     ? definition.name
     : name;
-  const resolvedVersion = Object.hasOwn(definition, 'version')
+  const resolvedVersion = hasOwn(definition, 'version')
     ? definition.version
     : '1.0.0';
-  const resolvedDescription = Object.hasOwn(definition, 'description')
+  const resolvedDescription = hasOwn(definition, 'description')
     ? definition.description
     : '';
 

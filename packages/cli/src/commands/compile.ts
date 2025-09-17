@@ -4,6 +4,7 @@ import {
   compile,
   destinations,
   isPathWithinBoundary,
+  isPathWithinBoundaryReal,
   parse,
   RESOURCE_LIMITS,
   sanitizePath,
@@ -81,6 +82,21 @@ async function buildContext(
   if (!isPathWithinBoundary(outputPath, cwd)) {
     throw new Error(
       `Output path '${options.output}' is outside project directory`
+    );
+  }
+
+  const [sourceWithinReal, outputWithinReal] = await Promise.all([
+    isPathWithinBoundaryReal(sourcePath, cwd),
+    isPathWithinBoundaryReal(outputPath, cwd),
+  ]);
+
+  if (!sourceWithinReal) {
+    throw new Error(`Source path '${source}' resolves outside project directory`);
+  }
+
+  if (!outputWithinReal) {
+    throw new Error(
+      `Output path '${options.output}' resolves outside project directory`
     );
   }
 

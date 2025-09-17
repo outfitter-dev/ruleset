@@ -1,4 +1,5 @@
-import { isAbsolute, relative, resolve } from 'node:path';
+import { promises as fs } from 'node:fs';
+import { basename, dirname, isAbsolute, relative, resolve } from 'node:path';
 
 // TLDR: Security helpers and validators (mixd-v0)
 const MAX_PACKAGE_NAME_LENGTH = 214; // mixd-v0
@@ -28,6 +29,69 @@ export function isPathWithinBoundary(
   // If the relative path starts with "..", it's outside the boundary
   // Also reject if it's an absolute path (shouldn't happen after relative())
   return !(relativePath.startsWith('..') || isAbsolute(relativePath));
+}
+
+async function resolveRealPathAllowingNonexistent(pathToResolve: string): Promise<string> {
+  const target = resolve(pathToResolve);
+  try {
+    return await fs.realpath(target);
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code !== 'ENOENT') {
+      throw err;
+    }
+
+    const segments: string[] = [];
+    let current = target;
+
+    while (true) {
+      const parent = dirname(current);
+      const segment = basename(current);
+      if (segment && segment !== parent) {
+        segments.unshift(segment);
+      }
+
+      if (parent === current) {
+        // Unable to resolve a real path; fall back to the normalized target
+        return target;
+      }
+
+      try {
+        const realParent = await fs.realpath(parent);
+        return resolve(realParent, ...segments);
+      } catch (parentError) {
+        const parentErr = parentError as NodeJS.ErrnoException;
+        if (parentErr.code !== 'ENOENT') {
+          throw parentErr;
+        }
+        current = parent;
+      }
+    }
+  }
+}
+
+/**
+ * Validates that the real path (resolving symlinks) stays within the boundary.
+ * This guards against symlink escapes where the normalized path appears safe.
+ *
+ * @param targetPath The path to validate (may not exist yet)
+ * @param boundaryPath The directory boundary that must contain the target
+ * @returns Promise resolving to true if the real path is within the boundary
+ */
+export async function isPathWithinBoundaryReal(
+  targetPath: string,
+  boundaryPath: string
+): Promise<boolean> {
+  try {
+    const [realTarget, realBoundary] = await Promise.all([
+      resolveRealPathAllowingNonexistent(targetPath),
+      fs.realpath(resolve(boundaryPath)),
+    ]);
+    const relativePath = relative(realBoundary, realTarget);
+    return !(relativePath.startsWith('..') || isAbsolute(relativePath));
+  } catch {
+    return false;
+  }
 }
 
 /**

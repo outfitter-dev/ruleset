@@ -22,6 +22,15 @@ const FIELD_NAMES: Record<string, string> = {
   '/version': 'Document version',
 };
 
+const nativeHasOwn = (Object as typeof Object & {
+  hasOwn?: (value: object, key: PropertyKey) => boolean;
+}).hasOwn;
+
+const hasOwn = (value: object, key: PropertyKey): boolean =>
+  typeof nativeHasOwn === 'function'
+    ? nativeHasOwn(value, key)
+    : Object.prototype.hasOwnProperty.call(value, key);
+
 /**
  * Gets a human-readable field name for error messages.
  *
@@ -262,7 +271,7 @@ function validateDestinations(
     return results;
   }
 
-  if (Object.hasOwn(obj, 'include') && !Array.isArray(obj.include)) {
+  if (hasOwn(obj, 'include') && !Array.isArray(obj.include)) {
     results.push({
       message: `Invalid ${getFieldName('/destinations')}. The "include" property must be an array of strings.`,
       line: 1,

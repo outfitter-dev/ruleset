@@ -10,7 +10,7 @@ Initial v0.1.0 release of Rulesets - AI rules compiler
 - **Core Library** (`@rulesets/core`)
   - Parser for Markdown with frontmatter
   - Compiler system with destination plugins
-  - Support for Cursor, Windsurf, and Claude Code
+  - Support for Cursor, Windsurf, Claude Code, AGENTS.md, and GitHub Copilot
   - Linter for validating rules
   - Plugin architecture for extensibility
 

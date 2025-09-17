@@ -50,8 +50,8 @@ export class WindsurfPlugin implements DestinationPlugin {
   }
 
   private looksLikeDirectory(pathStr: string): boolean {
-    const trimmed = pathStr.trim();
-    return trimmed.endsWith('/') || trimmed.endsWith(path.sep);
+    const p = pathStr.trim();
+    return p.endsWith('/') || p.endsWith(path.sep);
   }
 
   private async resolveOutputPath(
@@ -173,7 +173,7 @@ export class WindsurfPlugin implements DestinationPlugin {
     logger.debug('Destination resolved', {
       destinationId: compiled.context.destinationId,
     });
-    logger.debug('Config resolved', {
+    logger.debug('Config:', {
       outputPath: cfg.outputPath,
       format,
     });

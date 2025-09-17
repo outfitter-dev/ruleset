@@ -55,6 +55,8 @@ Registry of available destination plugins.
 - `cursor` - Cursor IDE
 - `windsurf` - Windsurf IDE
 - `claude-code` - Claude Code
+- `agents-md` - Codex AGENTS.md
+- `copilot` - GitHub Copilot
 
 ## Types
 

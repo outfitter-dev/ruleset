@@ -66,27 +66,24 @@ async function runList(options: {
 
     logger.info(chalk.bold('\nInstalled Rulesets:\n'));
 
-    if (options.global || !options.local) {
-      const globalRulesets =
-        (await manager.listGlobalRulesets()) as ListedRuleset[];
+    const globalRulesets =
+      options.global || !options.local
+        ? ((await manager.listGlobalRulesets()) as ListedRuleset[])
+        : [];
+    const localRulesets =
+      options.local || !options.global
+        ? ((await manager.listLocalRulesets(process.cwd())) as ListedRuleset[])
+        : [];
+
+    if (globalRulesets.length > 0) {
       printGlobal(globalRulesets);
     }
 
-    if (options.local || !options.global) {
-      const localRulesets = (await manager.listLocalRulesets(
-        process.cwd()
-      )) as ListedRuleset[];
+    if (localRulesets.length > 0) {
       printLocal(localRulesets);
     }
 
-    const allRulesets = [
-      ...(options.global || !options.local
-        ? ((await manager.listGlobalRulesets()) as ListedRuleset[])
-        : []),
-      ...(options.local || !options.global
-        ? ((await manager.listLocalRulesets(process.cwd())) as ListedRuleset[])
-        : []),
-    ];
+    const allRulesets = [...globalRulesets, ...localRulesets];
 
     if (allRulesets.length === 0) {
       logger.info(chalk.yellow('No rulesets installed'));
