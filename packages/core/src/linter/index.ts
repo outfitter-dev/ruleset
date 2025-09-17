@@ -1,3 +1,4 @@
+import { valid as semverValid } from 'semver';
 import type { ParsedDoc } from '../interfaces';
 
 export type LinterConfig = {
@@ -40,9 +41,6 @@ const hasOwn = (value: object, key: PropertyKey): boolean =>
 function getFieldName(path: string): string {
   return FIELD_NAMES[path] || path;
 }
-
-const SEMVER_RE =
-  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 
 /**
  * Converts parsing errors to lint results.
@@ -116,10 +114,20 @@ function validateRulesetsVersion(
     });
   } else if (
     typeof frontmatter.rulesets !== 'object' ||
-    !frontmatter.rulesets
+    frontmatter.rulesets == null ||
+    Array.isArray(frontmatter.rulesets)
   ) {
     results.push({
       message: `Invalid ${getFieldName('/rulesets')}. Expected object with "version" property.`,
+      line: 1,
+      column: 1,
+      severity: 'error',
+    });
+  } else if (
+    !hasOwn(frontmatter.rulesets as Record<string, unknown>, 'version')
+  ) {
+    results.push({
+      message: `Missing required ${getFieldName('/rulesets/version')}.`,
       line: 1,
       column: 1,
       severity: 'error',
@@ -135,7 +143,7 @@ function validateRulesetsVersion(
       severity: 'error',
     });
   } else if (
-    !SEMVER_RE.test(
+    !semverValid(
       (frontmatter.rulesets as Record<string, unknown>).version as string
     )
   ) {
@@ -205,12 +213,32 @@ function validateIncludeConfig(
     });
   }
 
-  const ids = includeArr.filter(
-    (entry): entry is string => typeof entry === 'string'
-  );
+  const ids = includeArr
+    .filter((entry): entry is string => typeof entry === 'string')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const id of ids) {
+    if (seen.has(id)) {
+      duplicates.add(id);
+    } else {
+      seen.add(id);
+    }
+  }
+
   if (ids.length === 0) {
     results.push({
       message: `Empty ${getFieldName('/destinations')}. "include" is empty; nothing will be emitted for destinations.`,
+      line: 1,
+      column: 1,
+      severity: 'warning',
+    });
+  }
+  if (duplicates.size > 0) {
+    results.push({
+      message: `Duplicate destination IDs in "include": ${Array.from(duplicates).join(', ')}.`,
       line: 1,
       column: 1,
       severity: 'warning',

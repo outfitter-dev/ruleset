@@ -39,7 +39,7 @@ npm install -g @rulesets/cli@latest
 Or use with npx:
 
 ```bash
-npx @rulesets/cli@latest init
+npx -y @rulesets/cli@latest init
 ```
 
 ## Usage
@@ -124,6 +124,12 @@ Note: `rulesets compile` writes to `.rulesets/dist/…`. Add these paths to `.gi
 ```gitignore
 # Rulesets build output
 .rulesets/dist/
+# e.g.
+# .rulesets/dist/cursor/
+# .rulesets/dist/windsurf/
+# .rulesets/dist/claude-code/
+# .rulesets/dist/agents-md/
+# .rulesets/dist/copilot/
 ```
 
 ## Project Structure
@@ -171,7 +177,7 @@ destinations:
 
 ### Known Limitations
 
-- **Array Form for Destinations (frontmatter only)**: In v0.1.0, the simple array form is not supported in per‑file frontmatter. Use the object form with `include`/`exclude`. The array form is supported in `.rulesets/config.json` (see Configuration).
+- **Array Form for Destinations (frontmatter only)**: In v0.1.0, the simple array form is not supported in per-file frontmatter. Use the object form with `include`/`exclude` (see the "Write Rules" example above). The array form is supported in `.rulesets/config.json` (see Configuration).
 - **Resource Limits**: Files exceeding the following limits will be skipped:
   - Maximum pack file size: 10MB
   - Maximum ruleset file size: 5MB

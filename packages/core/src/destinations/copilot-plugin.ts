@@ -30,14 +30,15 @@ export class CopilotPlugin implements DestinationPlugin {
   }
 
   private async pathLooksLikeDirectory(candidate: string): Promise<boolean> {
-    if (candidate.endsWith(path.sep)) {
+    const normalised = path.normalize(candidate);
+    if (normalised.endsWith(path.sep)) {
       return true;
     }
     try {
-      const stats = await fs.stat(candidate);
+      const stats = await fs.stat(normalised);
       return stats.isDirectory();
     } catch {
-      return path.extname(candidate) === '';
+      return path.extname(normalised) === '';
     }
   }
 
@@ -76,7 +77,7 @@ export class CopilotPlugin implements DestinationPlugin {
     const cfg = config as CopilotConfig;
 
     const resolvedDest = path.isAbsolute(destPath)
-      ? destPath
+      ? path.normalize(destPath)
       : path.resolve(destPath);
     const destHasExt = path.extname(resolvedDest).length > 0;
     const baseDir = destHasExt ? path.dirname(resolvedDest) : resolvedDest;
@@ -101,6 +102,7 @@ export class CopilotPlugin implements DestinationPlugin {
     logger.info('Writing copilot rules', {
       outputPath,
       destinationId: compiled.context.destinationId,
+      plugin: 'copilot',
     });
 
     try {
@@ -109,6 +111,7 @@ export class CopilotPlugin implements DestinationPlugin {
       logger.debug('Copilot write complete', {
         destinationId: compiled.context.destinationId,
         outputPath,
+        plugin: 'copilot',
       });
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));

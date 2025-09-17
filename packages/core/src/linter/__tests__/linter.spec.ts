@@ -94,6 +94,78 @@ describe('linter', () => {
       expect(typeError?.severity).toBe('error');
     });
 
+    it('should error when rulesets field is an array', async () => {
+      const parsedDoc: ParsedDoc = {
+        source: {
+          content: '---\nrulesets: []\n---\n\n# Content',
+          frontmatter: {
+            rulesets: [],
+          },
+        },
+        ast: {
+          stems: [],
+          imports: [],
+          variables: [],
+          markers: [],
+        },
+      };
+
+      const results = await lint(parsedDoc);
+      const structureError = results.find((r) =>
+        r.message.includes('Invalid Rulesets version declaration')
+      );
+      expect(structureError).toBeDefined();
+      expect(structureError?.severity).toBe('error');
+    });
+
+    it('should error when version property is missing', async () => {
+      const parsedDoc: ParsedDoc = {
+        source: {
+          content: '---\nrulesets: {}\n---\n\n# Content',
+          frontmatter: {
+            rulesets: {},
+          },
+        },
+        ast: {
+          stems: [],
+          imports: [],
+          variables: [],
+          markers: [],
+        },
+      };
+
+      const results = await lint(parsedDoc);
+      const missingVersion = results.find((r) =>
+        r.message.includes('Missing required Rulesets version number')
+      );
+      expect(missingVersion).toBeDefined();
+      expect(missingVersion?.severity).toBe('error');
+    });
+
+    it('should error when rulesets version is not semantic', async () => {
+      const parsedDoc: ParsedDoc = {
+        source: {
+          content: '---\nrulesets:\n  version: "01.0.0"\n---\n\n# Content',
+          frontmatter: {
+            rulesets: { version: '01.0.0' },
+          },
+        },
+        ast: {
+          stems: [],
+          imports: [],
+          variables: [],
+          markers: [],
+        },
+      };
+
+      const results = await lint(parsedDoc);
+      const semverError = results.find((r) =>
+        r.message.includes('Expected a semantic version')
+      );
+      expect(semverError).toBeDefined();
+      expect(semverError?.severity).toBe('error');
+    });
+
     it('should validate destinations structure', async () => {
       const parsedDoc: ParsedDoc = {
         source: {
@@ -118,6 +190,42 @@ describe('linter', () => {
       );
       expect(destError).toBeDefined();
       expect(destError?.severity).toBe('error');
+    });
+
+    it('should warn about duplicate include destinations', async () => {
+      const parsedDoc: ParsedDoc = {
+        source: {
+          content:
+            '---\nrulesets:\n  version: "0.1.0"\ndestinations:\n  include: ["cursor", "cursor", " windsor f "]\n---\n\n# Content',
+          frontmatter: {
+            rulesets: { version: '0.1.0' },
+            destinations: {
+              include: ['cursor', 'cursor', ' windsor f '],
+            },
+          },
+        },
+        ast: {
+          stems: [],
+          imports: [],
+          variables: [],
+          markers: [],
+        },
+      };
+
+      const results = await lint(parsedDoc, {
+        allowedDestinations: ['cursor', 'windsor f'],
+      });
+
+      const duplicateWarning = results.find((r) =>
+        r.message.includes('Duplicate destination IDs')
+      );
+      expect(duplicateWarning).toBeDefined();
+      expect(duplicateWarning?.severity).toBe('warning');
+
+      const emptyWarning = results.find((r) =>
+        r.message.includes('Empty Destination configurations')
+      );
+      expect(emptyWarning).toBeUndefined();
     });
 
     it('should warn about unknown destinations when configured', async () => {
