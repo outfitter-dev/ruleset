@@ -32,10 +32,7 @@ function getFieldName(path: string): string {
   return FIELD_NAMES[path] || path;
 }
 
-const objectHasOwn = Object.prototype.hasOwnProperty;
-
-const hasOwn = (value: object, key: PropertyKey): boolean =>
-  objectHasOwn.call(value, key);
+const SEMVER_RE = /^\d+\.\d+\.\d+(-[\w.]+)?(\+[\w.]+)?$/;
 
 /**
  * Converts parsing errors to lint results.
@@ -127,6 +124,17 @@ function validateRulesetsVersion(
       column: 1,
       severity: 'error',
     });
+  } else if (
+    !SEMVER_RE.test(
+      (frontmatter.rulesets as Record<string, unknown>).version as string
+    )
+  ) {
+    results.push({
+      message: `Invalid ${getFieldName('/rulesets/version')}. Expected a semantic version (e.g., "0.1.0").`,
+      line: 1,
+      column: 1,
+      severity: 'error',
+    });
   }
 
   return results;
@@ -145,10 +153,11 @@ function validateIncludeList(ids: string[], allowed?: string[]): LintResult[] {
     return out;
   }
   const allowedSet = new Set(allowed);
+  const allowedList = [...allowedSet].sort();
   for (const destId of new Set(ids)) {
     if (!allowedSet.has(destId)) {
       out.push({
-        message: `Unknown destination "${destId}". Allowed destinations: ${allowed.join(', ')}.`,
+        message: `Unknown destination "${destId}". Allowed destinations: ${allowedList.join(', ')}.`,
         line: 1,
         column: 1,
         severity: 'warning',
@@ -189,6 +198,14 @@ function validateIncludeConfig(
   const ids = includeArr.filter(
     (entry): entry is string => typeof entry === 'string'
   );
+  if (ids.length === 0) {
+    results.push({
+      message: `Empty ${getFieldName('/destinations')}. "include" is empty; nothing will be emitted for destinations.`,
+      line: 1,
+      column: 1,
+      severity: 'warning',
+    });
+  }
   results.push(...validateIncludeList(ids, allowedDestinations));
   return results;
 }
@@ -202,10 +219,11 @@ function validateDestinationMappings(
     return results;
   }
   const allowedSet = new Set(allowedDestinations);
+  const allowedList = [...allowedSet].sort();
   for (const destId of Object.keys(obj).filter((key) => key !== 'include')) {
     if (!allowedSet.has(destId)) {
       results.push({
-        message: `Unknown destination "${destId}". Allowed destinations: ${allowedDestinations.join(', ')}.`,
+        message: `Unknown destination "${destId}". Allowed destinations: ${allowedList.join(', ')}.`,
         line: 1,
         column: 1,
         severity: 'warning',
@@ -244,7 +262,7 @@ function validateDestinations(
     return results;
   }
 
-  if (hasOwn(obj, 'include') && !Array.isArray(obj.include)) {
+  if (Object.hasOwn(obj, 'include') && !Array.isArray(obj.include)) {
     results.push({
       message: `Invalid ${getFieldName('/destinations')}. The "include" property must be an array of strings.`,
       line: 1,

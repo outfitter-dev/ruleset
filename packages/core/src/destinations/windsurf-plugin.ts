@@ -12,7 +12,7 @@ type WindsurfFormat = 'markdown' | 'xml';
 
 type WindsurfConfig = {
   outputPath?: string;
-  format?: unknown;
+  format?: WindsurfFormat;
 };
 
 export class WindsurfPlugin implements DestinationPlugin {
@@ -50,7 +50,8 @@ export class WindsurfPlugin implements DestinationPlugin {
   }
 
   private looksLikeDirectory(pathStr: string): boolean {
-    return pathStr.endsWith('/') || pathStr.endsWith(path.sep);
+    const trimmed = pathStr.trim();
+    return trimmed.endsWith('/') || trimmed.endsWith(path.sep);
   }
 
   private async resolveOutputPath(
@@ -98,14 +99,14 @@ export class WindsurfPlugin implements DestinationPlugin {
     try {
       await fs.mkdir(dirPath, { recursive: true });
     } catch (error) {
-      logger.error(
+      const err =
         error instanceof Error
           ? error
           : new Error(
               `Failed to create directory: ${dirPath}. ${String(error)}`
-            )
-      );
-      throw error;
+            );
+      logger.error(err, { op: 'mkdir', path: dirPath, plugin: 'windsurf' });
+      throw err;
     }
   }
 
@@ -121,11 +122,11 @@ export class WindsurfPlugin implements DestinationPlugin {
       await fs.rename(tmpPath, filePath);
       logger.info(`Successfully wrote Windsurf rules to: ${filePath}`);
     } catch (error) {
-      logger.error(
+      const err =
         error instanceof Error
           ? error
-          : new Error(`Failed to write file: ${filePath}. ${String(error)}`)
-      );
+          : new Error(`Failed to write file: ${filePath}. ${String(error)}`);
+      logger.error(err, { op: 'write', path: filePath, plugin: 'windsurf' });
       if (tmpPath) {
         try {
           await fs.rm(tmpPath, { force: true });
@@ -133,7 +134,7 @@ export class WindsurfPlugin implements DestinationPlugin {
           // Ignore cleanup errors
         }
       }
-      throw error;
+      throw err;
     }
   }
 
@@ -159,7 +160,7 @@ export class WindsurfPlugin implements DestinationPlugin {
       format,
       logger
     );
-    logger.info(`Writing Windsurf rules to: ${resolvedPath}`);
+    logger.debug(`Writing Windsurf rules to: ${resolvedPath}`);
 
     // Ensure directory exists
     const dir = path.dirname(resolvedPath);
@@ -169,10 +170,12 @@ export class WindsurfPlugin implements DestinationPlugin {
     await this.writeFile(resolvedPath, compiled.output.content, logger);
 
     // Log additional context for debugging
-    logger.debug(`Destination: ${compiled.context.destinationId}`);
-    logger.debug(
-      `Config: ${JSON.stringify({ outputPath: cfg.outputPath, format })}`
-    );
-    logger.debug(`Format: ${format}`);
+    logger.debug('Destination resolved', {
+      destinationId: compiled.context.destinationId,
+    });
+    logger.debug('Config resolved', {
+      outputPath: cfg.outputPath,
+      format,
+    });
   }
 }
