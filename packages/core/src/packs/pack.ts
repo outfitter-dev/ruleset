@@ -264,6 +264,8 @@ export class Pack {
     return this._rulesetManager;
   }
 
+  private static readonly SEMVER_RE = /^\d+\.\d+\.\d+(-[\w.]+)?(\+[\w.]+)?$/;
+
   /**
    * Validate version string format
    */
@@ -273,8 +275,6 @@ export class Pack {
     }
 
     // Simple semver validation
-    return SEMVER_RE.test(version);
+    return Pack.SEMVER_RE.test(version);
   }
 }
-
-const SEMVER_RE = /^\d+\.\d+\.\d+(-[\w.]+)?(\+[\w.]+)?$/;

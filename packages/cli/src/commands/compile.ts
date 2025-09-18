@@ -20,7 +20,8 @@ const MIX_EXT_RE = /\.mix\.md$/i; // mixd-perf: precompiled regex for extension 
 async function listMarkdownFiles(rootPath: string): Promise<string[]> {
   const stats = await fs.stat(rootPath);
   if (!stats.isDirectory()) {
-    return [rootPath];
+    const isMd = rootPath.endsWith('.md') || rootPath.endsWith('.mix.md');
+    return isMd ? [rootPath] : [];
   }
 
   const result: string[] = [];
@@ -116,14 +117,13 @@ async function buildContext(
   };
 }
 
-async function compileFile(file: string, ctx: CompileContext): Promise<void> {
+async function compileFile(file: string, ctx: CompileContext): Promise<number> {
   const content = await fs.readFile(file, 'utf-8');
   const parsed = parse(content);
+  let compiledCount = 0;
   for (const dest of ctx.destinations) {
     if (!destinations.has(dest)) {
-      logger.info(chalk.red(`  - No plugin found for destination: ${dest}`), {
-        destination: dest,
-      });
+      logger.warn(chalk.yellow(`  - No plugin found for destination: ${dest}`));
       continue;
     }
     const compiled = compile(parsed, dest, {});
@@ -131,7 +131,9 @@ async function compileFile(file: string, ctx: CompileContext): Promise<void> {
     const outfile = join(ctx.outputPath, dest, rel.replace(MIX_EXT_RE, '.md'));
     await fs.mkdir(dirname(outfile), { recursive: true });
     await fs.writeFile(outfile, compiled.output.content, { encoding: 'utf8' });
+    compiledCount++;
   }
+  return compiledCount;
 }
 
 async function compileAll(
@@ -141,10 +143,13 @@ async function compileAll(
   let totalCompiled = 0;
   for (const file of ctx.files) {
     try {
-      await compileFile(file, ctx);
-      totalCompiled += ctx.destinations.length;
+      const count = await compileFile(file, ctx);
+      totalCompiled += count;
     } catch (error) {
       errors.push(`Failed to compile ${file}: ${String(error)}`);
+      if (error instanceof Error) {
+        logger.error(error);
+      }
     }
   }
   return { totalCompiled, errors };
@@ -166,13 +171,11 @@ async function startWatcher(ctx: CompileContext): Promise<void> {
     if (!(filename.endsWith('.md') || filename.endsWith('.mix.md'))) {
       return;
     }
-    logger.info(chalk.dim(`\nFile changed: ${filename}`), { file: filename });
+    logger.info(chalk.dim(`\nFile changed: ${filename}`));
     const changedFile = join(ctx.sourcePath, filename);
     try {
       await compileFile(changedFile, ctx);
-      logger.info(chalk.green('  ✓ Recompiled successfully'), {
-        file: filename,
-      });
+      logger.info(chalk.green('  ✓ Recompiled successfully'));
 
       // Reset error count on success
       errorCount = 0;
@@ -182,9 +185,7 @@ async function startWatcher(ctx: CompileContext): Promise<void> {
       }
     } catch (error) {
       errorCount++;
-      logger.error(chalk.red(`  ✗ Failed to recompile: ${String(error)}`), {
-        file: filename,
-      });
+      logger.error(chalk.red(`  ✗ Failed to recompile: ${String(error)}`));
 
       // Implement circuit breaker pattern
       if (errorCount >= limits.maxConsecutiveErrors) {
@@ -194,36 +195,20 @@ async function startWatcher(ctx: CompileContext): Promise<void> {
           )
         );
 
-        // Store current file state before closing watcher
-        const pendingChanges = new Set<string>();
-        const checkInterval = setInterval(() => {
-          // Track any files that change while watcher is paused
-          for (const file of ctx.sources) {
-            const stats = fs.statSync(file, { throwIfNoEntry: false });
-            if (stats && stats.mtimeMs > Date.now() - limits.errorResetTime) {
-              pendingChanges.add(file);
-            }
-          }
-        }, limits.msToSeconds);
-
         watcher.close();
 
         setTimeout(() => {
-          clearInterval(checkInterval);
-          logger.info(chalk.cyan('Resuming watcher...'));
-
-          // Process any changes that occurred during pause
-          if (pendingChanges.size > 0) {
-            logger.info(
-              chalk.yellow(
-                `Processing ${pendingChanges.size} file(s) that changed during pause...`
-              )
+          (async () => {
+            logger.info(chalk.cyan('Resuming watcher...'));
+            // Refresh file list and bulk-compile to catch up
+            const files = await listMarkdownFiles(ctx.sourcePath);
+            await compileAll({ ...ctx, files });
+            await startWatcher({ ...ctx, files });
+          })().catch((err) => {
+            logger.error(
+              chalk.red(`Failed to restart watcher: ${String(err)}`)
             );
-            ctx.modifiedSources = Array.from(pendingChanges);
-            // Note: Files will be recompiled when watcher restarts
-          }
-
-          startWatcher(ctx);
+          });
         }, limits.errorResetTime);
         return;
       }

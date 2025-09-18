@@ -109,7 +109,7 @@ describe('rulesets CLI smoke', () => {
 
     const outDirRel = join('.rulesets', 'dist');
     const outDirAbs = join(tmp, outDirRel);
-    const { code, stderr, stdout } = runCli(
+    const { code, stderr } = runCli(
       [
         'compile',
         'rules',
@@ -122,8 +122,7 @@ describe('rulesets CLI smoke', () => {
       { cwd: tmp }
     );
     if (code !== 0) {
-      console.error('compile stderr:', stderr);
-      console.error('compile stdout:', stdout);
+      // Test failed - stderr/stdout will be shown in test output
     }
     expect(code).toBe(0);
     // Should produce cursor/hello.md
