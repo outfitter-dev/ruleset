@@ -32,6 +32,9 @@ const hasOwn = (value: object, key: PropertyKey): boolean =>
     ? objectConstructor.hasOwn(value, key)
     : Object.getOwnPropertyDescriptor(value, key) !== undefined;
 
+const normaliseDestinationId = (value: string): string =>
+  value.trim().toLowerCase();
+
 /**
  * Gets a human-readable field name for error messages.
  *
@@ -100,22 +103,26 @@ function validateRulesetsVersion(
   config: LinterConfig
 ): LintResult[] {
   const results: LintResult[] = [];
-
   if (config.requireRulesetsVersion === false) {
     return results;
   }
 
-  if (!frontmatter.rulesets) {
+  const rawRulesets = (frontmatter as Record<string, unknown>).rulesets;
+
+  if (rawRulesets === undefined) {
     results.push({
       message: `Missing required ${getFieldName('/rulesets')}. Specify the Rulesets version (e.g., rulesets: { version: "0.1.0" }).`,
       line: 1,
       column: 1,
       severity: 'error',
     });
-  } else if (
-    typeof frontmatter.rulesets !== 'object' ||
-    frontmatter.rulesets == null ||
-    Array.isArray(frontmatter.rulesets)
+    return results;
+  }
+
+  if (
+    typeof rawRulesets !== 'object' ||
+    rawRulesets === null ||
+    Array.isArray(rawRulesets)
   ) {
     results.push({
       message: `Invalid ${getFieldName('/rulesets')}. Expected object with "version" property.`,
@@ -123,37 +130,40 @@ function validateRulesetsVersion(
       column: 1,
       severity: 'error',
     });
-  } else if (
-    !hasOwn(frontmatter.rulesets as Record<string, unknown>, 'version')
-  ) {
+    return results;
+  }
+
+  const rulesets = rawRulesets as Record<string, unknown>;
+
+  if (!hasOwn(rulesets, 'version')) {
     results.push({
       message: `Missing required ${getFieldName('/rulesets/version')}.`,
       line: 1,
       column: 1,
       severity: 'error',
     });
-  } else if (
-    typeof (frontmatter.rulesets as Record<string, unknown>).version !==
-    'string'
-  ) {
+    return results;
+  }
+
+  const rawVersion = rulesets.version;
+  if (typeof rawVersion !== 'string') {
     results.push({
       message: `Invalid ${getFieldName('/rulesets/version')}. Expected a string (e.g., "0.1.0").`,
       line: 1,
       column: 1,
       severity: 'error',
     });
-  } else {
-    const version = (
-      (frontmatter.rulesets as Record<string, unknown>).version as string
-    ).trim();
-    if (!semverValid(version)) {
-      results.push({
-        message: `Invalid ${getFieldName('/rulesets/version')}. Expected a semantic version (e.g., "0.1.0").`,
-        line: 1,
-        column: 1,
-        severity: 'error',
-      });
-    }
+    return results;
+  }
+
+  const version = rawVersion.trim();
+  if (!semverValid(version)) {
+    results.push({
+      message: `Invalid ${getFieldName('/rulesets/version')}. Expected a semantic version (e.g., "0.1.0").`,
+      line: 1,
+      column: 1,
+      severity: 'error',
+    });
   }
 
   return results;
@@ -171,10 +181,10 @@ function validateIncludeList(ids: string[], allowed?: string[]): LintResult[] {
   if (!allowed || allowed.length === 0) {
     return out;
   }
-  const allowedSet = new Set(allowed);
-  const allowedList = [...allowedSet].sort();
+  const allowedList = [...new Set(allowed)].sort();
+  const allowedSet = new Set(allowed.map(normaliseDestinationId));
   for (const destId of new Set(ids)) {
-    if (!allowedSet.has(destId)) {
+    if (!allowedSet.has(normaliseDestinationId(destId))) {
       out.push({
         message: `Unknown destination "${destId}". Allowed destinations: ${allowedList.join(', ')}.`,
         line: 1,
@@ -222,10 +232,11 @@ function validateIncludeConfig(
   const seen = new Set<string>();
   const duplicates = new Set<string>();
   for (const id of ids) {
-    if (seen.has(id)) {
+    const key = normaliseDestinationId(id);
+    if (seen.has(key)) {
       duplicates.add(id);
     } else {
-      seen.add(id);
+      seen.add(key);
     }
   }
 
@@ -238,8 +249,11 @@ function validateIncludeConfig(
     });
   }
   if (duplicates.size > 0) {
+    const duplicateList = Array.from(
+      new Set(Array.from(duplicates).map((value) => value.trim()))
+    );
     results.push({
-      message: `Duplicate destination IDs in "include": ${Array.from(duplicates).join(', ')}.`,
+      message: `Duplicate destination IDs in "include": ${duplicateList.join(', ')}.`,
       line: 1,
       column: 1,
       severity: 'warning',
@@ -257,10 +271,10 @@ function validateDestinationMappings(
   if (!allowedDestinations || allowedDestinations.length === 0) {
     return results;
   }
-  const allowedSet = new Set(allowedDestinations);
-  const allowedList = [...allowedSet].sort();
+  const allowedList = [...new Set(allowedDestinations)].sort();
+  const allowedSet = new Set(allowedDestinations.map(normaliseDestinationId));
   for (const destId of Object.keys(obj).filter((key) => key !== 'include')) {
-    if (!allowedSet.has(destId)) {
+    if (!allowedSet.has(normaliseDestinationId(destId))) {
       results.push({
         message: `Unknown destination "${destId}". Allowed destinations: ${allowedList.join(', ')}.`,
         line: 1,

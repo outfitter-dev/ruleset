@@ -97,7 +97,7 @@ rulesets compile -d cursor
 rulesets compile -w
 ```
 
-### List Local Rulesets (v0.1.0)
+### List Rulesets
 
 ```bash
 # Lists rules discovered in your configured sources (not npm-installed packs)
@@ -111,7 +111,7 @@ Rulesets compiles to these AI tool formats:
 | Tool | Output Location | Format |
 |------|----------------|--------|
 | Cursor | `.rulesets/dist/cursor/*.md` | Markdown |
-| Windsurf | `.rulesets/dist/windsurf/*.(md\|xml)` | Markdown (or XML\*) |
+| Windsurf | `.rulesets/dist/windsurf/*.{md,xml}` | Markdown (or XML\*) |
 | Claude Code | `.rulesets/dist/claude-code/*.md` | Markdown |
 | AGENTS.md | `.rulesets/dist/agents-md/AGENTS.md` | Markdown |
 | GitHub Copilot | `.rulesets/dist/copilot/*.md` | Markdown |
@@ -180,12 +180,15 @@ destinations:
 
 - **Array Form for Destinations (frontmatter only)**: In v0.1.0, the simple array form is not supported in per-file frontmatter. Use the object form with `include`/`exclude` (see the "Write Rules" example above). The array form is supported in `.rulesets/config.json` (see Configuration).
   - Incorrect frontmatter:
+
     ```yaml
     ---
     destinations: ["cursor", "windsurf"]
     ---
     ```
+
   - Correct frontmatter:
+
     ```yaml
     ---
     destinations:
@@ -204,7 +207,7 @@ destinations:
 | `rulesets init` | Initialize Rulesets in current project |
 | `rulesets compile [source]` | Compile source rules to destinations |
 | Flags (compile) | `-d, --destination <name>` filter destinations; `-w, --watch` watch for changes |
-| `rulesets list` | List installed rulesets |
+| `rulesets list` | List discovered (local) rulesets |
 | `rulesets install <package>` | Install a ruleset package (placeholder) |
 | `rulesets sync` | Sync installed rulesets (placeholder) |
 
