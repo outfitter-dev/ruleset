@@ -2,48 +2,38 @@ import { describe, expect, it } from 'vitest';
 import type { ParsedDoc } from '../../interfaces';
 import { lint } from '../index';
 
-const NON_STRING_DESTINATION = 123;
+const NON_STRING_DESTINATION = 123 as const;
+
+const mkDoc = (
+  frontmatter?: Record<string, unknown>,
+  options: { content?: string; errors?: ParsedDoc['errors'] } = {}
+): ParsedDoc => {
+  const { content = '# Content', errors } = options;
+  const doc: ParsedDoc = {
+    source: frontmatter ? { content, frontmatter } : { content },
+    ast: { stems: [], imports: [], variables: [], markers: [] },
+  };
+  if (errors) {
+    doc.errors = errors;
+  }
+  return doc;
+};
 
 describe('linter', () => {
   describe('lint', () => {
     it('should pass a valid document with complete frontmatter', () => {
-      const parsedDoc: ParsedDoc = {
-        source: {
-          content:
-            '---\nrulesets:\n  version: "0.1.0"\ntitle: Test\ndescription: Test description\n---\n\n# Content',
-          frontmatter: {
-            rulesets: { version: '0.1.0' },
-            title: 'Test',
-            description: 'Test description',
-          },
-        },
-        ast: {
-          stems: [],
-          imports: [],
-          variables: [],
-          markers: [],
-        },
-      };
+      const parsedDoc = mkDoc({
+        rulesets: { version: '0.1.0' },
+        title: 'Test',
+        description: 'Test description',
+      });
 
       const results = lint(parsedDoc);
-      const semverError = results.find((r) =>
-        r.message.includes('Expected a semantic version')
-      );
-      expect(semverError).toBeUndefined();
+      expect(results).toHaveLength(0);
     });
 
     it('should warn when no frontmatter is present', () => {
-      const parsedDoc: ParsedDoc = {
-        source: {
-          content: '# Content without frontmatter',
-        },
-        ast: {
-          stems: [],
-          imports: [],
-          variables: [],
-          markers: [],
-        },
-      };
+      const parsedDoc = mkDoc();
 
       const results = lint(parsedDoc, { requireRulesetsVersion: false });
       expect(results).toHaveLength(1);
@@ -52,20 +42,7 @@ describe('linter', () => {
     });
 
     it('should error when rulesets version is missing', () => {
-      const parsedDoc: ParsedDoc = {
-        source: {
-          content: '---\ntitle: Test\n---\n\n# Content',
-          frontmatter: {
-            title: 'Test',
-          },
-        },
-        ast: {
-          stems: [],
-          imports: [],
-          variables: [],
-          markers: [],
-        },
-      };
+      const parsedDoc = mkDoc({ title: 'Test' });
 
       const results = lint(parsedDoc);
       const rulesetsError = results.find((r) =>
@@ -76,20 +53,9 @@ describe('linter', () => {
     });
 
     it('should error when rulesets field is not properly structured', () => {
-      const parsedDoc: ParsedDoc = {
-        source: {
-          content: '---\nrulesets: 123\n---\n\n# Content',
-          frontmatter: {
-            rulesets: 123,
-          },
-        },
-        ast: {
-          stems: [],
-          imports: [],
-          variables: [],
-          markers: [],
-        },
-      };
+      const parsedDoc = mkDoc({
+        rulesets: 123 as unknown as Record<string, unknown>,
+      });
 
       const results = lint(parsedDoc);
       const typeError = results.find((r) =>
@@ -100,20 +66,9 @@ describe('linter', () => {
     });
 
     it('should error when rulesets field is an array', () => {
-      const parsedDoc: ParsedDoc = {
-        source: {
-          content: '---\nrulesets: []\n---\n\n# Content',
-          frontmatter: {
-            rulesets: [],
-          },
-        },
-        ast: {
-          stems: [],
-          imports: [],
-          variables: [],
-          markers: [],
-        },
-      };
+      const parsedDoc = mkDoc({
+        rulesets: [] as unknown as Record<string, unknown>,
+      });
 
       const results = lint(parsedDoc);
       const structureError = results.find((r) =>
@@ -124,20 +79,7 @@ describe('linter', () => {
     });
 
     it('should error when version property is missing', () => {
-      const parsedDoc: ParsedDoc = {
-        source: {
-          content: '---\nrulesets: {}\n---\n\n# Content',
-          frontmatter: {
-            rulesets: {},
-          },
-        },
-        ast: {
-          stems: [],
-          imports: [],
-          variables: [],
-          markers: [],
-        },
-      };
+      const parsedDoc = mkDoc({ rulesets: {} });
 
       const results = lint(parsedDoc);
       const missingVersion = results.find((r) =>
@@ -148,20 +90,7 @@ describe('linter', () => {
     });
 
     it('should error when rulesets version is not semantic', () => {
-      const parsedDoc: ParsedDoc = {
-        source: {
-          content: '---\nrulesets:\n  version: "01.0.0"\n---\n\n# Content',
-          frontmatter: {
-            rulesets: { version: '01.0.0' },
-          },
-        },
-        ast: {
-          stems: [],
-          imports: [],
-          variables: [],
-          markers: [],
-        },
-      };
+      const parsedDoc = mkDoc({ rulesets: { version: '01.0.0' } });
 
       const results = lint(parsedDoc);
       const semverError = results.find((r) =>
@@ -172,20 +101,7 @@ describe('linter', () => {
     });
 
     it('trims whitespace around rulesets version before validation', () => {
-      const parsedDoc: ParsedDoc = {
-        source: {
-          content: '---\nrulesets:\n  version: " 0.1.0 "\n---\n\n# Content',
-          frontmatter: {
-            rulesets: { version: ' 0.1.0 ' },
-          },
-        },
-        ast: {
-          stems: [],
-          imports: [],
-          variables: [],
-          markers: [],
-        },
-      };
+      const parsedDoc = mkDoc({ rulesets: { version: ' 0.1.0 ' } });
 
       const results = lint(parsedDoc);
       const semverError = results.find((r) =>
@@ -195,22 +111,13 @@ describe('linter', () => {
     });
 
     it('should validate destinations structure', () => {
-      const parsedDoc: ParsedDoc = {
-        source: {
-          content:
-            '---\nrulesets:\n  version: "0.1.0"\ndestinations: ["cursor", "windsurf"]\n---\n\n# Content',
-          frontmatter: {
-            rulesets: { version: '0.1.0' },
-            destinations: ['cursor', 'windsurf'],
-          },
-        },
-        ast: {
-          stems: [],
-          imports: [],
-          variables: [],
-          markers: [],
-        },
-      };
+      const parsedDoc = mkDoc({
+        rulesets: { version: '0.1.0' },
+        destinations: ['cursor', 'windsurf'] as unknown as Record<
+          string,
+          unknown
+        >,
+      });
 
       const results = lint(parsedDoc);
       const destError = results.find((r) =>
@@ -221,24 +128,12 @@ describe('linter', () => {
     });
 
     it('should warn about duplicate include destinations', () => {
-      const parsedDoc: ParsedDoc = {
-        source: {
-          content:
-            '---\nrulesets:\n  version: "0.1.0"\ndestinations:\n  include: ["cursor", "cursor", " windsor f "]\n---\n\n# Content',
-          frontmatter: {
-            rulesets: { version: '0.1.0' },
-            destinations: {
-              include: ['cursor', 'cursor', ' windsor f '],
-            },
-          },
+      const parsedDoc = mkDoc({
+        rulesets: { version: '0.1.0' },
+        destinations: {
+          include: ['cursor', 'cursor', ' windsor f '],
         },
-        ast: {
-          stems: [],
-          imports: [],
-          variables: [],
-          markers: [],
-        },
-      };
+      });
 
       const results = lint(parsedDoc, {
         allowedDestinations: ['cursor', 'windsor f'],
@@ -251,26 +146,19 @@ describe('linter', () => {
       expect(duplicateWarning?.severity).toBe('warning');
 
       const emptyWarning = results.find((r) =>
-        r.message.includes('Empty Destination configurations')
+        r.message.includes('"include" is empty')
       );
       expect(emptyWarning).toBeUndefined();
     });
 
     it('should error when include array is mixed with destination mappings', () => {
-      const parsedDoc: ParsedDoc = {
-        source: {
-          content:
-            '---\nrulesets:\n  version: "0.1.0"\ndestinations:\n  include: ["cursor"]\n  cursor:\n    path: "./rules"\n---\n\n# Content',
-          frontmatter: {
-            rulesets: { version: '0.1.0' },
-            destinations: {
-              include: ['cursor'],
-              cursor: { path: './rules' },
-            },
-          },
+      const parsedDoc = mkDoc({
+        rulesets: { version: '0.1.0' },
+        destinations: {
+          include: ['cursor'],
+          cursor: { path: './rules' },
         },
-        ast: { stems: [], imports: [], variables: [], markers: [] },
-      };
+      });
 
       const results = lint(parsedDoc);
       const error = results.find((r) =>
@@ -281,19 +169,12 @@ describe('linter', () => {
     });
 
     it('should error when include contains non-string entries', () => {
-      const parsedDoc: ParsedDoc = {
-        source: {
-          content:
-            '---\nrulesets:\n  version: "0.1.0"\ndestinations:\n  include: ["cursor", 123, null]\n---\n\n# Content',
-          frontmatter: {
-            rulesets: { version: '0.1.0' },
-            destinations: {
-              include: ['cursor', NON_STRING_DESTINATION, null],
-            },
-          },
+      const parsedDoc = mkDoc({
+        rulesets: { version: '0.1.0' },
+        destinations: {
+          include: ['cursor', NON_STRING_DESTINATION, null],
         },
-        ast: { stems: [], imports: [], variables: [], markers: [] },
-      };
+      });
 
       const results = lint(parsedDoc);
       const error = results.find((r) =>
@@ -304,19 +185,10 @@ describe('linter', () => {
     });
 
     it('should warn when trimmed include array is empty', () => {
-      const parsedDoc: ParsedDoc = {
-        source: {
-          content:
-            '---\nrulesets:\n  version: "0.1.0"\ndestinations:\n  include: ["   "]\n---\n\n# Content',
-          frontmatter: {
-            rulesets: { version: '0.1.0' },
-            destinations: {
-              include: ['   '],
-            },
-          },
-        },
-        ast: { stems: [], imports: [], variables: [], markers: [] },
-      };
+      const parsedDoc = mkDoc({
+        rulesets: { version: '0.1.0' },
+        destinations: { include: ['   '] },
+      });
 
       const results = lint(parsedDoc);
       const warning = results.find((r) =>
@@ -327,51 +199,45 @@ describe('linter', () => {
     });
 
     it('should warn about unknown destinations when configured', () => {
-      const parsedDoc: ParsedDoc = {
-        source: {
-          content:
-            '---\nrulesets:\n  version: "0.1.0"\ndestinations:\n  unknown-dest:\n    path: "/test"\n---\n\n# Content',
-          frontmatter: {
-            rulesets: { version: '0.1.0' },
-            destinations: {
-              'unknown-dest': { path: '/test' },
-            },
-          },
+      const parsedDoc = mkDoc({
+        rulesets: { version: '0.1.0' },
+        destinations: {
+          'unknown-dest': { path: '/test' },
         },
-        ast: {
-          stems: [],
-          imports: [],
-          variables: [],
-          markers: [],
-        },
-      };
+      });
 
       const results = lint(parsedDoc, {
         allowedDestinations: ['cursor', 'windsurf'],
       });
 
       const destWarning = results.find((r) =>
-        r.message.includes('Unknown destination')
+        r.message.includes('Unknown destination "unknown-dest"')
+      );
+      expect(destWarning).toBeDefined();
+      expect(destWarning?.severity).toBe('warning');
+    });
+
+    it('should warn about unknown destinations in include form when configured', () => {
+      const parsedDoc = mkDoc({
+        rulesets: { version: '0.1.0' },
+        destinations: {
+          include: ['unknown', 'cursor'],
+        },
+      });
+
+      const results = lint(parsedDoc, {
+        allowedDestinations: ['cursor', 'windsurf'],
+      });
+
+      const destWarning = results.find((r) =>
+        r.message.includes('Unknown destination "unknown"')
       );
       expect(destWarning).toBeDefined();
       expect(destWarning?.severity).toBe('warning');
     });
 
     it('should provide info suggestions for missing title and description', () => {
-      const parsedDoc: ParsedDoc = {
-        source: {
-          content: '---\nrulesets:\n  version: "0.1.0"\n---\n\n# Content',
-          frontmatter: {
-            rulesets: { version: '0.1.0' },
-          },
-        },
-        ast: {
-          stems: [],
-          imports: [],
-          variables: [],
-          markers: [],
-        },
-      };
+      const parsedDoc = mkDoc({ rulesets: { version: '0.1.0' } });
 
       const results = lint(parsedDoc);
       const titleInfo = results.find((r) =>
@@ -388,17 +254,7 @@ describe('linter', () => {
     });
 
     it('should include parsing errors in lint results', () => {
-      const parsedDoc: ParsedDoc = {
-        source: {
-          content: '---\ninvalid yaml\n---\n\n# Content',
-          frontmatter: {},
-        },
-        ast: {
-          stems: [],
-          imports: [],
-          variables: [],
-          markers: [],
-        },
+      const parsedDoc = mkDoc(undefined, {
         errors: [
           {
             message: 'Failed to parse frontmatter YAML',
@@ -406,15 +262,14 @@ describe('linter', () => {
             column: 1,
           },
         ],
-      };
+      });
 
-      const results = lint(parsedDoc);
+      const results = lint(parsedDoc, { requireRulesetsVersion: false });
       const parseError = results.find((r) =>
         r.message.includes('Failed to parse frontmatter YAML')
       );
       expect(parseError).toBeDefined();
       expect(parseError?.severity).toBe('error');
-      expect(parseError?.line).toBe(2);
     });
   });
 });

@@ -34,6 +34,9 @@ const compiled = compile(parsed, 'cursor', {});
 
 // Access destination plugins
 const cursorPlugin = destinations.get('cursor');
+if (!cursorPlugin) {
+  throw new Error('cursor plugin not registered');
+}
 const logger: Logger = {
   debug: console.debug,
   info: console.info,
@@ -41,7 +44,7 @@ const logger: Logger = {
   error: console.error,
 };
 
-await cursorPlugin?.write({
+await cursorPlugin.write({
   compiled,
   destPath: '.rulesets/dist/cursor/my-rules.md',
   config: {},
@@ -49,7 +52,7 @@ await cursorPlugin?.write({
 });
 ```
 
-`Stem` and `ParseError` are exported from `@rulesets/core` (see `src/interfaces`) for convenience if you need the detailed types.
+Core types are exported from `@rulesets/core` for convenience, including `Stem`, `Import`, `Variable`, `Marker`, and `ParseError`.
 
 ## API
 
@@ -106,7 +109,7 @@ interface CompiledDoc {
 
 interface DestinationPlugin {
   readonly name: string;
-  configSchema(): unknown; // JSON Schema (draft-07)
+  configSchema(): JSONSchema7;
   write(ctx: {
     compiled: CompiledDoc;
     destPath: string;
