@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { ParsedDoc } from '../../interfaces';
 import { lint } from '../index';
 
+const NON_STRING_DESTINATION = 123;
+
 describe('linter', () => {
   describe('lint', () => {
-    it('should pass a valid document with complete frontmatter', async () => {
+    it('should pass a valid document with complete frontmatter', () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content:
@@ -23,11 +25,14 @@ describe('linter', () => {
         },
       };
 
-      const results = await lint(parsedDoc);
-      expect(results).toHaveLength(0);
+      const results = lint(parsedDoc);
+      const semverError = results.find((r) =>
+        r.message.includes('Expected a semantic version')
+      );
+      expect(semverError).toBeUndefined();
     });
 
-    it('should warn when no frontmatter is present', async () => {
+    it('should warn when no frontmatter is present', () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content: '# Content without frontmatter',
@@ -40,13 +45,13 @@ describe('linter', () => {
         },
       };
 
-      const results = await lint(parsedDoc, { requireRulesetsVersion: false });
+      const results = lint(parsedDoc, { requireRulesetsVersion: false });
       expect(results).toHaveLength(1);
       expect(results[0].severity).toBe('warning');
       expect(results[0].message).toContain('No frontmatter found');
     });
 
-    it('should error when rulesets version is missing', async () => {
+    it('should error when rulesets version is missing', () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content: '---\ntitle: Test\n---\n\n# Content',
@@ -62,7 +67,7 @@ describe('linter', () => {
         },
       };
 
-      const results = await lint(parsedDoc);
+      const results = lint(parsedDoc);
       const rulesetsError = results.find((r) =>
         r.message.includes('Missing required Rulesets version declaration')
       );
@@ -70,7 +75,7 @@ describe('linter', () => {
       expect(rulesetsError?.severity).toBe('error');
     });
 
-    it('should error when rulesets field is not properly structured', async () => {
+    it('should error when rulesets field is not properly structured', () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content: '---\nrulesets: 123\n---\n\n# Content',
@@ -86,7 +91,7 @@ describe('linter', () => {
         },
       };
 
-      const results = await lint(parsedDoc);
+      const results = lint(parsedDoc);
       const typeError = results.find((r) =>
         r.message.includes('Invalid Rulesets version declaration')
       );
@@ -94,7 +99,7 @@ describe('linter', () => {
       expect(typeError?.severity).toBe('error');
     });
 
-    it('should error when rulesets field is an array', async () => {
+    it('should error when rulesets field is an array', () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content: '---\nrulesets: []\n---\n\n# Content',
@@ -110,7 +115,7 @@ describe('linter', () => {
         },
       };
 
-      const results = await lint(parsedDoc);
+      const results = lint(parsedDoc);
       const structureError = results.find((r) =>
         r.message.includes('Invalid Rulesets version declaration')
       );
@@ -118,7 +123,7 @@ describe('linter', () => {
       expect(structureError?.severity).toBe('error');
     });
 
-    it('should error when version property is missing', async () => {
+    it('should error when version property is missing', () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content: '---\nrulesets: {}\n---\n\n# Content',
@@ -134,7 +139,7 @@ describe('linter', () => {
         },
       };
 
-      const results = await lint(parsedDoc);
+      const results = lint(parsedDoc);
       const missingVersion = results.find((r) =>
         r.message.includes('Missing required Rulesets version number')
       );
@@ -142,7 +147,7 @@ describe('linter', () => {
       expect(missingVersion?.severity).toBe('error');
     });
 
-    it('should error when rulesets version is not semantic', async () => {
+    it('should error when rulesets version is not semantic', () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content: '---\nrulesets:\n  version: "01.0.0"\n---\n\n# Content',
@@ -158,7 +163,7 @@ describe('linter', () => {
         },
       };
 
-      const results = await lint(parsedDoc);
+      const results = lint(parsedDoc);
       const semverError = results.find((r) =>
         r.message.includes('Expected a semantic version')
       );
@@ -166,7 +171,30 @@ describe('linter', () => {
       expect(semverError?.severity).toBe('error');
     });
 
-    it('should validate destinations structure', async () => {
+    it('trims whitespace around rulesets version before validation', () => {
+      const parsedDoc: ParsedDoc = {
+        source: {
+          content: '---\nrulesets:\n  version: " 0.1.0 "\n---\n\n# Content',
+          frontmatter: {
+            rulesets: { version: ' 0.1.0 ' },
+          },
+        },
+        ast: {
+          stems: [],
+          imports: [],
+          variables: [],
+          markers: [],
+        },
+      };
+
+      const results = lint(parsedDoc);
+      const semverError = results.find((r) =>
+        r.message.includes('Expected a semantic version')
+      );
+      expect(semverError).toBeUndefined();
+    });
+
+    it('should validate destinations structure', () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content:
@@ -184,7 +212,7 @@ describe('linter', () => {
         },
       };
 
-      const results = await lint(parsedDoc);
+      const results = lint(parsedDoc);
       const destError = results.find((r) =>
         r.message.includes('Invalid Destination configurations')
       );
@@ -192,7 +220,7 @@ describe('linter', () => {
       expect(destError?.severity).toBe('error');
     });
 
-    it('should warn about duplicate include destinations', async () => {
+    it('should warn about duplicate include destinations', () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content:
@@ -212,7 +240,7 @@ describe('linter', () => {
         },
       };
 
-      const results = await lint(parsedDoc, {
+      const results = lint(parsedDoc, {
         allowedDestinations: ['cursor', 'windsor f'],
       });
 
@@ -228,7 +256,77 @@ describe('linter', () => {
       expect(emptyWarning).toBeUndefined();
     });
 
-    it('should warn about unknown destinations when configured', async () => {
+    it('should error when include array is mixed with destination mappings', () => {
+      const parsedDoc: ParsedDoc = {
+        source: {
+          content:
+            '---\nrulesets:\n  version: "0.1.0"\ndestinations:\n  include: ["cursor"]\n  cursor:\n    path: "./rules"\n---\n\n# Content',
+          frontmatter: {
+            rulesets: { version: '0.1.0' },
+            destinations: {
+              include: ['cursor'],
+              cursor: { path: './rules' },
+            },
+          },
+        },
+        ast: { stems: [], imports: [], variables: [], markers: [] },
+      };
+
+      const results = lint(parsedDoc);
+      const error = results.find((r) =>
+        r.message.includes('Do not mix { include')
+      );
+      expect(error).toBeDefined();
+      expect(error?.severity).toBe('error');
+    });
+
+    it('should error when include contains non-string entries', () => {
+      const parsedDoc: ParsedDoc = {
+        source: {
+          content:
+            '---\nrulesets:\n  version: "0.1.0"\ndestinations:\n  include: ["cursor", 123, null]\n---\n\n# Content',
+          frontmatter: {
+            rulesets: { version: '0.1.0' },
+            destinations: {
+              include: ['cursor', NON_STRING_DESTINATION, null],
+            },
+          },
+        },
+        ast: { stems: [], imports: [], variables: [], markers: [] },
+      };
+
+      const results = lint(parsedDoc);
+      const error = results.find((r) =>
+        r.message.includes('non-string entries at indices')
+      );
+      expect(error).toBeDefined();
+      expect(error?.severity).toBe('error');
+    });
+
+    it('should warn when trimmed include array is empty', () => {
+      const parsedDoc: ParsedDoc = {
+        source: {
+          content:
+            '---\nrulesets:\n  version: "0.1.0"\ndestinations:\n  include: ["   "]\n---\n\n# Content',
+          frontmatter: {
+            rulesets: { version: '0.1.0' },
+            destinations: {
+              include: ['   '],
+            },
+          },
+        },
+        ast: { stems: [], imports: [], variables: [], markers: [] },
+      };
+
+      const results = lint(parsedDoc);
+      const warning = results.find((r) =>
+        r.message.includes('"include" is empty')
+      );
+      expect(warning).toBeDefined();
+      expect(warning?.severity).toBe('warning');
+    });
+
+    it('should warn about unknown destinations when configured', () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content:
@@ -248,7 +346,7 @@ describe('linter', () => {
         },
       };
 
-      const results = await lint(parsedDoc, {
+      const results = lint(parsedDoc, {
         allowedDestinations: ['cursor', 'windsurf'],
       });
 
@@ -259,7 +357,7 @@ describe('linter', () => {
       expect(destWarning?.severity).toBe('warning');
     });
 
-    it('should provide info suggestions for missing title and description', async () => {
+    it('should provide info suggestions for missing title and description', () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content: '---\nrulesets:\n  version: "0.1.0"\n---\n\n# Content',
@@ -275,7 +373,7 @@ describe('linter', () => {
         },
       };
 
-      const results = await lint(parsedDoc);
+      const results = lint(parsedDoc);
       const titleInfo = results.find((r) =>
         r.message.includes('Consider adding a Document title')
       );
@@ -289,7 +387,7 @@ describe('linter', () => {
       expect(descInfo?.severity).toBe('info');
     });
 
-    it('should include parsing errors in lint results', async () => {
+    it('should include parsing errors in lint results', () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content: '---\ninvalid yaml\n---\n\n# Content',
@@ -310,7 +408,7 @@ describe('linter', () => {
         ],
       };
 
-      const results = await lint(parsedDoc);
+      const results = lint(parsedDoc);
       const parseError = results.find((r) =>
         r.message.includes('Failed to parse frontmatter YAML')
       );

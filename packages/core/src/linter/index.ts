@@ -142,17 +142,18 @@ function validateRulesetsVersion(
       column: 1,
       severity: 'error',
     });
-  } else if (
-    !semverValid(
+  } else {
+    const version = (
       (frontmatter.rulesets as Record<string, unknown>).version as string
-    )
-  ) {
-    results.push({
-      message: `Invalid ${getFieldName('/rulesets/version')}. Expected a semantic version (e.g., "0.1.0").`,
-      line: 1,
-      column: 1,
-      severity: 'error',
-    });
+    ).trim();
+    if (!semverValid(version)) {
+      results.push({
+        message: `Invalid ${getFieldName('/rulesets/version')}. Expected a semantic version (e.g., "0.1.0").`,
+        line: 1,
+        column: 1,
+        severity: 'error',
+      });
+    }
   }
 
   return results;
@@ -371,17 +372,6 @@ export function lint(
   const frontmatterCheck = validateFrontmatterPresence(frontmatter, config);
   if (frontmatterCheck) {
     results.push(frontmatterCheck);
-    if (
-      frontmatterCheck.severity === 'error' &&
-      config.requireRulesetsVersion !== false
-    ) {
-      results.push({
-        message: `Missing required ${getFieldName('/rulesets')}. Specify the Rulesets version (e.g., rulesets: { version: "0.1.0" }).`,
-        line: 1,
-        column: 1,
-        severity: 'error',
-      });
-    }
     return results; // Early return if no frontmatter
   }
 

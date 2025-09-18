@@ -41,5 +41,9 @@
   "publishConfig": {
     "access": "public"
   },
+  "engines": {
+    "node": ">=18",
+    "bun": ">=1.1"
+  },
   "license": "MIT"
 }

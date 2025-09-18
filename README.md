@@ -33,13 +33,11 @@ Requires Node.js 18+.
 Note: For local development in this monorepo you'll also need Bun ≥1.1. End users running the published CLI only need Node.js.
 
 ```bash
+# Install globally (handy for day-to-day use)
 npm install -g @rulesets/cli@latest
-```
 
-Or use with npx:
-
-```bash
-npx -y @rulesets/cli@latest init
+# Or run ad-hoc without installing
+npx -y @rulesets/cli@latest --help
 ```
 
 ## Usage
@@ -99,9 +97,10 @@ rulesets compile -d cursor
 rulesets compile -w
 ```
 
-### List Installed Rulesets
+### List Local Rulesets (v0.1.0)
 
 ```bash
+# Lists rules discovered in your configured sources (not npm-installed packs)
 rulesets list
 ```
 
@@ -164,6 +163,8 @@ your-project/
 }
 ```
 
+Note: `version` refers to the Rulesets config schema, not your package.json version.
+
 Frontmatter example using the supported object form:
 
 ```yaml
@@ -178,6 +179,19 @@ destinations:
 ### Known Limitations
 
 - **Array Form for Destinations (frontmatter only)**: In v0.1.0, the simple array form is not supported in per-file frontmatter. Use the object form with `include`/`exclude` (see the "Write Rules" example above). The array form is supported in `.rulesets/config.json` (see Configuration).
+  - Incorrect frontmatter:
+    ```yaml
+    ---
+    destinations: ["cursor", "windsurf"]
+    ---
+    ```
+  - Correct frontmatter:
+    ```yaml
+    ---
+    destinations:
+      include: ["cursor", "windsurf"]
+    ---
+    ```
 - **Resource Limits**: Files exceeding the following limits will be skipped:
   - Maximum pack file size: 10MB
   - Maximum ruleset file size: 5MB

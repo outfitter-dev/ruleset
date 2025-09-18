@@ -106,7 +106,7 @@ interface CompiledDoc {
 
 interface DestinationPlugin {
   readonly name: string;
-  configSchema(): JSONSchema7;
+  configSchema(): unknown; // JSON Schema (draft-07)
   write(ctx: {
     compiled: CompiledDoc;
     destPath: string;
