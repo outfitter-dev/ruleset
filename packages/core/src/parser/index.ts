@@ -1,5 +1,7 @@
 import { load as yamlLoad } from 'js-yaml';
+import { RESOURCE_LIMITS } from '../config/limits';
 import type { ParsedDoc } from '../interfaces';
+import { validateObjectDepth } from '../utils/security';
 
 /**
  * Represents the boundaries of the frontmatter section.
@@ -61,6 +63,21 @@ function parseFrontmatterContent(
   try {
     frontmatter =
       (yamlLoad(frontmatterContent) as Record<string, unknown>) || {};
+
+    // Validate nesting depth
+    if (
+      !validateObjectDepth(
+        frontmatter,
+        RESOURCE_LIMITS.ruleset.maxFrontmatterDepth
+      )
+    ) {
+      errors.push({
+        message: `Frontmatter nesting depth exceeds maximum of ${RESOURCE_LIMITS.ruleset.maxFrontmatterDepth} levels`,
+        line: bounds.start + 1,
+        column: 1,
+      });
+      return { frontmatter: {}, errors };
+    }
   } catch (error) {
     const friendlyMessage = createFriendlyYamlError(error);
     errors.push({

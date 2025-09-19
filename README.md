@@ -1,234 +1,261 @@
-# 📏 Rulesets: A Compiler for AI Rules Files
+# Rulesets
 
-> **🚀 v0 Release Now Available!** The initial implementation of Rulesets is ready for testing. See [Installation](#installation) to get started.
+> AI rules compiler - Write once, compile for all AI tools
 
-Rulesets simplifies rules management for tools like Cursor, Claude Code, Codex, etc. With Rulesets, you author rules (called "source rules") in previewable Markdown and compile them into compiled rules for each destination (`.cursor/rules.mdc`, `./CLAUDE.md`, `.roo/rules.md`, and more). Think of it as **Terraform for AI rules**: write once, compile for many destinations, your agents, no matter the tool, on the (literal) same page.
-
-## What is Rulesets?
-
-If you're reading this, you're probably already familiar with at least one of the AI coding tools that Rulesets is [designed to work with](#supported-destinations). Each tool has its own unique way of being provided context, guidance, and operational instructions for your projects e.g. Cursor's rules (`.cursor/rules`), OpenAI Codex instructions (`codex.md`), Claude Code's instructions (`CLAUDE.md`), etc.
-
-The problem is, they all have different formats, behavior, and capabilities, which can become a huge pain to manage. This can be frustrating, and might even lead you to just sticking to one tool. But that's no fun, and you'll be missing out on all the awesome capabilities and differences each tool has to offer! That's where Rulesets comes in…
-
-### The Problem Rulesets Solves
-
-- Agentic rules files are **fragmented** across IDEs and agentic tools, following different formats, and in disparate locations, leading to duplication and drift.
-- Manual copy-paste workflows break **source-of-truth** guarantees and slow (or halt) experimentation with new agentic tools (that might even be better suited for the task).
-- Lack of a **cohesive format for rules** hinders creation, testing, versioning, and overall management.
-
-### Our Solution: What Rulesets Does
-
-Rulesets is "Terraform for AI rules": declare your ideal rules once, compile for dozens of coding agents, and guarantee every teammate (human or bot) runs with the same authoritative rules—no copy‑paste, no drift, just high‑quality, version-controlled context.
-
-With Rulesets, you can apply the "Don't Repeat Yourself" principle to your agentic coding tools. Instead of writing slightly different versions of the same instructions for each tool, you create a single source rules file (`.mix.md`). This source rules file is the "gold master" for your instructions, from which individual compiled rules are created for each destination and sent to the right places.
-
-The app consists of:
-
-1. A Node.js app with a compiler (featuring a plugin architecture for different tools), an API, CLI, and Model Context Protocol implementation for managing prompts and instructions.
-2. A CommonMark-compliant markup specification for creating effective and reusable rules, processed by the compiler to generate destination-specific rules files.
-
-Result: *author once, distribute everywhere, zero drift.*
-
-## What's with the name?
-
-We chose "Rulesets" because it captures the essence of what this tool does: organizing and compiling rule collections for AI assistants. The project was originally inspired by the music production concept of "mixdown" - the process where multiple audio tracks are combined into a final master recording. Similarly, Rulesets takes your various rule definitions and compiles them into the perfect format for each destination tool like Cursor, Windsurf, Claude Code, and beyond.
-
-## Core Concepts
-
-**source rules**
-: source rules files, written in 100% previewable Markdown with `.rules.md` extension. Written in Rulesets notation and use `{{...}}` notation markers to direct the compiler.
-
-**compiled rules**
-: Destination-specific compiled files (e.g., `.cursor/rules/foo.mdc`, `./CLAUDE.md#project-conventions`). When placed in their destination directories, these are referred to as "tool-ready rules".
-
-**Stem**
-: Delimited, reusable blocks of content using notation like `{{instructions}}...{{/instructions}}` with optional properties. They are 1:1 translations of XML tags (e.g., `{{instructions}}` → `<instructions>`), but readable in Markdown previewers.
-
-**Import**
-: A reference to another source rules file, stem, mixin, or template (`{{> my-rule}}`). Embeds content from another source.
-
-**Variable**
-: Dynamic value replaced inline at compile time (e.g., `{{$key}}` for aliases, `{{$.frontmatter.key}}` for frontmatter data, `{{$destination}}` for the current destination name).
-
-**Notation Marker**
-: Element using `{{...}}` notation, used throughout Mixdown to direct the compiler. Similar to `<xml-tags>`, but fully Markdown-previewable.
-
-**Mixin**
-: Modular, reusable content component stored in `/_mixins`.
-
-**Destination**
-: A supported tool (Cursor, Roo Code, etc.) identified by a `kebab-case` ID (e.g., `cursor`, `roo-code`). Defines destination-specific criteria for compiling source rules into compiled rules and is provided through plugins.
-
-**Destination Group**
-: Named set of destinations (`@cursor`, `@ide`, `@cli`) for property filtering (a planned feature for easier filtering).
-
-## Supported Destinations
-
-| ID | Tool | Type | Status |
-|----|------|------|--------|
-| `cursor` | [Cursor](https://www.cursor.com/) | IDE | ✅ Supported |
-| `claude-code` | [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview) | CLI | 🟡 In Progress |
-| `roo-code` | [Roo Code](https://roocode.dev/) | VS Code Ext | 🟡 In Progress |
-| `cline` | [Cline](https://cline.dev/) | VS Code Ext | 🟡 In Progress |
-| `aider` | [Aider](https://aider.chat/) | CLI | 🔵 Planned |
-| `openai-codex` | [OpenAI Codex](https://github.com/openai/codex) | CLI | 🔵 Planned |
-| `windsurf` | [Windsurf](https://windsurf.dev/) | IDE | 🟡 In Progress |
-
-*Want a new destination? Implement `toolProvider` and publish `@mixdown/plugin-<your-tool>`. See existing plugin examples and general development guidelines.*
-
-## Key Features
-
-### Mixdown Notation
-
-- **100% Preview-able Markdown** – Renders cleanly in GitHub, VS Code, etc.; passes markdown-lint.
-- **Granular Stems** – Filter stems within a single source rules file for per-destination inclusion/exclusion.
-- **Build-time Variables** – Aliases and frontmatter data injection.
-
-### Compiler & Integration
-
-- **Plugin Architecture** – Add new destinations via `RulesetsPluginProvider` without touching core.
-- **CLI & API** – `rulesets build`, `rulesets validate`, and `POST /compile` endpoint.
-
-## CLI Installation
-
-```bash
-npm install -g @rulesets/cli        # global CLI
-npx @rulesets/cli init              # quick project bootstrap
-```
-
-## Library Installation
-
-```bash
-# Using npm
-npm install @rulesets/core
-
-# Using Bun (recommended)
-bun add @rulesets/core
-
-# Using yarn
-yarn add @rulesets/core
-```
+Rulesets is a universal rules compiler that lets you write AI assistant rules once in Markdown and compile them for multiple AI tools like Cursor, Windsurf, Claude Code, and more.
 
 ## Quick Start
 
-### 1. Create a source rules file (`my-rules.rules.md`)
+```bash
+# Install globally
+npm install -g @rulesets/cli@latest
+
+# Initialize in your project
+rulesets init
+
+# Write your rules in ./rules/
+# Then compile them
+rulesets compile
+```
+
+## Features
+
+- **Universal Format**: Write rules once in Markdown, use everywhere
+- **Multi-Tool Support**: Cursor, Windsurf, Claude Code, and more
+- **Simple CLI**: Easy-to-use command line interface
+- **Extensible**: Plugin system for adding new AI tools
+- **Type-Safe**: Built with TypeScript for reliability
+
+## Installation
+
+Requires Node.js 18+.
+
+Note: For local development in this monorepo you'll also need Bun ≥1.1. End users running the published CLI only need Node.js.
+
+```bash
+# Install globally (handy for day-to-day use)
+npm install -g @rulesets/cli@latest
+
+# Or run ad-hoc without installing
+npx -y @rulesets/cli@latest --help
+```
+
+## Usage
+
+### Initialize a Project
+
+```bash
+rulesets init
+```
+
+This creates:
+
+- `.rulesets/config.json` - Configuration file
+- `rules/` - Directory for your rule files
+- Example rule file to get started
+
+
+### Write Rules
+
+Create Markdown files in the `rules/` directory:
 
 ```markdown
 ---
-rulesets: { version: "0.1.0" }
-title: My Coding Standards
-description: Rules for AI coding assistants
+name: coding-standards
 destinations:
-  cursor:
-    outputPath: ".cursor/rules/standards.mdc"
-  windsurf:
-    outputPath: ".windsurf/rules/standards.md"
+  include: ["cursor", "windsurf", "claude-code"]
 ---
 
 # Coding Standards
 
-Always use TypeScript with strict mode enabled.
-Prefer functional programming patterns.
-Write comprehensive tests for all features.
+## TypeScript
+
+- Use strict mode
+- Prefer const over let
+- Use type inference where possible
+
+## Testing
+
+- Write tests for all features
+- Use descriptive test names
+- Follow AAA pattern (Arrange, Act, Assert)
 ```
 
-### 2. Use the API to process your rules
+### Compile Rules
 
-```typescript
-import { runRulesetsV0, ConsoleLogger } from '@rulesets/core';
+```bash
+# Compile all rules
+rulesets compile
 
-async function main() {
-  const logger = new ConsoleLogger();
-  
-  try {
-    await runRulesetsV0('./my-rules.rules.md', logger);
-    console.log('Rules compiled successfully!');
-  } catch (error) {
-    console.error('Error:', error);
-  }
-}
+# Compile specific directory
+rulesets compile ./my-rules
 
-main();
+# Compile for specific destination
+rulesets compile -d cursor
+
+# Watch mode
+rulesets compile -w
 ```
 
-### 3. Find your compiled rules at:
-- `.cursor/rules/standards.mdc` (for Cursor)
-- `.windsurf/rules/standards.md` (for Windsurf)
+### List Rulesets
 
-## V0 Limitations
+```bash
+# Lists rules discovered in your configured sources (not npm-installed packs)
+rulesets list
+```
 
-The current v0 release provides foundational functionality:
+## Destinations
 
-- ✅ Frontmatter parsing and validation
-- ✅ Basic file compilation and writing
-- ✅ Destination plugin architecture
-- ❌ Mixdown notation markers (`{{...}}`) are not processed (passed through as-is)
-- ❌ No stem/import/variable support yet
+Rulesets compiles to these AI tool formats:
 
-These advanced features are planned for v0.x releases leading to v1.0.
+| Tool | Output Location | Format |
+|------|----------------|--------|
+| Cursor | `.rulesets/dist/cursor/*.md` | Markdown |
+| Windsurf | `.rulesets/dist/windsurf/*.{md,xml}` | Markdown (or XML\*) |
+| Claude Code | `.rulesets/dist/claude-code/*.md` | Markdown |
+| AGENTS.md | `.rulesets/dist/agents-md/AGENTS.md` | Markdown |
+| GitHub Copilot | `.rulesets/dist/copilot/*.md` | Markdown |
 
-## Directory Structure
+\* Windsurf defaults to Markdown but can emit XML when `format: "xml"` is specified in destination config (for example, in `.rulesets/config.json`: `{ "destinations": { "windsurf": { "format": "xml" } } }`).
+
+Note: `rulesets compile` writes to `.rulesets/dist/…`. Add these paths to `.gitignore` to avoid committing compiled artefacts. A future `rulesets sync` may copy outputs into tool‑specific locations.
+
+```gitignore
+# Rulesets build output
+.rulesets/dist/
+# e.g.
+# .rulesets/dist/cursor/
+# .rulesets/dist/windsurf/
+# .rulesets/dist/claude-code/
+# .rulesets/dist/agents-md/
+# .rulesets/dist/copilot/
+```
+
+## Project Structure
 
 ```text
-project/
+your-project/
 ├── .rulesets/
-│   ├── dist/              # Compiled rules output
-│   │   ├── cursor/        # Cursor-specific rules
-│   │   └── windsurf/      # Windsurf-specific rules
-│   └── src/               # Source rules files (*.rules.md, *.md)
-│       └── _mixins/       # Reusable content modules (future)
-├── my-rules.rules.md      # Your source rules file
+│   ├── config.json      # Rulesets configuration
+│   └── dist/            # Compiled output
+│       ├── cursor/      # Cursor-specific rules
+│       ├── windsurf/    # Windsurf-specific rules
+│       ├── claude-code/ # Claude Code rules
+│       ├── agents-md/   # AGENTS.md rules
+│       └── copilot/     # GitHub Copilot rules
+├── rules/               # Source rule files
+│   ├── coding-standards.md
+│   ├── git-workflow.md
+│   └── project-conventions.md
 └── package.json
 ```
 
-## Notation Cheatsheet
+## Configuration
 
-| Token / Feature | Example | Notes |
-|-----------------|---------|-------|
-| **Stem** | `{{instructions name-("Rules") +cli}}...{{/instructions}}` | Properties control name & export. |
-| **Front-matter** | `---\nname: foo\n---` | YAML at file top. |
-| **Import** | `{{> legal}}` | Embed content from another source rules file. |
-| **Import Stem** | `{{> conventions#(stem-name)}}` | Embed a specific stem. |
-| **Internal Link** | `[Read more](rules.md)` | Standard Markdown links. |
-| **Project File Link** | `@path/to/file.txt` or `@path/to/file.txt("Custom Title")` | Links to project files, optionally with an alias. |
-| **Alias Variable** | `{{$project}}` | Resolved via `aliases` in config. |
-| **Data Variable** | `{{$.key}}` | Injects YAML frontmatter data. |
-| **Destination Variable** | `{{$destination}}` / `{{$destination.id}}` | Injects current destination name/ID. |
-| **Instruction Placeholder** | `[fill this in]` | Marker for LLM to complete. |
+`.rulesets/config.json`:
 
-The full Mixdown notation specification can be found in `docs/project/OVERVIEW.md`.
-
-## Versioning and Changelog
-
-This project uses [Changesets](https://github.com/changesets/changesets) for versioning and changelog management.
-
-### Adding a Changeset
-
-When making changes that should be reflected in the version number and changelog, create a changeset:
-
-```bash
-bun run changeset add
+```json
+{
+  "version": "0.1.0",
+  "destinations": ["cursor", "windsurf", "claude-code", "agents-md", "copilot"],
+  "sources": ["./rules"],
+  "output": "./.rulesets/dist"
+}
 ```
 
-Follow the prompts to:
+Note: `version` refers to the Rulesets config schema, not your package.json version.
 
-1. Select the appropriate version bump (patch, minor, major)
-2. Write a description of the change for the changelog
+Frontmatter example using the supported object form:
 
-### For Contributors
+```yaml
+---
+rulesets:
+  version: "0.1.0"
+destinations:
+  include: ["cursor", "windsurf", "agents-md"]
+---
+```
 
-Please refer to our general contributing guidelines for information on how to contribute to the project, including our commit conventions and testing requirements.
+### Known Limitations
 
-## Contributing & Community
+- **Array Form for Destinations (frontmatter only)**: In v0.1.0, the simple array form is not supported in per-file frontmatter. Use the object form with `include`/`exclude` (see the "Write Rules" example above). The array form is supported in `.rulesets/config.json` (see Configuration).
+  - Incorrect frontmatter:
 
-1. **Fork → `bun i` → `bun dev`**.
-2. Follow conventional commits; run `bun run changeset add` for version bumps.
-3. Add unit & contract tests for new features.
-4. Submit PR—CI must pass snapshot tests.
+    ```yaml
+    ---
+    destinations: ["cursor", "windsurf"]
+    ---
+    ```
 
-Please see our general contributing guidelines for more details.
+  - Correct frontmatter:
 
-## References
+    ```yaml
+    ---
+    destinations:
+      include: ["cursor", "windsurf"]
+    ---
+    ```
+- **Resource Limits**: Files exceeding the following limits will be skipped:
+  - Maximum pack file size: 10MB
+  - Maximum ruleset file size: 5MB
+  - Maximum nesting depth in frontmatter: 10 levels
 
-- `docs/project/OVERVIEW.md` – Full Mixdown notation specification.
-- `docs/architecture/DECISIONS.md` – Design rationale & deep-dive.
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `rulesets init` | Initialize Rulesets in current project |
+| `rulesets compile [source]` | Compile source rules to destinations |
+| Flags (compile) | `-d, --destination <name>` filter destinations; `-w, --watch` watch for changes |
+| `rulesets list` | List discovered (local) rulesets |
+| `rulesets install <package>` | Install a ruleset package (placeholder) |
+| `rulesets sync` | Sync installed rulesets (placeholder) |
+
+## Development
+
+This is a monorepo using Bun workspaces (Bun ≥1.1 required; Node.js ≥18 if you want to test the built CLI locally):
+
+```bash
+# Clone the repository
+git clone https://github.com/outfitter-dev/rulesets.git
+cd rulesets
+
+# Install dependencies
+bun install
+
+# Build all packages
+bun run build
+
+# Run tests
+bun test
+```
+
+### Packages
+
+- `@rulesets/core` - Core compiler and parser
+- `@rulesets/cli` - Command line interface
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+MIT © Outfitter
+
+## Roadmap
+
+- [ ] v0.1.0 - Initial release with basic compilation
+- [ ] v0.2.0 - Pack system for bundled rulesets
+- [ ] v0.3.0 - npm package distribution
+- [ ] v0.4.0 - Advanced templating and variables
+- [ ] v1.0.0 - Stable API with full documentation
+
+## Support
+
+- [GitHub Issues](https://github.com/outfitter-dev/rulesets/issues)
+- [Documentation](https://github.com/outfitter-dev/rulesets/wiki)
+
+---
+
+Built with ❤️ by [Outfitter](https://github.com/outfitter-dev)

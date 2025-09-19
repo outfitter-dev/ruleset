@@ -1,144 +1,138 @@
 # @rulesets/core
 
-Core library for Rulesets - a CommonMark-compliant rules compiler that lets you author a single source rules file in Markdown and compile it into destination-specific rules files.
+Core library for Rulesets - parser, compiler, linter, and plugins.
 
 ## Installation
 
 ```bash
 npm install @rulesets/core
-# or
-pnpm add @rulesets/core
-# or
-yarn add @rulesets/core
 ```
 
-## Overview
-
-Rulesets v0 provides the foundational architecture for processing Markdown-based rules files. This initial version focuses on:
-
-- **Parser**: Extracts frontmatter and body content from Markdown files
-- **Linter**: Validates frontmatter structure and content
-- **Compiler**: Pass-through compilation (no marker processing in v0)
-- **Destination Plugins**: Stub implementations for Cursor and Windsurf
-
-## Quick Start
+## Usage
 
 ```typescript
-import { runRulesetsV0, ConsoleLogger } from '@rulesets/core';
+import { parse, compile, destinations, type Logger } from '@rulesets/core';
 
-async function main() {
-  const logger = new ConsoleLogger();
-  
-  try {
-    await runRulesetsV0('./my-rules.rules.md', logger);
-    logger.info('Rulesets processing completed!');
-  } catch (error) {
-    logger.error('Processing failed:', error);
-  }
+// Parse a source rules file
+const content = `
+---
+name: my-rules
+destinations:
+  include: ["cursor", "windsurf"]
+---
+
+# My Rules
+
+- Use TypeScript
+- Write tests
+`;
+
+const parsed = parse(content);
+
+// Compile for a specific destination
+const compiled = compile(parsed, 'cursor', {});
+
+// Access destination plugins
+const cursorPlugin = destinations.get('cursor');
+if (!cursorPlugin) {
+  throw new Error('cursor plugin not registered');
+}
+const logger: Logger = {
+  debug: console.debug,
+  info: console.info,
+  warn: console.warn,
+  error: console.error,
+};
+
+await cursorPlugin.write({
+  compiled,
+  destPath: '.rulesets/dist/cursor/my-rules.md',
+  config: {},
+  logger,
+});
+```
+
+Core types are exported from `@rulesets/core` for convenience, including `Stem`, `Import`, `Variable`, `Marker`, and `ParseError`.
+
+## API
+
+### parse(content: string): ParsedDoc
+
+Parse Markdown content with frontmatter into a structured document.
+
+### compile(doc: ParsedDoc, destination: string, config: object): CompiledDoc
+
+Compile a parsed document for a specific destination.
+
+### destinations: Map<string, DestinationPlugin>
+
+Registry of available destination plugins.
+
+### Supported Destinations
+
+- `cursor` - Cursor IDE
+- `windsurf` - Windsurf IDE
+- `claude-code` - Claude Code
+- `agents-md` - AGENTS.md
+- `copilot` - GitHub Copilot
+
+## Types
+
+```typescript
+interface ParsedDoc {
+  source: {
+    path?: string;
+    content: string;
+    frontmatter?: Record<string, unknown>;
+  };
+  ast: {
+    stems: Stem[];
+    imports: Import[];
+    variables: Variable[];
+    markers: Marker[];
+  };
+  errors?: Array<{ message: string; line?: number; column?: number }>;
 }
 
-main();
+interface CompiledDoc {
+  source: ParsedDoc['source'];
+  ast: ParsedDoc['ast'];
+  output: {
+    content: string;
+    metadata?: Record<string, unknown>;
+  };
+  context: {
+    destinationId: string;
+    config: Record<string, unknown>;
+  };
+}
+
+interface DestinationPlugin {
+  readonly name: string;
+  configSchema(): JSONSchema7;
+  write(ctx: {
+    compiled: CompiledDoc;
+    destPath: string;
+    config: Record<string, unknown>;
+    logger: Logger;
+  }): Promise<void>;
+}
+
+interface Logger {
+  debug(message: string, metadata?: LogMetadata): void;
+  info(message: string, metadata?: LogMetadata): void;
+  warn(message: string, metadata?: LogMetadata): void;
+  error(message: string | Error, metadata?: LogMetadata): void;
+}
+
+type LogMetadata = {
+  file?: string;
+  destination?: string;
+  line?: number;
+  [key: string]: unknown;
+};
 ```
-
-## API Reference
-
-### Core Functions
-
-#### `runRulesetsV0(sourceFilePath, logger?, projectConfig?)`
-
-Main orchestration function that processes a Rulesets source file.
-
-- `sourceFilePath`: Path to the `.rules.md` or `.md` file
-- `logger`: Optional logger instance (defaults to ConsoleLogger)
-- `projectConfig`: Optional project configuration object
-
-### Parser
-
-```typescript
-import { parse } from '@rulesets/core';
-
-const parsedDoc = await parse(markdownContent);
-// Returns: ParsedDoc with frontmatter and AST
-```
-
-### Linter
-
-```typescript
-import { lint } from '@rulesets/core';
-
-const lintResults = await lint(parsedDoc, {
-  requireRulesetsVersion: true,
-  allowedDestinations: ['cursor', 'windsurf']
-});
-// Returns: Array of LintResult objects
-```
-
-### Compiler
-
-```typescript
-import { compile } from '@rulesets/core';
-
-const compiledDoc = compile(parsedDoc, 'cursor', projectConfig);
-// Returns: CompiledDoc ready for destination plugin
-```
-
-### Destination Plugins
-
-```typescript
-import { destinations } from '@rulesets/core';
-
-const cursorPlugin = destinations.get('cursor');
-await cursorPlugin.write({
-  compiled: compiledDoc,
-  destPath: '.cursor/rules/my-rule.mdc',
-  config: {},
-  logger
-});
-```
-
-## Source Rules Format
-
-Create a `.rules.md` file with frontmatter and content:
-
-```markdown
----
-rulesets: { version: "0.1.0" }
-title: My Coding Standards
-description: Rules for AI assistants
-destinations:
-  cursor:
-    outputPath: ".cursor/rules/standards.mdc"
-  windsurf:
-    outputPath: ".windsurf/rules/standards.md"
----
-
-# Coding Standards
-
-These are my coding standards...
-```
-
-## V0 Limitations
-
-This is the initial v0 release with intentional limitations:
-
-- **No Marker Processing**: Rulesets notation markers (`{{...}}`) are passed through as-is
-- **No Stem Support**: Content blocks are not parsed or processed
-- **No Variable Substitution**: Variables (`{{$var}}`) are not replaced
-- **No Import Support**: Import statements (`{{> file}}`) are not processed
-
-These features are planned for future v0.x releases.
-
-## Roadmap
-
-- **v0.1**: Stem parsing and basic marker processing
-- **v0.2**: Variable substitution and system variables
-- **v0.3**: Import support and file inclusion
-- **v1.0**: Full Rulesets notation support
-
-## Contributing
-
-See the main [Rulesets README](../../README.md) for contribution guidelines.
 
 ## License
 
-MIT
+MIT © Outfitter

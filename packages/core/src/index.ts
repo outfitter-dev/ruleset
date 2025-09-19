@@ -6,13 +6,27 @@ import { ConsoleLogger } from './interfaces';
 import { type LinterConfig, type LintResult, lint } from './linter';
 import { parse } from './parser';
 
-// biome-ignore lint/performance/noBarrelFile: This is the package entry point
-export { compile } from './compiler';
-export { CursorPlugin, destinations, WindsurfPlugin } from './destinations';
+export { compile, compile as Compiler } from './compiler';
+export { GlobalConfig } from './config/global-config';
+export {
+  DESTINATION_IDS,
+  FILE_EXTENSIONS,
+  RESOURCE_LIMITS,
+} from './config/limits';
+export {
+  destinations,
+  destinations as DestinationPluginRegistry,
+} from './destinations';
+export { ClaudeCodePlugin } from './destinations/claude-code-plugin';
+export { CursorPlugin } from './destinations/cursor-plugin';
+export { WindsurfPlugin } from './destinations/windsurf-plugin';
+export { InstallationManager } from './installation/installation-manager';
 // Export all public APIs
 export * from './interfaces';
 export { type LinterConfig, type LintResult, lint } from './linter';
-export { parse } from './parser';
+export { parse, parse as Parser } from './parser';
+export { RulesetManager } from './rulesets/ruleset-manager';
+export * from './utils/security';
 
 /**
  * Reads a source file from disk.
@@ -31,7 +45,7 @@ async function readSourceFile(
     logger.debug(`Read ${content.length} characters from ${sourceFilePath}`);
     return content;
   } catch (error) {
-    logger.error(`Failed to read source file: ${sourceFilePath}`, error);
+    logger.error(`Failed to read source file: ${sourceFilePath}`);
     throw error;
   }
 }
@@ -62,7 +76,7 @@ function parseSourceContent(
 
     return parsedDoc;
   } catch (error) {
-    logger.error('Failed to parse source file', error);
+    logger.error('Failed to parse source file');
     throw error;
   }
 }
@@ -106,7 +120,7 @@ function lintParsedDocument(
 
     return lintResults;
   } catch (error) {
-    logger.error('Failed during linting', error);
+    logger.error('Failed during linting');
     throw error;
   }
 }
@@ -158,10 +172,21 @@ function processLintResults(
 function determineDestinations(parsedDoc: ParsedDoc): string[] {
   const fm = (parsedDoc.source.frontmatter ?? {}) as Record<string, unknown>;
   const value = fm.destinations as unknown;
+
+  // Support object mapping: { cursor: {...}, windsurf: {...} }
   if (value && typeof value === 'object' && !Array.isArray(value)) {
-    const keys = Object.keys(value as Record<string, unknown>);
+    const obj = value as Record<string, unknown>;
+    // Support schema: { include: ["cursor", "windsurf"], ... }
+    const include = obj.include as unknown;
+    if (Array.isArray(include) && include.every((v) => typeof v === 'string')) {
+      return include as string[];
+    }
+    const keys = Object.keys(obj);
     return keys.length > 0 ? keys : Array.from(destinations.keys());
   }
+
+  // Simple array form is not supported in v0.1.0 – default to all destinations
+
   return Array.from(destinations.keys());
 }
 
@@ -179,14 +204,9 @@ function compileForDestination(
   parsedDoc: ParsedDoc,
   destinationId: string,
   projectConfig: Record<string, unknown>,
-  logger: Logger
+  _logger: Logger
 ): CompiledDoc {
-  try {
-    return compile(parsedDoc, destinationId, projectConfig);
-  } catch (error) {
-    logger.error(`Failed to compile for destination: ${destinationId}`, error);
-    throw error;
-  }
+  return compile(parsedDoc, destinationId, projectConfig);
 }
 
 /**
@@ -226,18 +246,22 @@ async function writeToDestination(
     defaultPath;
 
   // Write using the plugin
-  try {
-    await plugin.write({
-      compiled: compiledDoc,
-      destPath,
-      config: destConfig,
-      logger,
-    });
-  } catch (error) {
-    logger.error(`Failed to write ${destinationId} output`, error);
-    throw error;
-  }
+  await plugin.write({
+    compiled: compiledDoc,
+    destPath,
+    config: destConfig,
+    logger,
+  });
 }
+
+/**
+ * Result from processing destinations
+ */
+export type DestinationResult = {
+  destinationId: string;
+  success: boolean;
+  error?: Error;
+};
 
 /**
  * Processes compilation and writing for all destinations.
@@ -246,32 +270,65 @@ async function writeToDestination(
  * @param destinationIds - Array of destination IDs to process
  * @param projectConfig - Project configuration
  * @param logger - Logger instance for reporting
- * @returns Promise that resolves when all destinations are processed
+ * @returns Promise that resolves with results for each destination
  */
 async function processDestinations(
   parsedDoc: ParsedDoc,
   destinationIds: string[],
   projectConfig: Record<string, unknown>,
   logger: Logger
-): Promise<void> {
+): Promise<DestinationResult[]> {
   logger.info(`Compiling for destinations: ${destinationIds.join(', ')}`);
 
   const frontmatter = parsedDoc.source.frontmatter || {};
+  const results: DestinationResult[] = [];
 
   for (const destinationId of destinationIds) {
-    logger.info(`Processing destination: ${destinationId}`);
+    logger.info(`Processing destination: ${destinationId}`, {
+      destination: destinationId,
+    });
 
-    // Compile for this destination
-    const compiledDoc = compileForDestination(
-      parsedDoc,
-      destinationId,
-      projectConfig,
-      logger
-    );
+    try {
+      // Compile for this destination
+      const compiledDoc = compileForDestination(
+        parsedDoc,
+        destinationId,
+        projectConfig,
+        logger
+      );
 
-    // Write to destination
-    await writeToDestination(compiledDoc, destinationId, frontmatter, logger);
+      // Write to destination
+      await writeToDestination(compiledDoc, destinationId, frontmatter, logger);
+
+      results.push({ destinationId, success: true });
+      logger.info(`  ✓ Successfully compiled for ${destinationId}`, {
+        destination: destinationId,
+      });
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      results.push({ destinationId, success: false, error: err });
+      logger.error(
+        `  ✗ Failed to compile for ${destinationId}: ${err.message}`,
+        { destination: destinationId }
+      );
+    }
   }
+
+  // Report overall results
+  const successful = results.filter((r) => r.success).length;
+  const failed = results.filter((r) => !r.success).length;
+
+  if (successful > 0 && failed > 0) {
+    logger.warn(
+      `Partial success: ${successful}/${destinationIds.length} destinations compiled successfully`
+    );
+  } else if (failed === destinationIds.length) {
+    logger.error(`All ${failed} destinations failed to compile`);
+  } else {
+    logger.info(`All ${successful} destinations compiled successfully`);
+  }
+
+  return results;
 }
 
 /**
@@ -331,24 +388,23 @@ export async function runRulesetsV0(
   const destinationIds = determineDestinations(parsedDoc);
 
   // Step 5: Compile and write for each destination
-  await processDestinations(parsedDoc, destinationIds, projectConfig, logger);
+  const results = await processDestinations(
+    parsedDoc,
+    destinationIds,
+    projectConfig,
+    logger
+  );
 
-  logger.info('Rulesets v0.1.0 processing completed successfully!');
-}
-
-// CLI entry point for testing
-// TODO: Replace with proper CLI using commander or yargs
-if (require.main === module) {
-  const logger = new ConsoleLogger();
-  const sourceFile = process.argv[2] || './my-rules.mix.md';
-
-  runRulesetsV0(sourceFile, logger)
-    .then(() => {
-      logger.info('Done!');
-      process.exit(0);
-    })
-    .catch((error) => {
-      logger.error('Failed:', error);
-      process.exit(1);
-    });
+  // Check for failures
+  const failedDestinations = results.filter((r) => !r.success);
+  if (failedDestinations.length > 0) {
+    const partialSuccess = results.some((r) => r.success);
+    if (partialSuccess) {
+      logger.warn('Rulesets v0.1.0 processing completed with partial success');
+    } else {
+      throw new Error('Rulesets v0.1.0 processing failed for all destinations');
+    }
+  } else {
+    logger.info('Rulesets v0.1.0 processing completed successfully!');
+  }
 }
