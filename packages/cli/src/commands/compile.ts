@@ -155,70 +155,81 @@ async function compileAll(
   return { totalCompiled, errors };
 }
 
+// Helper to handle compilation success
+function handleSuccess(errorState: {
+  count: number;
+  timer: NodeJS.Timeout | null;
+}) {
+  errorState.count = 0;
+  if (errorState.timer) {
+    clearTimeout(errorState.timer);
+    errorState.timer = null;
+  }
+}
+
+// Helper to restart watcher after circuit breaker
+async function restartWatcher(ctx: CompileContext) {
+  try {
+    logger.info(chalk.cyan('Resuming watcher...'));
+    const files = await listMarkdownFiles(ctx.sourcePath);
+    await compileAll({ ...ctx, files });
+    await startWatcher({ ...ctx, files });
+  } catch (err) {
+    logger.error(err instanceof Error ? err : new Error(String(err)));
+  }
+}
+
 async function startWatcher(ctx: CompileContext): Promise<void> {
   logger.info(chalk.cyan('\nWatching for changes... (Press Ctrl+C to stop)'));
   const { watch } = await import('node:fs');
   const watcher = watch(ctx.sourcePath, { recursive: true });
 
-  let errorCount = 0;
+  const errorState = { count: 0, timer: null as NodeJS.Timeout | null };
   const { watcher: limits } = RESOURCE_LIMITS;
-  let errorResetTimer: NodeJS.Timeout | null = null;
 
-  watcher.on('change', async (_eventType: string, filename: string | null) => {
-    if (!filename) {
+  // Handle file change events
+  async function handleFileChange(filename: string | null) {
+    if (
+      !(filename && (filename.endsWith('.md') || filename.endsWith('.mix.md')))
+    ) {
       return;
     }
-    if (!(filename.endsWith('.md') || filename.endsWith('.mix.md'))) {
-      return;
-    }
+
     logger.info(chalk.dim(`\nFile changed: ${filename}`));
     const changedFile = join(ctx.sourcePath, filename);
+
     try {
       await compileFile(changedFile, ctx);
       logger.info(chalk.green('  ✓ Recompiled successfully'));
-
-      // Reset error count on success
-      errorCount = 0;
-      if (errorResetTimer) {
-        clearTimeout(errorResetTimer);
-        errorResetTimer = null;
-      }
+      handleSuccess(errorState);
     } catch (error) {
-      errorCount++;
+      errorState.count++;
       logger.error(error instanceof Error ? error : new Error(String(error)));
 
-      // Implement circuit breaker pattern
-      if (errorCount >= limits.maxConsecutiveErrors) {
+      if (errorState.count >= limits.maxConsecutiveErrors) {
         logger.info(
           chalk.yellow(
             `\n⚠️  Too many consecutive errors. Pausing watcher for ${Math.floor(limits.errorResetTime / limits.msToSeconds)} seconds...`
           )
         );
-
         watcher.close();
-
-        setTimeout(async () => {
-          try {
-            logger.info(chalk.cyan('Resuming watcher...'));
-            // Refresh file list and bulk-compile to catch up
-            const files = await listMarkdownFiles(ctx.sourcePath);
-            await compileAll({ ...ctx, files });
-            await startWatcher({ ...ctx, files });
-          } catch (err) {
-            logger.error(err instanceof Error ? err : new Error(String(err)));
-          }
-        }, limits.errorResetTime);
+        setTimeout(() => restartWatcher(ctx), limits.errorResetTime);
         return;
       }
 
-      // Set timer to reset error count
-      if (!errorResetTimer) {
-        errorResetTimer = setTimeout(() => {
-          errorCount = 0;
-          errorResetTimer = null;
+      if (!errorState.timer) {
+        errorState.timer = setTimeout(() => {
+          errorState.count = 0;
+          errorState.timer = null;
         }, limits.errorResetTime);
       }
     }
+  }
+
+  watcher.on('change', (_eventType: string, filename: string | null) => {
+    handleFileChange(filename).catch((err) => {
+      logger.error(err instanceof Error ? err : new Error(String(err)));
+    });
   });
 
   watcher.on('error', (error: Error) => {

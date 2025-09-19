@@ -137,9 +137,9 @@ describe('rulesets CLI smoke', () => {
 });
 beforeAll(() => {
   // Build both core and CLI packages
-  const repoRoot = isInCliPackage ? dirname(dirname(CLI_CWD)) : CLI_CWD;
-  const coreDir = join(repoRoot, 'packages', 'core');
-  const cliDir = join(repoRoot, 'packages', 'cli');
+  const testRepoRoot = isInCliPackage ? dirname(dirname(CLI_CWD)) : CLI_CWD;
+  const coreDir = join(testRepoRoot, 'packages', 'core');
+  const cliDir = join(testRepoRoot, 'packages', 'cli');
 
   // Build core
   const coreRes = spawnSync('bun', ['run', 'build'], {
