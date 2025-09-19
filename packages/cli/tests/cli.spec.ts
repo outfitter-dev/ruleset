@@ -9,19 +9,18 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 const CLI_CWD = join(process.cwd());
 const TEMP_HOME = mkdtempSync(join(tmpdir(), 'rulesets-cli-test-'));
-const VERSION_RE = /\d+\.\d+\.\d+/;
+const VERSION_RE = /\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/;
 const NON_WS_RE = /\S/;
 
 // Determine the correct CLI path based on where tests are run from
 // Check if we're in packages/cli or at the root
 const isInCliPackage = CLI_CWD.endsWith('packages/cli');
-const cliPath = isInCliPackage
-  ? join(CLI_CWD, 'dist/index.js') // Running from packages/cli
-  : join(CLI_CWD, 'packages/cli/dist/index.js'); // Running from root
+const repoRoot = isInCliPackage ? dirname(dirname(CLI_CWD)) : CLI_CWD;
+const cliPath = join(repoRoot, 'packages/cli/dist/index.js');
 
 function runCli(args: string[], opts: { cwd?: string } = {}) {
   // Use the built CLI to avoid module resolution issues
@@ -31,7 +30,7 @@ function runCli(args: string[], opts: { cwd?: string } = {}) {
     encoding: 'utf-8',
   });
   return {
-    code: res.status ?? 0,
+    code: typeof res.status === 'number' ? res.status : 1,
     stdout: res.stdout?.toString() ?? '',
     stderr: res.stderr?.toString() ?? '',
   };
@@ -137,14 +136,28 @@ describe('rulesets CLI smoke', () => {
   });
 });
 beforeAll(() => {
-  // Ensure @rulesets/core is built so CLI can import its exports
-  const coreDir = join(CLI_CWD, '..', 'core');
-  const res = spawnSync('bun', ['run', 'build'], {
+  // Build both core and CLI packages
+  const repoRoot = isInCliPackage ? dirname(dirname(CLI_CWD)) : CLI_CWD;
+  const coreDir = join(repoRoot, 'packages', 'core');
+  const cliDir = join(repoRoot, 'packages', 'cli');
+
+  // Build core
+  const coreRes = spawnSync('bun', ['run', 'build'], {
     cwd: coreDir,
     env: { ...process.env },
     encoding: 'utf-8',
   });
-  if ((res.status ?? 0) !== 0) {
-    throw new Error(`Failed to build @rulesets/core: ${res.stderr}`);
+  if ((coreRes.status ?? 0) !== 0) {
+    throw new Error(`Failed to build @rulesets/core: ${coreRes.stderr}`);
+  }
+
+  // Build CLI
+  const cliRes = spawnSync('bun', ['run', 'build'], {
+    cwd: cliDir,
+    env: { ...process.env },
+    encoding: 'utf-8',
+  });
+  if ((cliRes.status ?? 0) !== 0) {
+    throw new Error(`Failed to build @rulesets/cli: ${cliRes.stderr}`);
   }
 });

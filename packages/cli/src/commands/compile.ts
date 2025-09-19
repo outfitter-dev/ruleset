@@ -126,7 +126,7 @@ async function compileFile(file: string, ctx: CompileContext): Promise<number> {
       logger.warn(chalk.yellow(`  - No plugin found for destination: ${dest}`));
       continue;
     }
-    const compiled = compile(parsed, dest, {});
+    const compiled = await compile(parsed, dest, {});
     const rel = ctx.isDir ? relative(ctx.sourcePath, file) : basename(file);
     const outfile = join(ctx.outputPath, dest, rel.replace(MIX_EXT_RE, '.md'));
     await fs.mkdir(dirname(outfile), { recursive: true });
@@ -185,7 +185,7 @@ async function startWatcher(ctx: CompileContext): Promise<void> {
       }
     } catch (error) {
       errorCount++;
-      logger.error(chalk.red(`  ✗ Failed to recompile: ${String(error)}`));
+      logger.error(error instanceof Error ? error : new Error(String(error)));
 
       // Implement circuit breaker pattern
       if (errorCount >= limits.maxConsecutiveErrors) {
@@ -197,18 +197,16 @@ async function startWatcher(ctx: CompileContext): Promise<void> {
 
         watcher.close();
 
-        setTimeout(() => {
-          (async () => {
+        setTimeout(async () => {
+          try {
             logger.info(chalk.cyan('Resuming watcher...'));
             // Refresh file list and bulk-compile to catch up
             const files = await listMarkdownFiles(ctx.sourcePath);
             await compileAll({ ...ctx, files });
             await startWatcher({ ...ctx, files });
-          })().catch((err) => {
-            logger.error(
-              chalk.red(`Failed to restart watcher: ${String(err)}`)
-            );
-          });
+          } catch (err) {
+            logger.error(err instanceof Error ? err : new Error(String(err)));
+          }
         }, limits.errorResetTime);
         return;
       }
@@ -224,10 +222,12 @@ async function startWatcher(ctx: CompileContext): Promise<void> {
   });
 
   watcher.on('error', (error: Error) => {
-    logger.error(chalk.red(`\nWatcher error: ${error.message}`));
+    logger.error(error);
     logger.info(chalk.cyan('Attempting to restart watcher...'));
     watcher.close();
-    setTimeout(() => startWatcher(ctx), limits.restartDelay);
+    setTimeout(async () => {
+      await startWatcher(ctx);
+    }, limits.restartDelay);
   });
 }
 
