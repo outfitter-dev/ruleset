@@ -18,7 +18,7 @@ This document provides terminology guidance for consistent language in Rulesets 
 | **Variable** | Dynamic values replaced during compilation | "Use variables to include dynamic data." |
 | **System Variable** | Built-in variables provided by the compiler | "The `$destination` system variable contains the current destination ID." |
 | **Variable Substitution** | The process of replacing variables with their values | "Variable substitution happens automatically during compilation." |
-| **Mixin** | Reusable components stored in `.rulesets/src/_mixins` | "Import commonly used components as mixins." |
+| **Mixin** | Reusable components stored in `.ruleset/rules/_mixins` | "Import commonly used components as mixins." |
 | **Property** | A configuration applied to sections or imports | "Apply the tag-omit property to remove XML tags in compiled rules." |
 | **Scope** | A destination-specific context for properties | "Use destination:property to apply properties in a specific scope." |
 | **Scoped Value** | A property value that applies only to specific destinations | "The destination:code-javascript is a destination-scoped value." |
@@ -93,24 +93,24 @@ This document provides terminology guidance for consistent language in Rulesets 
 
 | Entity Type | Naming Convention | Example |
 |-------------|-------------------|---------|
-| Source Rules files | `kebab-case.ruleset.md` | `coding-standards.ruleset.md` |
+| Source Rules files | `kebab-case.rule.md` | `coding-standards.rule.md` |
 | Directory | `kebab-case` | `_mixins` |
-| Config files | `kebab-case.config.json` | `rulesets.config.json` |
+| Config files | `kebab-case.config.toml` | `rulesets.config.toml` |
 | Section markers | `kebab-case` | `{{user-instructions}}` |
 | XML Tags in compiled rules | `snake_case` | `<user_instructions>` |
 
 ### Distribution Directory Structure
 
-The `.rulesets/dist/` directory stores compiled rules, compilation artifacts, and related data:
+The `.ruleset/dist/` directory stores compiled rules, compilation artifacts, and related data:
 
 | Path | Purpose |
 |------|---------|
-| `.rulesets/dist/latest/` | Symlink to the latest compilation |
-| `.rulesets/dist/runs/` | Directory for all compilations and their artifacts |
-| `.rulesets/dist/runs/run-<timestamp>/` | Directory containing specific compiled rules and artifacts |
-| `.rulesets/dist/runs/run-<timestamp>.json` | Compilation metadata for each run |
-| `.rulesets/dist/logs/` | Log files for all compilations |
-| `.rulesets/dist/logs/run-<timestamp>.log` | Compilation log for each run |
+| `.ruleset/dist/latest/` | Symlink to the latest compilation |
+| `.ruleset/dist/runs/` | Directory for all compilations and their artifacts |
+| `.ruleset/dist/runs/run-<timestamp>/` | Directory containing specific compiled rules and artifacts |
+| `.ruleset/dist/runs/run-<timestamp>.json` | Compilation metadata for each run |
+| `.ruleset/dist/logs/` | Log files for all compilations |
+| `.ruleset/dist/logs/run-<timestamp>.log` | Compilation log for each run |
 
 ### Destination Directories
 
@@ -180,9 +180,9 @@ When referring to compilation versions:
   - Renamed "output" to "compiled rules"
   - Renamed "option" to "property"
   - Standardized on "compile/compilation" for transformation process
-  - Updated directory naming: `.rulesets/mixes/` → `.rulesets/src/`
-  - Updated directory naming: `.rulesets/mixes/_snippets/` → `.rulesets/src/_mixins/`
-  - Updated directory naming: `.rulesets/output/` → `.rulesets/dist/` to align with software development conventions
+  - Updated directory naming: `.ruleset/mixes/` → `.ruleset/rules/`
+  - Updated directory naming: `.ruleset/mixes/_snippets/` → `.ruleset/rules/_mixins/`
+  - Updated directory naming: `.ruleset/output/` → `.ruleset/dist/` to align with software development conventions
   - Renamed references to "output" to "compiled rules"
   - Refined property terminology with "Property Family", "Property Value", and "Property Group" concepts
   - Updated property syntax to use hyphenated format `property-("value")`

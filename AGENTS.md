@@ -307,5 +307,5 @@ AI agents must consult these documents regularly:
 - `@.agents/docs/overview.md`: Project overview and architecture
 - `@.agents/docs/architecture.md`: Technical architecture details
 - `@.agents/docs/notes/README.md`: Curated research notes
-- Legacy references are archived under `legacy/project/` if historical context is required
+- Legacy references are archived under `.agents/notes/.archive/` if historical context is required
 - `.claude/commands/create-pr.md`: PR creation guidelines

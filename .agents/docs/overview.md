@@ -137,7 +137,7 @@ Result: _Write rules once, compile destination-specific rules, zero drift._
 
 ### Compiler & Integration
 
-- **Provider Architecture:** Add new destinations via `RulesetsPluginProvider` without touching core.
+- **Provider Architecture:** Add new destinations via `RulesetsProvider` without touching core.
 - **CLI & API:** `rulesets build`, `rulesets validate`, and `POST /compile` endpoint.
 
 ## Destination Provider
@@ -167,11 +167,11 @@ npx @rulesets/cli init
 ### Quick Start
 
 ```bash
-rulesets init      # scaffolds .rulesets/ directory structure
+rulesets init      # scaffolds .ruleset/ directory structure
 
 rulesets import    # imports existing rules files into the rulesets format
 
-rulesets build     # writes compiled rules to .rulesets/dist/
+rulesets build     # writes compiled rules to .ruleset/dist/
 ```
 
 ## Notation Reference
@@ -649,7 +649,7 @@ Renders as:
 
 ```yaml
 ---
-# .rulesets/src/my-rule.md
+# .ruleset/rules/my-rule.rule.md
 rulesets:
   version: 0.1.0 # optional, version number for the Rulesets format used
 description: 'Rules for this project' # optional, may be useful for tools that use descriptions, such as Cursor, Windsurf, etc.
@@ -666,12 +666,12 @@ cursor:
     path: './custom/.cursor/rules'
 windsurf:
   trigger: globs
-# Add additional metadata to the mix:
+# Add additional metadata to the source rules:
 name: my-rule # optional, defaults to filename
 version: 2.0 # optional, version number for this file
 created: 2025-05-13 # optional, date of creation, automatically included by default
 updated: 2025-05-14 # optional, date of last update, automatically included by default
-labels: ['core', 'security'] # optional, categorization tags for the mix, available for future use
+labels: ['core', 'security'] # optional, categorization tags for the source rules, available for future use
 allow-bare-xml-tags: false # optional, defaults to false. Set to true to allow bare XML tags in this file.
 ---
 ```
@@ -680,19 +680,19 @@ front matter is used to provide metadata about the source rules file and control
 
 - `rulesets.version`: Metadata about the Rulesets format used.
 - `name`: Unique identifier for the source rules (optional, defaults to filename).
-- `description`: Optional description of the mix, rendered for tools that use them (e.g. Cursor, Windsurf, etc.).
+- `description`: Optional description of the source rules, rendered for tools that use them (e.g. Cursor, Windsurf, etc.).
 - `globs`: Optional globs to be rewritten based on destination-specific needs.
 - `destination`: Control how this source rules is processed for destinations:
-  - `include`/`exclude`: Control which destinations receive this mix.
+  - `include`/`exclude`: Control which destinations receive this source rules.
   - `path`: Specify a custom path for destination artifacts.
-  - Properties include any destination providers registered in `.rulesets.config.json`.
+  - Properties include any destination providers registered in `.ruleset/config.toml`.
 - `version`: Version information for this file.
 - `labels`: Categorization tags for this file.
-- `allow-bare-xml-tags: (boolean)` - Optional. When set to `true` in this file's front matter, it allows the use of bare XML tags (e.g., `<my_tag>...</my_tag>`) directly within this specific Rulesets file instead of the standard `{{my-tag}}...{{/my-tag}}` notation. This setting overrides any global `allow-bare-xml-tags` setting in `.rulesets.config.json` for this file. Defaults to `false` if not specified. See the 'Using bare XML tags' section for more details.
+- `allow-bare-xml-tags: (boolean)` - Optional. When set to `true` in this file's front matter, it allows the use of bare XML tags (e.g., `<my_tag>...</my_tag>`) directly within this specific Rulesets file instead of the standard `{{my-tag}}...{{/my-tag}}` notation. This setting overrides any global `allow-bare-xml-tags` setting in `.ruleset/config.toml` for this file. Defaults to `false` if not specified. See the 'Using bare XML tags' section for more details.
 - `[cursor|windsurf|claude-code|...]`: Destination-specific key/value pairs can be provided.
   - These can include `destination.path` to override the global path for specific destinations.
 
-For more details on the structure and capabilities of the `rulesets.config.json` file, including global settings (like `allow-bare-xml-tags`), aliases, and destination provider configurations, please refer to the project's architecture or configuration documentation.
+For more details on the structure and capabilities of the `.ruleset/config.toml` file, including global settings (like `allow-bare-xml-tags`), aliases, and destination provider configurations, please refer to the project's architecture or configuration documentation.
 
 ### Links
 
@@ -701,10 +701,10 @@ For more details on the structure and capabilities of the `rulesets.config.json`
 Standard Markdown links work as expected external links, and links to other source rules:
 
 - Regular links: `[Text](url)`
-- Links to other source rules files: `[Text](other-mix.md)`
+- Links to other source rules files: `[Text](other-rule.md)`
 
 > [!NOTE]
-> Standard Markdown links will work in previews as expected within the `.rulesets/src` directory, but `{{link ...}}` will not, as it requires compilation by Rulesets to resolve paths relative to the final compiled rules directory and apply any destination-specific link transformations.
+> Standard Markdown links will work in previews as expected within the `.ruleset/rules` directory, but `{{link ...}}` will not, as it requires compilation by Rulesets to resolve paths relative to the final compiled rules directory and apply any destination-specific link transformations.
 
 #### Linking to Project Files
 
@@ -735,7 +735,7 @@ The syntax for variables depends on the context:
 
 | Type                     | Notation                      | Notes                                                                                                                                                                                                                                    |
 | ------------------------ | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Alias**                | `{{$alias}}`                  | Alias lookup in `.rulesets.config.json` under `aliases` key.                                                                                                                                                                             |
+| **Alias**                | `{{$alias}}`                  | Alias lookup in `.ruleset/config.toml` under `aliases` key.                                                                                                                                                                             |
 | **front matter value**   | `{{$.key}}`                   | Access values from the current file's front matter.                                                                                                                                                                                      |
 | **Destination variable** | `{{$dest}}` or `{{$dest.id}}` | Built-in variables provided by the compiler. Display name from the provider manifest (e.g. `Cursor`, `Claude Code`). The current destination ID in kebab-case can be accessed by adding `.id` to the end (`cursor`, `claude-code`, etc.) |
 
@@ -857,7 +857,7 @@ It's important to distinguish between imports (`{{> ...}}`) and variable substit
 
 ### Mixins
 
-Mixins are modular, reusable components, stored in the `.rulesets/src/_mixins/` directory. Like programming mixins that can be incorporated into different classes or components, Rulesets mixins provide isolated content blocks that can be imported into multiple source rules files.
+Mixins are modular, reusable components, stored in the `.ruleset/rules/_mixins/` directory. Like programming mixins that can be incorporated into different classes or components, Rulesets mixins provide isolated content blocks that can be imported into multiple source rules files.
 
 - A mixin typically contains one or more sections that perform a specific function
 - Mixins are imported using the `{{> @mixin-name}}` notation
@@ -1000,7 +1000,7 @@ Testing is required for all new features.
 ```markdown
 {{> @coding-standards }}
 
-{{> my-mix#specific-section }}
+{{> my-rule#specific-section }}
 ```
 
 **Using variables:**
@@ -1026,12 +1026,12 @@ To include a section in Rulesets use: {{section-name}}
 
 ```text
 project/
-├── .rulesets/
+├── .ruleset/
 │   ├── dist/
 │   │   └── latest/         # compiled rules
-│   ├── src/                # source rules files (*.md)
+│   ├── rules/              # source rules files (*.rule.md)
 │   │   └── _mixins/        # reusable content modules
-│   └── rulesets.config.json # Rulesets config file
+│   └── config.toml         # Rulesets config file
 ```
 
 ## XML Generation
@@ -1160,7 +1160,7 @@ Most common programming languages are supported using the `code-language` patter
 <!-- Import properties -->
 
 {{> @mixin code-javascript}} <!-- Import mixin as JavaScript code block -->
-{{> mix-file#(section-a !section-b)}} <!-- Import only section-a from file, exclude section-b -->
+{{> rule-file#(section-a !section-b)}} <!-- Import only section-a from file, exclude section-b -->
 {{> rules#section cursor:[inline]}} <!-- Import rules#section with cursor-specific inline formatting -->
 ```
 
