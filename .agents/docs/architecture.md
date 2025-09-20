@@ -1,4 +1,4 @@
-# Mixdown Architecture
+# Rulesets Architecture
 
 > A CommonMark-compliant rules compiler for AI assistants
 
@@ -6,34 +6,34 @@
 
 ## Overview
 
-Mixdown is a compiler that transforms *source rules* files into destination-specific rules files for various AI tools & coding agents. It follows the "write once, compile for many destinations" philosophy, similar to how Terraform manages infrastructure across multiple cloud providers.
+Rulesets is a compiler that transforms _source rules_ files into destination-specific rules files for various AI tools & coding agents. It follows the "write once, compile for many destinations" philosophy, similar to how Terraform manages infrastructure across multiple cloud providers.
 
 The compiler processes multiple source files simultaneously and can output to multiple destinations in a single compilation run, ensuring that all source rules files are consistently applied across all enabled destinations.
 
 ```text
 +-----------------+      +----------------+      +----------------------+
-| Source rules    | ---> | Mixdown Core   | ---> | Destination-specific |
+| Source rules    | ---> | Rulesets Core   | ---> | Destination-specific |
 | (.md files)     |      | Compiler       |      | rules files          |
 +-----------------+      +----------------+      +----------------------+
                               ^
                               |
                        +-----------------+
-                       | Plugin System   |
+                       | Provider System   |
                        | (Destination Defs)|
                        +-----------------+
 ```
 
 ## Project Structure
 
-The Mixdown project is organized as a monorepo using pnpm workspaces:
+The Rulesets project is organized as a monorepo using pnpm workspaces:
 
 ```text
-mixdown/
+rulesets/
 ├── packages/
 │   ├── core/                 # Core compiler engine
 │   ├── cli/                  # Command-line interface
 │   ├── mcp/                  # MCP server implementation
-│   ├── plugins/              # Destination plugin directory
+│   ├── providers/              # Destination provider directory
 │   │   ├── cursor/           # Cursor destination implementation
 │   │   ├── claude-code/      # Claude Code destination implementation
 │   │   ├── windsurf/         # Windsurf destination implementation
@@ -51,16 +51,16 @@ mixdown/
 
 - [packages/core/src/parser.ts](placeholder)
 - Responsible for parsing source rules files into an AST (Abstract Syntax Tree)
-- Uses a hybrid approach with specialized nodes for different Mixdown constructs
+- Uses a hybrid approach with specialized nodes for different Rulesets constructs
 - Preserves necessary source positions for error reporting while avoiding excessive metadata
-- Handles Mixdown notation markers, stems, imports, and variables
+- Handles Rulesets notation markers, sections, imports, and variables
 
 ### Compiler
 
 - [packages/core/src/compiler.ts](placeholder)
 - Processes the AST and transforms it for target-specific output
 - Resolves imports and variables
-- Applies stem filtering and other transformations
+- Applies section filtering and other transformations
 - Collects errors during processing to report them all at once
 
 ### Renderer
@@ -70,18 +70,18 @@ mixdown/
 - Handles different output formats (XML, markdown, etc.)
 - Adapts to each destination's preferred file structure
 
-### Plugin System
+### Provider System
 
-- [packages/core/src/plugin.ts](placeholder)
-- Manages destination plugins that define how source rules files are compiled for specific tools
+- [packages/core/src/provider.ts](placeholder)
+- Manages destination providers that define how source rules files are compiled for specific tools
 - Built on an interface-based architecture with dependency injection
-- Uses multiple lifecycle hooks to allow plugins to integrate at various stages
-- Provides plugin registration and discovery
+- Uses multiple lifecycle hooks to allow providers to integrate at various stages
+- Provides provider registration and discovery
 
 ### Configuration
 
 - [packages/core/src/config.ts](placeholder)
-- Loads and validates configuration from mixdown.config.json
+- Loads and validates configuration from rulesets.config.json
 - Uses both JSON Schema validation and TypeScript types
 - Manages project-level settings
 - Provides runtime validation for dynamic configurations
@@ -113,13 +113,13 @@ mixdown/
                          |
                          v
 +------------+  +-------------+  +------------+
-| Frontmatter|->|  Process    |<-| Variables  |
+| front matter|->|  Process    |<-| Variables  |
 +------------+  |  Directives |  +------------+
                 +------+------+
                          |
                          v
 +------------+  +-------------+  +------------+
-|  Imports   |->| Compile AST |<-|   Stems    |
+|  Imports   |->| Compile AST |<-|   Sections    |
 +------------+  +------+------+  +------------+
                          |
                          v
@@ -140,7 +140,7 @@ mixdown/
 The compiler uses a hybrid AST structure that:
 
 - Provides necessary detail for error reporting and context preservation
-- Contains specialized nodes for different Mixdown constructs (stems, imports, etc.)
+- Contains specialized nodes for different Rulesets constructs (sections, imports, etc.)
 - Balances detail and performance by avoiding excessive metadata
 - Maintains source positions for accurate error reporting
 
@@ -151,9 +151,9 @@ The compiler uses a hybrid AST structure that:
 - Prevention of circular dependencies
 - Tracking files for incremental rebuilding when dependencies change
 
-### Stem Filtering
+### Section Filtering
 
-- Implementing destination-specific stem inclusion/exclusion
+- Implementing destination-specific section inclusion/exclusion
 - Processing of destination groups (e.g., `+ide`)
 - Explicit destination declarations take precedence over group-based ones
 
@@ -162,7 +162,7 @@ The compiler uses a hybrid AST structure that:
 Different AI assistants use different terminology and mechanisms for when rules should be applied:
 
 ```text
-Mixdown "Activation" Abstraction
+Rulesets "Activation" Abstraction
            +
            |
            v
@@ -172,15 +172,16 @@ v          v          v          v          v
 Cursor   Windsurf  Claude     Roo      GitHub
 (types)  (trigger) (imports) (folders) (scopes)
 ```
+
 <!-- TODO: If GitHub is a planned destination, consider adding it to the destination tables in README.md and spec/OVERVIEW.md for consistency. -->
 
 - Creates an abstraction layer for activation mechanisms
 - Maps common patterns to tool-specific implementations
-- Allows destination plugins to define their own activation logic
+- Allows destination providers to define their own activation logic
 
 ### Target Output Generation
 
-- Converting Mixdown notation into tool-specific formats
+- Converting Rulesets notation into tool-specific formats
 - Handling front-matter requirements
 - Output file naming conventions and paths
 - Destination-specific strategies for handling character/token limits
@@ -220,7 +221,7 @@ Cursor   Windsurf  Claude     Roo      GitHub
 ### Event System
 
 - Simple event emitter for core processes
-- Allows plugins to monitor the compilation process
+- Allows providers to monitor the compilation process
 - Doesn't affect main execution flow
 - Provides good balance of simplicity and extensibility
 
@@ -238,21 +239,21 @@ The architecture supports a system for content reusability (Mixins). Internally,
 
 ## Standard Project Structure
 
-A typical project using Mixdown would have this structure:
+A typical project using Rulesets would have this structure:
 
 ```text
 project/
-├── .mixdown/
+├── .rulesets/
 │   ├── dist/
 │   │   └── latest/         # compiled rules
 │   ├── src/                # source rules files (*.md)
 │   │   └── _mixins/        # reusable content modules
-│   └── mixdown.config.json # compiler config
+│   └── rulesets.config.json # compiler config
 ```
 
 ## Configuration Format
 
-A stub for `mixdown.config.json`:
+A stub for `rulesets.config.json`:
 
 ```json
 {
@@ -260,17 +261,17 @@ A stub for `mixdown.config.json`:
   "projects": {
     "default": {
       "sources": {
-        "sourceRules": ".mixdown/src",
-        "mixins": ".mixdown/src/_mixins"
+        "sourceRules": ".rulesets/src",
+        "mixins": ".rulesets/src/_mixins"
       },
-      "dist": ".mixdown/dist",
+      "dist": ".rulesets/dist",
       "allow-bare-xml-tags": false,
       "destinations": {
         "include": ["cursor", "claude-code", "windsurf"],
         "exclude": []
       },
       "aliases": {
-        "project": "Mixdown",
+        "project": "Rulesets",
         "author": "Maybe Good"
       },
       "destinationOptions": {
@@ -297,19 +298,20 @@ A stub for `mixdown.config.json`:
   }
 }
 ```
-Note: Paths in `sources` (like `sourceRules` and `mixins`) and `dist` are typically relative to the project root directory (i.e., the directory containing the `.mixdown` folder itself).
+
+Note: Paths in `sources` (like `sourceRules` and `mixins`) and `dist` are typically relative to the project root directory (i.e., the directory containing the `.rulesets` folder itself).
 
 ## Extension Points
 
 - Hooks at key processing stages allow extension of core functionality
-- More flexible than plugins alone
+- More flexible than providers alone
 - Supports monitoring and modifying the compilation process
-- Destination plugins can implement destination-specific validators
-- Core provides abstraction and simplification for plugin authors
+- Destination providers can implement destination-specific validators
+- Core provides abstraction and simplification for provider authors
 
 ## Compiled Rules Validation
 
-- Each destination plugin handles its own validation
+- Each destination provider handles its own validation
 - Better guarantees of compatibility
 - Leverages destination-specific knowledge
 - Core provides abstractions to simplify validation implementation
@@ -319,7 +321,7 @@ Note: Paths in `sources` (like `sourceRules` and `mixins`) and `dist` are typica
 1. Finalize architecture details
 2. Create detailed component specifications
 3. Implement core parsing and AST
-4. Build initial plugin system
+4. Build initial provider system
 5. Develop basic destination implementations
 6. Create CLI and build process
 7. Add MCP server integration
