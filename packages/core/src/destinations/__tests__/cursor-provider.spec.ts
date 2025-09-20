@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'bun:test';
 import { compile } from '../../compiler';
 import type { Logger, ParsedDoc } from '../../interfaces';
 import { CursorProvider } from '../cursor-provider';
@@ -105,18 +105,13 @@ describe('CursorProvider.prepareCompilation', () => {
 
     expect(preparation?.handlebars).toBeDefined();
 
-    const compiled = compile(
-      baseDoc,
-      'cursor',
-      {},
-      {
-        handlebars: {
-          force: preparation?.handlebars?.force,
-          helpers: preparation?.handlebars?.helpers,
-          partials: preparation?.handlebars?.partials,
-        },
-      }
-    );
+    const compiled = compile(baseDoc, 'cursor', {}, {
+      handlebars: {
+        force: preparation?.handlebars?.force,
+        helpers: preparation?.handlebars?.helpers,
+        partials: preparation?.handlebars?.partials,
+      },
+    });
 
     expect(compiled.output.content).toBe('Hello high ::foot::');
   });
@@ -147,18 +142,13 @@ describe('CursorProvider.prepareCompilation', () => {
       logger,
     });
 
-    const compiled = compile(
-      parsed,
-      'cursor',
-      {},
-      {
-        handlebars: {
-          force: preparation?.handlebars?.force,
-          helpers: preparation?.handlebars?.helpers,
-          partials: preparation?.handlebars?.partials,
-        },
-      }
-    );
+    const compiled = compile(parsed, 'cursor', {}, {
+      handlebars: {
+        force: preparation?.handlebars?.force,
+        helpers: preparation?.handlebars?.helpers,
+        partials: preparation?.handlebars?.partials,
+      },
+    });
 
     expect(compiled.output.content).toBe('Priority: high');
   });
