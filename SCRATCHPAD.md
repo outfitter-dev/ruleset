@@ -89,6 +89,17 @@ Pay close attention to the @MIGRATION.md document.
 - Updated provider instantiation/export map, logging metadata, and re-exports; refreshed README examples accordingly.
 - Verified provider test suite via `bun run --filter @rulesets/core test`.
 
+#### 2025-09-20 at 18:30
+
+- Addressed PR feedback from Claude on partials support implementation:
+  - Optimized file extension checking by converting array to Set for O(1) lookups
+  - Added stricter TypeScript typing with HandlebarsConfigShape interface
+  - Enhanced security violation logging with detailed context (path attempts, reasons, depth)
+  - Created comprehensive security test suite covering symlink traversal, directory escaping, resource limits
+  - Fixed all linting issues including import sorting, magic numbers, empty blocks
+  - Extracted regex patterns to module constants for better performance
+- All tests passing after improvements (`bun run --filter @rulesets/core test`)
+
 #### 2025-09-21 at 10:05
 
 - Hardened Handlebars compiler defaults (strict mode enabled, escaping enforced) with optional overrides and centralized body extraction via `utils/frontmatter.ts`.

@@ -82,7 +82,11 @@ export class AgentsMdProvider implements DestinationProvider {
       });
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      logger.error(err, { provider: 'agents-md', op: 'write', path: outputPath });
+      logger.error(err, {
+        provider: 'agents-md',
+        op: 'write',
+        path: outputPath,
+      });
       throw err;
     }
   }

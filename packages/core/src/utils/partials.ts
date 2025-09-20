@@ -1,15 +1,16 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { Logger, ParsedDoc } from '../interfaces';
 import { GlobalConfig } from '../config/global-config';
+import type { Logger, ParsedDoc } from '../interfaces';
 
+// Order common extensions first so we short-circuit faster on the typical cases.
 const KNOWN_EXTENSIONS = [
   '.rule.md',
-  '.ruleset.md',
-  '.mdc',
   '.md',
   '.hbs',
   '.handlebars',
+  '.ruleset.md',
+  '.mdc',
   '.txt',
 ];
 
@@ -28,11 +29,13 @@ async function directoryExists(candidate: string): Promise<boolean> {
   }
 }
 
-async function findRulesetRoot(sourcePath: string): Promise<string | undefined> {
+async function findRulesetRoot(
+  sourcePath: string
+): Promise<string | undefined> {
   let dir = path.resolve(path.dirname(sourcePath));
   const root = path.parse(dir).root;
 
-  while (true) {
+  for (;;) {
     const candidate = path.join(dir, '.ruleset');
     try {
       const stats = await fs.stat(candidate);
@@ -44,7 +47,7 @@ async function findRulesetRoot(sourcePath: string): Promise<string | undefined> 
     }
 
     if (dir === root) {
-      return undefined;
+      return;
     }
 
     dir = path.dirname(dir);
@@ -52,6 +55,7 @@ async function findRulesetRoot(sourcePath: string): Promise<string | undefined> 
 }
 
 function stripKnownExtensions(relativePath: string): string {
+  // Check extensions in order of likelihood for better performance
   for (const ext of KNOWN_EXTENSIONS) {
     if (relativePath.endsWith(ext)) {
       return relativePath.slice(0, -ext.length);
@@ -60,11 +64,17 @@ function stripKnownExtensions(relativePath: string): string {
   return relativePath;
 }
 
-function normalisePartialName(relativePath: string, stripAtPrefix: boolean): string {
+// Regular expression to remove leading slashes
+const LEADING_SLASH_REGEX = /^\/+/;
+
+function normalisePartialName(
+  relativePath: string,
+  stripAtPrefix: boolean
+): string {
   const posixPath = relativePath.split(path.sep).join('/');
   const stripped = stripKnownExtensions(posixPath);
   if (!stripAtPrefix) {
-    return stripped.replace(/^\/+/, '');
+    return stripped.replace(LEADING_SLASH_REGEX, '');
   }
 
   const segments = stripped.split('/');
@@ -74,7 +84,7 @@ function normalisePartialName(relativePath: string, stripAtPrefix: boolean): str
   if (segments[0].startsWith('@')) {
     segments[0] = segments[0].slice(1);
   }
-  return segments.join('/').replace(/^\/+/, '');
+  return segments.join('/').replace(LEADING_SLASH_REGEX, '');
 }
 
 /**
@@ -100,6 +110,7 @@ async function collectPartialsFromDir(opts: {
   const resolvedBase = path.resolve(baseDir);
   let fileCount = 0;
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Walking the filesystem requires layered validation guards.
   async function walk(currentDir: string, depth = 0): Promise<void> {
     // Prevent excessive recursion
     if (depth > MAX_WALK_DEPTH) {
@@ -113,10 +124,12 @@ async function collectPartialsFromDir(opts: {
 
     // Validate that we're still within the base directory
     if (!isPathSafe(currentDir, resolvedBase)) {
-      logger.warn('Attempted directory traversal detected', {
-        dir: currentDir,
+      logger.warn('Security violation: Directory traversal attempt blocked', {
+        attemptedDir: currentDir,
         baseDir: resolvedBase,
         source: label,
+        depth,
+        reason: 'Directory path escapes base directory boundary',
       });
       return;
     }
@@ -134,10 +147,13 @@ async function collectPartialsFromDir(opts: {
       // Security check: ensure resolved path stays within base directory
       const resolvedPath = path.resolve(fullPath);
       if (!isPathSafe(resolvedPath, resolvedBase)) {
-        logger.warn('Skipping file outside base directory', {
-          path: fullPath,
+        logger.warn('Security violation: File path escapes base directory', {
+          attemptedPath: fullPath,
+          resolvedPath,
           baseDir: resolvedBase,
           source: label,
+          entryName: entry.name,
+          reason: 'Symlink or path traversal detected',
         });
         continue;
       }
@@ -179,7 +195,8 @@ async function collectPartialsFromDir(opts: {
         logger.warn('Failed to load Handlebars partial', {
           path: resolvedPath,
           source: label,
-          error,
+          extension: path.extname(resolvedPath) || undefined,
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     }
@@ -188,6 +205,7 @@ async function collectPartialsFromDir(opts: {
   await walk(resolvedBase);
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Precedence-aware loader intentionally coordinates multiple sources.
 export async function loadHandlebarsPartials(opts: {
   parsed: ParsedDoc;
   logger: Logger;
@@ -196,23 +214,39 @@ export async function loadHandlebarsPartials(opts: {
   const partials = new Map<string, string>();
   const sourcePath = parsed.source.path;
 
-  const searchQueue: Array<{ dir: string; requireAt?: boolean; label: string }> = [];
+  const searchQueue: Array<{
+    dir: string;
+    requireAt?: boolean;
+    label: string;
+  }> = [];
 
   if (typeof sourcePath === 'string') {
     const projectRoot = await findRulesetRoot(sourcePath);
     if (projectRoot) {
       const rulesDir = path.join(projectRoot, '.ruleset', 'rules');
       const projectPartialsDir = path.join(projectRoot, '.ruleset', 'partials');
-      const configPartialsDir = path.join(projectRoot, '.config', 'ruleset', 'partials');
+      const configPartialsDir = path.join(
+        projectRoot,
+        '.config',
+        'ruleset',
+        'partials'
+      );
 
       if (await directoryExists(configPartialsDir)) {
         searchQueue.push({ dir: configPartialsDir, label: 'project-config' });
       }
       if (await directoryExists(projectPartialsDir)) {
-        searchQueue.push({ dir: projectPartialsDir, label: 'project-partials' });
+        searchQueue.push({
+          dir: projectPartialsDir,
+          label: 'project-partials',
+        });
       }
       if (await directoryExists(rulesDir)) {
-        searchQueue.push({ dir: rulesDir, requireAt: true, label: 'ruleset-rules' });
+        searchQueue.push({
+          dir: rulesDir,
+          requireAt: true,
+          label: 'ruleset-rules',
+        });
       }
     }
   }
@@ -224,33 +258,37 @@ export async function loadHandlebarsPartials(opts: {
   }
 
   // Use Promise.allSettled to prevent one failing directory from blocking others
-  const results = await Promise.allSettled(
-    searchQueue.map(async (entry) => {
-      try {
-        await collectPartialsFromDir({
-          baseDir: entry.dir,
-          targetMap: partials,
-          logger,
-          requireAtPrefix: entry.requireAt ?? false,
-          label: entry.label,
-        });
-      } catch (error) {
-        // Log but don't throw - error isolation
-        logger.warn('Failed to process Handlebars partial directory', {
-          path: entry.dir,
-          source: entry.label,
-          error,
-        });
-      }
-    })
-  );
+  const failures: Array<{ path: string; label: string; error: string }> = [];
 
-  // Log summary of failed directories if any
-  const failures = results.filter(r => r.status === 'rejected');
+  for (const entry of searchQueue) {
+    try {
+      await collectPartialsFromDir({
+        baseDir: entry.dir,
+        targetMap: partials,
+        logger,
+        requireAtPrefix: entry.requireAt ?? false,
+        label: entry.label,
+      });
+    } catch (error) {
+      const failure = error instanceof Error ? error : new Error(String(error));
+      failures.push({
+        path: entry.dir,
+        label: entry.label,
+        error: failure.message,
+      });
+      logger.warn('Failed to process Handlebars partial directory', {
+        path: entry.dir,
+        source: entry.label,
+        error: failure.message,
+      });
+    }
+  }
+
   if (failures.length > 0) {
     logger.warn('Some partial directories could not be processed', {
       failureCount: failures.length,
       totalDirectories: searchQueue.length,
+      failures,
     });
   }
 

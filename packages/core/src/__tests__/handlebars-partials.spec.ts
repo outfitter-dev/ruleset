@@ -1,12 +1,13 @@
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { describe, expect, it, vi } from 'bun:test';
+import { describe, expect, it, vi } from 'vitest';
+import { GlobalConfig } from '../config/global-config';
 import { runRulesetsV0 } from '../index';
 import type { Logger } from '../interfaces';
-import { GlobalConfig } from '../config/global-config';
 
 const createLogger = (): Logger => ({
+  trace: vi.fn(),
   debug: vi.fn(),
   info: vi.fn(),
   warn: vi.fn(),
@@ -74,7 +75,7 @@ describe('Handlebars partial discovery', () => {
 
     await rm(tmpRoot, { recursive: true, force: true });
     if (originalHome === undefined) {
-      delete process.env.RULESETS_HOME;
+      Reflect.deleteProperty(process.env, 'RULESETS_HOME');
     } else {
       process.env.RULESETS_HOME = originalHome;
     }
