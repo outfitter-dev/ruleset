@@ -5,7 +5,7 @@ describe('parser', () => {
   describe('parse', () => {
     it('should parse a document with frontmatter and body', () => {
       const content = `---
-mixdown: v0
+rulesets: v0
 title: Test Rule
 destinations:
   cursor:
@@ -20,7 +20,7 @@ This is the body content.`;
 
       expect(result.source.content).toBe(content);
       expect(result.source.frontmatter).toEqual({
-        mixdown: 'v0',
+        rulesets: 'v0',
         title: 'Test Rule',
         destinations: {
           cursor: {
