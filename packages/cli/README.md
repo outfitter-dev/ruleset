@@ -48,10 +48,10 @@ Compile source rules to destination formats.
 rulesets compile [source] [options]
 
 Arguments:
-  source  Source file or directory (default: "./rules")
+  source  Source file or directory (default: "./.ruleset/rules")
 
 Options:
-  -o, --output <dir>       Output directory (default: "./.rulesets/dist")
+  -o, --output <dir>       Output directory (default: "./.ruleset/dist")
   -d, --destination <dest> Specific destination to compile for
   -w, --watch             Watch for changes and recompile
 ```

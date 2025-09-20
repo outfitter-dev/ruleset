@@ -1,15 +1,11 @@
-/**
- * Resource limits and constants for the Rulesets system
- */
-
-// File size constants (mixd-v0)
+/** Bytes in a kilobyte. */
 const KB = 1024;
+/** Bytes in a megabyte. */
 const MB = KB * KB;
 
-// Time constants (mixd-v0)
-const SECOND = 1000; // milliseconds
+/** Milliseconds in one second. */
+const SECOND = 1000;
 
-// Tunable numeric limits (mixd-v0)
 const PACK_MAX_FILE_SIZE_MB = 10;
 const PACK_MAX_INCLUDES_DEPTH = 5;
 const PACK_MAX_INCLUDES_COUNT = 50;
@@ -29,6 +25,7 @@ const FILE_LOCK_STALE_SECONDS = 10;
 const INSTALLATION_MAX_DESTINATIONS = 10;
 const INSTALLATION_MAX_CONCURRENT_WRITES = 5;
 
+/** Resource guardrails used across the compiler, watcher, and installation flows. */
 export const RESOURCE_LIMITS = {
   // Pack system limits
   pack: {
@@ -68,12 +65,14 @@ export const RESOURCE_LIMITS = {
   },
 } as const;
 
+/** Recognised file extensions for different configuration formats. */
 export const FILE_EXTENSIONS = {
-  markdown: ['.md', '.mix.md'],
+  markdown: ['.md', '.rule.md', '.ruleset.md'],
   toml: ['.toml'],
   json: ['.json', '.jsonc'],
 } as const;
 
+/** Canonical list of destination identifiers supported by the runtime. */
 export const DESTINATION_IDS = [
   'cursor',
   'windsurf',

@@ -6,7 +6,10 @@ import { installCommand } from './commands/install.js';
 import { listCommand } from './commands/list.js';
 import { syncCommand } from './commands/sync.js';
 
-// Pre-parse global flags anywhere in argv for env setup (mixd-v0)
+/**
+ * Reads global CLI flags before Commander processes sub-commands so the
+ * environment can be configured consistently (e.g., JSON logging).
+ */
 function preParseGlobalFlags(argv: string[]) {
   // Recognize --json (and allow --no-json to disable)
   if (argv.includes('--json')) {

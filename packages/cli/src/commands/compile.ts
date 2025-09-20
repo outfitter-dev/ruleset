@@ -14,14 +14,27 @@ import { Command } from 'commander';
 import { logger } from '../utils/logger';
 import { createSpinner } from '../utils/spinner';
 
-// TLDR: Compile rules from a file or directory into per-destination outputs (mixd-v0)
-const MIX_EXT_RE = /\.mix\.md$/i; // mixd-perf: precompiled regex for extension replacement
+const SUPPORTED_SOURCE_EXTENSIONS = ['.rule.md', '.ruleset.md'] as const;
+
+function hasSupportedExtension(filePath: string): boolean {
+  const lower = filePath.toLowerCase();
+  return SUPPORTED_SOURCE_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+function normalizeOutputFilename(filename: string): string {
+  const lower = filename.toLowerCase();
+  for (const ext of SUPPORTED_SOURCE_EXTENSIONS) {
+    if (lower.endsWith(ext)) {
+      return filename.slice(0, -ext.length) + '.md';
+    }
+  }
+  return filename;
+}
 
 async function listMarkdownFiles(rootPath: string): Promise<string[]> {
   const stats = await fs.stat(rootPath);
   if (!stats.isDirectory()) {
-    const isMd = rootPath.endsWith('.md') || rootPath.endsWith('.mix.md');
-    return isMd ? [rootPath] : [];
+    return hasSupportedExtension(rootPath) ? [rootPath] : [];
   }
 
   const result: string[] = [];
@@ -32,10 +45,7 @@ async function listMarkdownFiles(rootPath: string): Promise<string[]> {
       const full = join(dir, entry.name);
       if (entry.isDirectory()) {
         await walk(full);
-      } else if (
-        entry.isFile() &&
-        (full.endsWith('.md') || full.endsWith('.mix.md'))
-      ) {
+      } else if (entry.isFile() && hasSupportedExtension(full)) {
         result.push(full);
       }
     }
@@ -45,14 +55,18 @@ async function listMarkdownFiles(rootPath: string): Promise<string[]> {
   return result;
 }
 
+/**
+ * Creates the `rulesets compile` sub-command. The command compiles source rules
+ * into destination-specific artefacts and can optionally watch for changes.
+ */
 export function compileCommand(): Command {
   return new Command('compile')
     .description('Compile source rules to destination formats')
     .option('--json', 'Output JSON logs for machine consumption')
     .option('--log-level <level>', 'Log level: debug|info|warn|error')
     .option('-q, --quiet', 'Quiet mode: only errors are printed')
-    .argument('[source]', 'Source file or directory', './rules')
-    .option('-o, --output <dir>', 'Output directory', './.rulesets/dist')
+    .argument('[source]', 'Source file or directory', './.ruleset/rules')
+    .option('-o, --output <dir>', 'Output directory', './.ruleset/dist')
     .option('-d, --destination <dest>', 'Specific destination to compile for')
     .option('-w, --watch', 'Watch for changes and recompile')
     .action(async (source: string, options) => {
@@ -60,6 +74,9 @@ export function compileCommand(): Command {
     });
 }
 
+/**
+ * Resolved context shared across compilation helpers.
+ */
 type CompileContext = {
   sourcePath: string;
   outputPath: string;
@@ -68,9 +85,13 @@ type CompileContext = {
   destinations: string[];
 };
 
+/**
+ * Resolves CLI options into a concrete compilation context, including absolute
+ * paths, discovered source files, and the destination list.
+ */
 async function buildContext(
   source: string,
-  options: { output: string; destination?: string }
+  options: Pick<CompileOptions, 'output' | 'destination'>
 ): Promise<CompileContext> {
   const cwd = process.cwd();
   const sourcePath = resolve(cwd, sanitizePath(source));
@@ -117,18 +138,27 @@ async function buildContext(
   };
 }
 
+/**
+ * Compiles a single Rulesets source file into one or more destination outputs.
+ */
 async function compileFile(file: string, ctx: CompileContext): Promise<number> {
   const content = await fs.readFile(file, 'utf-8');
   const parsed = parse(content);
   let compiledCount = 0;
   for (const dest of ctx.destinations) {
     if (!destinations.has(dest)) {
-      logger.warn(chalk.yellow(`  - No plugin found for destination: ${dest}`));
+      logger.warn(
+        chalk.yellow(`  - No provider registered for destination: ${dest}`)
+      );
       continue;
     }
     const compiled = await compile(parsed, dest, {});
     const rel = ctx.isDir ? relative(ctx.sourcePath, file) : basename(file);
-    const outfile = join(ctx.outputPath, dest, rel.replace(MIX_EXT_RE, '.md'));
+    const outfile = join(
+      ctx.outputPath,
+      dest,
+      normalizeOutputFilename(rel)
+    );
     await fs.mkdir(dirname(outfile), { recursive: true });
     await fs.writeFile(outfile, compiled.output.content, { encoding: 'utf8' });
     compiledCount++;
@@ -136,6 +166,9 @@ async function compileFile(file: string, ctx: CompileContext): Promise<number> {
   return compiledCount;
 }
 
+/**
+ * Compiles the entire compilation context and accumulates any per-file errors.
+ */
 async function compileAll(
   ctx: CompileContext
 ): Promise<{ totalCompiled: number; errors: string[] }> {
@@ -155,7 +188,9 @@ async function compileAll(
   return { totalCompiled, errors };
 }
 
-// Helper to handle compilation success
+/**
+ * Resets watcher error state after a successful compilation cycle.
+ */
 function handleSuccess(errorState: {
   count: number;
   timer: NodeJS.Timeout | null;
@@ -167,7 +202,9 @@ function handleSuccess(errorState: {
   }
 }
 
-// Helper to restart watcher after circuit breaker
+/**
+ * Restarts the file watcher after the circuit breaker cool-down completes.
+ */
 async function restartWatcher(ctx: CompileContext) {
   try {
     logger.info(chalk.cyan('Resuming watcher...'));
@@ -179,6 +216,9 @@ async function restartWatcher(ctx: CompileContext) {
   }
 }
 
+/**
+ * Watches the source directory for changes and recompiles affected files.
+ */
 async function startWatcher(ctx: CompileContext): Promise<void> {
   logger.info(chalk.cyan('\nWatching for changes... (Press Ctrl+C to stop)'));
   const { watch } = await import('node:fs');
@@ -189,9 +229,7 @@ async function startWatcher(ctx: CompileContext): Promise<void> {
 
   // Handle file change events
   async function handleFileChange(filename: string | null) {
-    if (
-      !(filename && (filename.endsWith('.md') || filename.endsWith('.mix.md')))
-    ) {
+    if (!(filename && hasSupportedExtension(filename))) {
       return;
     }
 
@@ -242,8 +280,17 @@ async function startWatcher(ctx: CompileContext): Promise<void> {
   });
 }
 
-type CompileOptions = { output: string; destination?: string; watch?: boolean };
+/** Options supported by the CLI compile command. */
+type CompileOptions = {
+  output: string;
+  destination?: string;
+  watch?: boolean;
+};
 
+/**
+ * Entry point for the compile command. Handles non-watch and watch flows, and
+ * renders user-friendly status messages through the CLI spinner.
+ */
 async function runCompile(
   source: string,
   options: CompileOptions

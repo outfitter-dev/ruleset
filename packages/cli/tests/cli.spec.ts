@@ -97,21 +97,20 @@ describe('rulesets CLI smoke', () => {
 
   it('compiles a rules directory to output', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'rulesets-cli-compile-'));
-    const rulesDir = join(tmp, 'rules');
-    mkdirSync(rulesDir);
-    const srcFile = join(rulesDir, 'hello.mix.md');
+    const rulesDir = join(tmp, '.ruleset', 'rules');
+    mkdirSync(rulesDir, { recursive: true });
+    const srcFile = join(rulesDir, 'hello.rule.md');
     const body = '# Hello\n\nThis is the body.';
     writeFileSync(
       srcFile,
       `---\nname: test\ndescription: demo\n---\n\n${body}\n`
     );
 
-    const outDirRel = join('.rulesets', 'dist');
+    const outDirRel = join('.ruleset', 'dist');
     const outDirAbs = join(tmp, outDirRel);
     const { code, stderr } = runCli(
       [
         'compile',
-        'rules',
         '--output',
         outDirRel,
         '--destination',

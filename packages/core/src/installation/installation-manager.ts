@@ -19,7 +19,7 @@ export type InstallResult = {
   version?: string;
 };
 
-// TLDR: Tracks installed rulesets and local modifications (mixd-v0)
+/** Serialized representation of installation state persisted on disk. */
 type TrackedData = {
   installed: Record<string, InstallationRecord>;
   modifications: Record<string, unknown[]>;
@@ -36,7 +36,7 @@ export class InstallationManager {
 
   constructor(globalConfig: GlobalConfig, projectDir: string = process.cwd()) {
     this.projectDir = projectDir;
-    this.trackingFile = join(projectDir, '.rulesets', 'installed.json');
+    this.trackingFile = join(projectDir, '.ruleset', 'installed.json');
     this.globalConfig = globalConfig;
     const globalDir = this.globalConfig.getGlobalDirectory();
     this.rulesetManager = new RulesetManager(this.globalConfig, { globalDir });
