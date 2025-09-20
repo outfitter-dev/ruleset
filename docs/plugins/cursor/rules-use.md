@@ -44,28 +44,32 @@ Cursor uses a YAML front-matter block to configure rules:
 
 ```markdown
 ---
-description: React Component Standards  
-globs: ["**/components/**/*.tsx"]
+description: React Component Standards
+globs: ['**/components/**/*.tsx']
 alwaysApply: false
 ---
+
 # React Component Guidelines
+
 - Use functional components with hooks
 - Follow naming pattern: ComponentName.tsx
 ```
 
-| Field | Purpose | Example |
-|-------|---------|---------|
-| `alwaysApply` | Whether rule is automatically included in all contexts | `alwaysApply: true` |
-| `description` | One-sentence summary of the rule's purpose | `description: "Database Schema"` |
-| `globs` | Path patterns for automatic rule activation | `globs: ["**/*.py", "**/*.ipynb"]` |
+| Field         | Purpose                                                | Example                            |
+| ------------- | ------------------------------------------------------ | ---------------------------------- |
+| `alwaysApply` | Whether rule is automatically included in all contexts | `alwaysApply: true`                |
+| `description` | One-sentence summary of the rule's purpose             | `description: "Database Schema"`   |
+| `globs`       | Path patterns for automatic rule activation            | `globs: ["**/*.py", "**/*.ipynb"]` |
 
 ## Activation Modes
 
 Cursor offers four ways to activate rules:
 
 1. **Always Apply**: Rules that are always included in context for every operation
+
    - Best for critical project information, style guides, and core concepts
    - Use sparingly to avoid using up the context token limit
+
    ```yaml
    ---
    alwaysApply: true
@@ -73,20 +77,24 @@ Cursor offers four ways to activate rules:
    ```
 
 2. **Auto-Attached**: Rules that apply only when working with matching files
+
    - Perfect for language-specific or framework-specific guidance
    - Requires `globs` field to specify file patterns
+
    ```yaml
    ---
-   globs: ["**/*.py", "**/*.ipynb"]
+   globs: ['**/*.py', '**/*.ipynb']
    ---
    ```
 
 3. **Agent-Requested**: Rules that are only added when the AI specifically requests them
+
    - Useful for reference material that may or may not be needed
    - Requires `description` field for the AI to determine relevance
+
    ```yaml
    ---
-   description: "Database Schema"
+   description: 'Database Schema'
    ---
    ```
 
@@ -103,7 +111,7 @@ Cursor offers four ways to activate rules:
 ```markdown
 ---
 description: React Component Standards
-globs: ["**/components/**/*.tsx"]
+globs: ['**/components/**/*.tsx']
 alwaysApply: false
 ---
 
@@ -129,20 +137,20 @@ flowchart TD
     A[project/] --> B[.cursor/rules/]
     A --> C[apps/]
     A --> D[packages/]
-    
+
     C --> E[api/]
     C --> F[web/]
     D --> G[utils/]
-    
+
     E --> E1[.cursor/rules/]
     F --> F1[.cursor/rules/]
     G --> G1[.cursor/rules/]
-    
+
     B --> B1[project-wide rules]
     E1 --> E2[api-specific rules]
     F1 --> F2[web-specific rules]
     G1 --> G2[utils-specific rules]
-    
+
     style A fill:#f9f,stroke:#333
     style B fill:#bbf,stroke:#333
     style E1 fill:#dfd,stroke:#333
@@ -160,6 +168,7 @@ Use `@filename` syntax to include external file content:
 @templates/component-template.tsx
 
 # Additional Guidelines
+
 - Always include PropTypes
 - Add JSDoc comments for all props
 ```
@@ -175,14 +184,14 @@ Cursor implements character limits to prevent context overload:
 
 Rules can contain various types of guidance:
 
-| Type | Purpose | Example |
-|------|---------|---------|
-| **Coding Style Guides** | Naming conventions, formatting rules | Style guides, naming patterns |
-| **Architecture Decisions** | Project structure, design patterns | Technology choices, patterns |
-| **Boilerplate Templates** | Common code structures | Component templates, file skeletons |
-| **Workflow Instructions** | Step-by-step procedures | Deployment processes, review steps |
-| **Testing Checklists** | Quality criteria | Test coverage requirements |
-| **Knowledge Base** | Domain concepts, framework help | API explanations, domain models |
+| Type                       | Purpose                              | Example                             |
+| -------------------------- | ------------------------------------ | ----------------------------------- |
+| **Coding Style Guides**    | Naming conventions, formatting rules | Style guides, naming patterns       |
+| **Architecture Decisions** | Project structure, design patterns   | Technology choices, patterns        |
+| **Boilerplate Templates**  | Common code structures               | Component templates, file skeletons |
+| **Workflow Instructions**  | Step-by-step procedures              | Deployment processes, review steps  |
+| **Testing Checklists**     | Quality criteria                     | Test coverage requirements          |
+| **Knowledge Base**         | Domain concepts, framework help      | API explanations, domain models     |
 
 ## Loading Process
 
@@ -252,13 +261,8 @@ Cursor provides a dedicated UI for managing rules:
 
 ## Version Information
 
-| Aspect | Details |
-|--------|---------|
-| Last-verified release | v0.50.0 (May 2025) |
-| Primary docs | Cursor documentation website |
-| Front-matter specification | Updated in v0.50 (May 2025) |
-
-## Mixdown Integration
-
-> [!NOTE]
-> 🚧 Pending Mixdown integration
+| Aspect                     | Details                      |
+| -------------------------- | ---------------------------- |
+| Last-verified release      | v0.50.0 (May 2025)           |
+| Primary docs               | Cursor documentation website |
+| Front-matter specification | Updated in v0.50 (May 2025)  |

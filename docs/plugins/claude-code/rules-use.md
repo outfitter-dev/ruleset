@@ -42,9 +42,11 @@ Claude Code's unique `@file` syntax allows importing content from other files:
 
 ```markdown
 # Project Guidelines
+
 See @docs/ARCHITECTURE.md for the system overview.
 
 # Coding Standards
+
 - Follow RESTful principles for API endpoints
 - Document all functions with JSDoc comments
 ```
@@ -80,16 +82,20 @@ CLAUDE.md files typically organize content with clear headings and sections:
 
 ```markdown
 # Project Overview
+
 Brief description of the project purpose and architecture.
 
 # Key Concepts
+
 - **Term 1**: Definition and explanation
 - **Term 2**: Definition and explanation
 
 # Coding Standards
+
 Guidelines for code style, patterns, and practices.
 
 # Testing Requirements
+
 Expectations for test coverage and methodology.
 ```
 
@@ -105,13 +111,8 @@ Expectations for test coverage and methodology.
 
 ## Version Information
 
-| Aspect | Details |
-|--------|---------|
-| Last-verified release | v1.5.0 (May 2025) |
-| Primary docs | Claude Code documentation website |
-| Memory specification | Updated in v1.5 (May 2025) |
-
-## Mixdown Integration
-
-> [!NOTE]
-> 🚧 Pending Mixdown integration
+| Aspect                | Details                           |
+| --------------------- | --------------------------------- |
+| Last-verified release | v1.5.0 (May 2025)                 |
+| Primary docs          | Claude Code documentation website |
+| Memory specification  | Updated in v1.5 (May 2025)        |

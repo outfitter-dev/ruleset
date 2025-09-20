@@ -1,7 +1,7 @@
 ---
 rulesets:
   version: "0.1.0"
-title: My First Mixdown Rule
+title: My First Ruleset
 description: A simple rule for testing v0.1.
 destinations:
   cursor:
@@ -13,4 +13,4 @@ destinations:
 ## Main content
 
 This is a paragraph of the rule. In v0.1, this content will be passed through as-is.
-`{{stems}}`, `{{$variables}}`, and `{{>imports}}` will be ignored by the v0.1 parser and compiler.
+`{{sections}}`, `{{$variables}}`, and `{{>imports}}` are preserved for future compiler versions.

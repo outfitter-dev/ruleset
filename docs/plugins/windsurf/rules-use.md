@@ -44,17 +44,17 @@ Windsurf uses a YAML-ish front-matter block to configure rules:
 ```markdown
 ---
 trigger: model_decision
-description: "Testing guidelines for all *.test.tsx files"
-globs: "**/*.test.ts?(x)"
+description: 'Testing guidelines for all *.test.tsx files'
+globs: '**/*.test.ts?(x)'
 ---
 ```
 
-| Field | Purpose | Example |
-|-------|---------|---------|
-| `trigger` | **Required** enum: `always_on`, `glob`, `model_decision`, `manual` | `trigger: model_decision` |
-| `description` | One-sentence summary (mandatory for `model_decision`) | `description: Guidelines for Flask apps` |
-| `globs` | Path patterns used when `trigger: glob` | `globs: "**/*.py"` |
-| `name` *(optional)* | Friendly label for UI listing | `name: API Standards` |
+| Field               | Purpose                                                            | Example                                  |
+| ------------------- | ------------------------------------------------------------------ | ---------------------------------------- |
+| `trigger`           | **Required** enum: `always_on`, `glob`, `model_decision`, `manual` | `trigger: model_decision`                |
+| `description`       | One-sentence summary (mandatory for `model_decision`)              | `description: Guidelines for Flask apps` |
+| `globs`             | Path patterns used when `trigger: glob`                            | `globs: "**/*.py"`                       |
+| `name` _(optional)_ | Friendly label for UI listing                                      | `name: API Standards`                    |
 
 **Note:** The `alwaysApply` field is deprecated and replaced by `trigger`. Old files still work but generate lint warnings.
 
@@ -63,15 +63,18 @@ globs: "**/*.test.ts?(x)"
 Windsurf's distinctive feature is its four activation modes (via the `trigger` field):
 
 1. **always_on**: Rules are included in every prompt
+
    - Best for critical project information, style guides, and core concepts
    - Use sparingly to avoid using up the context token limit
 
 2. **glob**: Rules are included when the edited/mentioned file matches glob patterns
+
    - Perfect for language-specific or framework-specific guidance
    - Requires `globs` field to specify file patterns
    - Example: `globs: "**/*.tsx"` for React components
 
 3. **model_decision**: The AI decides whether to include the rule based on relevance
+
    - Useful for reference material that may or may not be needed
    - Requires `description` field for the AI to determine relevance
    - Reduces prompt engineer work by delegating to the AI
@@ -86,8 +89,8 @@ Windsurf's distinctive feature is its four activation modes (via the `trigger` f
 ```markdown
 ---
 trigger: model_decision
-description: "Testing guidelines for all *.test.tsx files"
-globs: "**/*.test.ts?(x)"
+description: 'Testing guidelines for all *.test.tsx files'
+globs: '**/*.test.ts?(x)'
 ---
 
 # Unit-Test Standards
@@ -107,6 +110,7 @@ Use `@relative/path.ext` syntax to include external file content:
 @templates/component-template.tsx
 
 # Additional Guidelines
+
 - Always include PropTypes
 - Add JSDoc comments for all props
 ```
@@ -171,13 +175,8 @@ Windsurf provides a dedicated UI for managing rules:
 
 ## Version Information
 
-| Aspect | Details |
-|--------|---------|
-| Last-verified release | v1.9.0 (May 15, 2025) |
-| Primary docs & changelog | Windsurf changelog (May 2025) |
-| Front-matter specification | Updated in v1.9 (May 2025) |
-
-## Mixdown Integration
-
-> [!NOTE]
-> 🚧 Pending Mixdown integration
+| Aspect                     | Details                       |
+| -------------------------- | ----------------------------- |
+| Last-verified release      | v1.9.0 (May 15, 2025)         |
+| Primary docs & changelog   | Windsurf changelog (May 2025) |
+| Front-matter specification | Updated in v1.9 (May 2025)    |

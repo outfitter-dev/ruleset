@@ -1,6 +1,6 @@
 ---
-"@rulesets/core": minor
-"@rulesets/cli": minor
+'@rulesets/core': minor
+'@rulesets/cli': minor
 ---
 
 Initial v0.1.0 release of Rulesets - AI rules compiler
@@ -8,7 +8,8 @@ Initial v0.1.0 release of Rulesets - AI rules compiler
 ## Features
 
 - **Core Library** (`@rulesets/core`)
-  - Parser for Markdown with frontmatter
+
+  - Parser for Markdown with front matter
   - Compiler system with destination plugins
   - Support for Cursor, Windsurf, Claude Code, AGENTS.md, and GitHub Copilot
   - Linter for validating rules
