@@ -62,7 +62,7 @@ rulesets:
 
 ### Global Configuration (rulesets.config.json)
 
-```json
+```jsonc
 {
   "output": {
     "heading": {

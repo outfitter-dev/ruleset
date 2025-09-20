@@ -1,4 +1,7 @@
-````xml
+> [!NOTE]
+> Archived legacy template. Refer to `.agents/docs/notes/prompt-rules-use.md` for the maintained version.
+
+```xml
 <provider>PROVIDER-NAME</provider>
 <rules_guide_compiler>
   <role>
@@ -33,7 +36,7 @@
       <item>Organize information with consistent formatting throughout.</item>
       <item>Prioritize actionable details that users need to implement rules correctly.</item>
       <item>Keep the total documentation under 2,500 words for readability.</item>
-      <item>Add the "🚧 Pending Mixdown integration" note in the final section.</item>
+      <item>Add the "🚧 Pending Rulesets integration" note in the final section.</item>
     </directive>
     <directive number="5" title="Output format">
       <item>Return the completed documentation as plain Markdown.</item>
@@ -72,7 +75,7 @@
 <repo-root>/.[provider]/rules/*.md    # Project-specific rules
 <repo>/<subdirectory>/.[provider]/*.md # Nested module rules (if supported)
 (legacy) <repo>/.providerrules        # Single-file fallback (if applicable)
-````
+```
 
 Order of application: [describe precedence order and conflict resolution].
 
