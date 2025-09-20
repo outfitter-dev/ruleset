@@ -13,7 +13,7 @@ npm install -g @rulesets/cli@latest
 # Initialize in your project
 rulesets init
 
-# Write your rules in ./rules/
+# Write your rules in ./.ruleset/rules
 # Then compile them
 rulesets compile
 ```
@@ -60,20 +60,20 @@ rulesets init
 
 This creates:
 
-- `.ruleset/config.json` - Configuration file
-- `rules/` - Directory for your rule files
+- `.ruleset/config.toml` – Project configuration (JSON/JSONC/YAML also supported)
+- `.ruleset/rules/` – Directory for your rule files
 - Example rule file to get started
-
 
 ### Write Rules
 
-Create Markdown files in the `rules/` directory:
+Create Markdown files in `.ruleset/rules/`:
 
 ```markdown
+# .ruleset/rules/coding-standards.rule.md
 ---
 name: coding-standards
 destinations:
-  include: ["cursor", "windsurf", "claude-code"]
+  include: ['cursor', 'windsurf', 'claude-code']
 ---
 
 # Coding Standards
@@ -98,7 +98,7 @@ destinations:
 rulesets compile
 
 # Compile specific directory
-rulesets compile ./my-rules
+rulesets compile ./.ruleset/rules
 
 # Compile for specific destination
 rulesets compile -d cursor
@@ -118,15 +118,15 @@ rulesets list
 
 Rulesets compiles to these AI tool formats:
 
-| Tool | Output Location | Format |
-|------|----------------|--------|
-| Cursor | `.ruleset/dist/cursor/*.md` | Markdown |
-| Windsurf | `.ruleset/dist/windsurf/*.{md,xml}` | Markdown (or XML\*) |
-| Claude Code | `.ruleset/dist/claude-code/*.md` | Markdown |
-| AGENTS.md | `.ruleset/dist/agents-md/AGENTS.md` | Markdown |
-| GitHub Copilot | `.ruleset/dist/copilot/*.md` | Markdown |
+| Tool           | Output Location                     | Format            |
+| -------------- | ----------------------------------- | ----------------- |
+| Cursor         | `.ruleset/dist/cursor/*.md`        | Markdown          |
+| Windsurf       | `.ruleset/dist/windsurf/*.{md,xml}` | Markdown (or XML) |
+| Claude Code    | `.ruleset/dist/claude-code/*.md`   | Markdown          |
+| AGENTS.md      | `.ruleset/dist/agents-md/AGENTS.md` | Markdown          |
+| GitHub Copilot | `.ruleset/dist/copilot/*.md`       | Markdown          |
 
-\* Windsurf defaults to Markdown but can emit XML when `format: "xml"` is specified in destination config (for example, in `.ruleset/config.json`: `{ "destinations": { "windsurf": { "format": "xml" } } }`).
+Windsurf defaults to Markdown but can emit XML when `format: "xml"` is specified in destination config (for example, in `.ruleset/config.toml`: `destinations = { windsurf = { format = "xml" } }`).
 
 Note: `rulesets compile` writes to `.ruleset/dist/…`. Add these paths to `.gitignore` to avoid committing compiled artefacts. A future `rulesets sync` may copy outputs into tool‑specific locations.
 
@@ -150,80 +150,98 @@ Some destination providers opt into Handlebars-templated compilation when you se
 ```text
 your-project/
 ├── .ruleset/
-│   ├── config.json      # Rulesets configuration
+│   ├── config.toml      # Rulesets configuration (JSON / JSONC / YAML also supported)
+│   ├── rules/           # Source rule files
+│   │   ├── coding-standards.rule.md
+│   │   ├── git-workflow.rule.md
+│   │   └── project-conventions.rule.md
 │   └── dist/            # Compiled output
 │       ├── cursor/      # Cursor-specific rules
 │       ├── windsurf/    # Windsurf-specific rules
 │       ├── claude-code/ # Claude Code rules
 │       ├── agents-md/   # AGENTS.md rules
 │       └── copilot/     # GitHub Copilot rules
-├── rules/               # Source rule files
-│   ├── coding-standards.md
-│   ├── git-workflow.md
-│   └── project-conventions.md
 └── package.json
 ```
 
 ## Configuration
 
-`.ruleset/config.json`:
+`.ruleset/config.toml`:
 
-```json
-{
-  "version": "0.1.0",
-  "destinations": ["cursor", "windsurf", "claude-code", "agents-md", "copilot"],
-  "sources": ["./rules"],
-  "output": "./.ruleset/dist"
-}
+```toml
+version = "0.1.0"
+sources = ["./.ruleset/rules"]
+output = "./.ruleset/dist"
+destinations = ["cursor", "windsurf", "claude-code", "agents-md", "copilot"]
 ```
 
 Note: `version` refers to the Rulesets config schema, not your package.json version.
 
-Frontmatter example using the supported object form:
+When `rulesets.compiler` is set to `handlebars`, source files are rendered through the Handlebars engine, unlocking helper-based templates across providers.
+
+### Handlebars partial discovery
+
+When the Handlebars compiler is enabled, Rulesets automatically loads reusable partials before compiling each destination. Partials are discovered in the following order (later entries override earlier ones when names collide):
+
+1. **Global partials:** `${RULESETS_HOME:-~/.config/ruleset}/partials/**/*.hbs` (any file extension listed below works)
+2. **Project config partials:** `./.config/ruleset/partials/**/*`
+3. **Project partials:** `./.ruleset/partials/**/*`
+4. **Inline rule partials:** files inside `./.ruleset/rules/` whose filename starts with `@` (e.g. `@footer.rule.md`)
+
+Supported extensions include `.rule.md`, `.ruleset.md`, `.md`, `.mdc`, `.hbs`, `.handlebars`, and `.txt`. Partial names are derived from the relative path with extensions removed—for example, `partials/email/footer.hbs` registers as `partials/email/footer`. Inline rule partials have their leading `@` stripped (so `@layout.rule.md` becomes `layout`).
+
+This shared discovery mechanism replaces section-level imports; prefer extracting shared content into partials instead of pulling sections from other rules.
+
+Global configuration lives under the XDG base directory by default (for example `~/.config/ruleset/`), with platform specific fallbacks on macOS (`~/Library/Application Support/ruleset`) and Windows (`%APPDATA%\ruleset`).
+
+front matter example using the supported object form:
 
 ```yaml
 ---
 rulesets:
-  version: "0.1.0"
+  version: '0.1.0'
+  compiler: handlebars
 destinations:
-  include: ["cursor", "windsurf", "agents-md"]
+  include: ['cursor', 'windsurf', 'agents-md']
 ---
 ```
 
 ### Known Limitations
 
-- **Array Form for Destinations (frontmatter only)**: In v0.1.0, the simple array form is not supported in per-file frontmatter. Use the object form with `include`/`exclude` (see the "Write Rules" example above). The array form is supported in `.ruleset/config.json` (see Configuration).
-  - Incorrect frontmatter:
+- **Array Form for Destinations (front matter only)**: In v0.1.0, the simple array form is not supported in per-file front matter. Use the object form with `include`/`exclude` (see the "Write Rules" example above). The array form is supported in project configuration (TOML/JSON/JSONC/YAML) such as `.ruleset/config.toml`.
+
+  - Incorrect front matter:
 
     ```yaml
     ---
-    destinations: ["cursor", "windsurf"]
+    destinations: ['cursor', 'windsurf']
     ---
     ```
 
-  - Correct frontmatter:
+  - Correct front matter:
 
     ```yaml
     ---
     destinations:
-      include: ["cursor", "windsurf"]
+      include: ['cursor', 'windsurf']
     ---
     ```
+
 - **Resource Limits**: Files exceeding the following limits will be skipped:
   - Maximum pack file size: 10MB
   - Maximum ruleset file size: 5MB
-  - Maximum nesting depth in frontmatter: 10 levels
+  - Maximum nesting depth in front matter: 10 levels
 
 ## CLI Commands
 
-| Command | Description |
-|---------|-------------|
-| `rulesets init` | Initialize Rulesets in current project |
-| `rulesets compile [source]` | Compile source rules to destinations |
-| Flags (compile) | `-d, --destination <name>` filter destinations; `-w, --watch` watch for changes |
-| `rulesets list` | List discovered (local) rulesets |
-| `rulesets install <package>` | Install a ruleset package (placeholder) |
-| `rulesets sync` | Sync installed rulesets (placeholder) |
+| Command                      | Description                                                                     |
+| ---------------------------- | ------------------------------------------------------------------------------- |
+| `rulesets init`              | Initialize Rulesets in current project                                          |
+| `rulesets compile [source]`  | Compile source rules to destinations                                            |
+| Flags (compile)              | `-d, --destination <name>` filter destinations; `-w, --watch` watch for changes |
+| `rulesets list`              | List discovered (local) rulesets                                                |
+| `rulesets install <package>` | Install a ruleset package (placeholder)                                         |
+| `rulesets sync`              | Sync installed rulesets (placeholder)                                           |
 
 ## Development
 

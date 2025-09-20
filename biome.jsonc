@@ -3,7 +3,6 @@
   "extends": ["ultracite"],
   "overrides": [
     {
-      // Permit barrel entry points for package surfaces (mixd-v0)
       "includes": [
         "packages/core/src/index.ts",
         "packages/core/src/interfaces/index.ts"
