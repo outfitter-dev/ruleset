@@ -1,9 +1,10 @@
 import { promises as fs } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 
-// TLDR: Security helpers and validators (mixd-v0)
-const MAX_PACKAGE_NAME_LENGTH = 214; // mixd-v0
-const DANGEROUS_CHARS_RE = /[;&|`$<>\\]/; // mixd-perf: precompiled once at module scope
+/** Maximum safe length for package names (mirrors npm constraints). */
+const MAX_PACKAGE_NAME_LENGTH = 214;
+/** Characters that may lead to shell injection if allowed in package names. */
+const DANGEROUS_CHARS_RE = /[;&|`$<>\\]/;
 const VALID_PATTERNS = [
   /^@[a-z0-9-~][a-z0-9-._~]*\/[a-z0-9-~][a-z0-9-._~]*$/, // Scoped npm (lowercase only)
   /^[a-z0-9-~][a-z0-9-._~]*$/, // Unscoped npm (lowercase only)

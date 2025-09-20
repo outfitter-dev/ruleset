@@ -46,32 +46,35 @@ project/
 
 ```markdown
 ---
-description: "Example rule description"
-globs: ["**/*.{js,ts}"]
-activation: "always_on"
+description: 'Example rule description'
+globs: ['**/*.{js,ts}']
+activation: 'always_on'
 ---
+
 # Rule Title
 
 - Rule content here
 ```
 
-| Field | Purpose | Example |
-|-------|---------|---------|
-| `activation` | How the rule is activated | `activation: "always_on"` |
-| `description` | Summary of the rule's purpose | `description: "Database Schema"` |
-| `globs` | Path patterns for automatic activation | `globs: ["**/*.py", "**/*.ipynb"]` |
-| [other fields] | [their purpose] | [example value] |
+| Field          | Purpose                                | Example                            |
+| -------------- | -------------------------------------- | ---------------------------------- |
+| `activation`   | How the rule is activated              | `activation: "always_on"`          |
+| `description`  | Summary of the rule's purpose          | `description: "Database Schema"`   |
+| `globs`        | Path patterns for automatic activation | `globs: ["**/*.py", "**/*.ipynb"]` |
+| [other fields] | [their purpose]                        | [example value]                    |
 
 ## Activation Modes
 
 [Provider Name] offers [number] ways to activate rules:
 
 1. **[Mode 1]**: [Description of activation mode]
+
    - [When to use this mode]
    - [Requirements for this mode]
+
    ```yaml
    ---
-   activation: "mode1"
+   activation: 'mode1'
    ---
    ```
 
@@ -80,7 +83,7 @@ activation: "always_on"
    - [Requirements for this mode]
    ```yaml
    ---
-   activation: "mode2"
+   activation: 'mode2'
    ---
    ```
 
@@ -88,9 +91,9 @@ activation: "always_on"
 
 ```markdown
 ---
-description: "Example rule file"
-globs: ["**/*.{js,ts}"]
-activation: "always_on"
+description: 'Example rule file'
+globs: ['**/*.{js,ts}']
+activation: 'always_on'
 ---
 
 # [Category] Standards
@@ -115,6 +118,7 @@ activation: "always_on"
 @[path/to/file.ext]
 
 # Additional Guidelines
+
 - [Guideline 1]
 - [Guideline 2]
 ```
@@ -131,14 +135,14 @@ activation: "always_on"
 
 Rules can contain various types of guidance:
 
-| Type | Purpose | Example |
-|------|---------|---------|
-| **Coding Style Guides** | Naming conventions, formatting rules | Style guides, naming patterns |
-| **Architecture Decisions** | Project structure, design patterns | Technology choices, patterns |
-| **Boilerplate Templates** | Common code structures | Component templates, file skeletons |
-| **Workflow Instructions** | Step-by-step procedures | Deployment processes, review steps |
-| **Testing Checklists** | Quality criteria | Test coverage requirements |
-| **Knowledge Base** | Domain concepts, framework help | API explanations, domain models |
+| Type                       | Purpose                              | Example                             |
+| -------------------------- | ------------------------------------ | ----------------------------------- |
+| **Coding Style Guides**    | Naming conventions, formatting rules | Style guides, naming patterns       |
+| **Architecture Decisions** | Project structure, design patterns   | Technology choices, patterns        |
+| **Boilerplate Templates**  | Common code structures               | Component templates, file skeletons |
+| **Workflow Instructions**  | Step-by-step procedures              | Deployment processes, review steps  |
+| **Testing Checklists**     | Quality criteria                     | Test coverage requirements          |
+| **Knowledge Base**         | Domain concepts, framework help      | API explanations, domain models     |
 
 ## Loading Process
 
@@ -191,13 +195,8 @@ flowchart TD
 
 ## Version Information
 
-| Aspect | Details |
-|--------|---------|
-| Last-verified release | vX.Y.Z (Month YYYY) |
-| Primary docs | [Provider Name] documentation website |
-| Front-matter specification | Updated in vX.Y (Month YYYY) |
-
-## Mixdown Integration
-
-> [!NOTE]
-> 🚧 Pending Mixdown integration
+| Aspect                     | Details                               |
+| -------------------------- | ------------------------------------- |
+| Last-verified release      | vX.Y.Z (Month YYYY)                   |
+| Primary docs               | [Provider Name] documentation website |
+| Front-matter specification | Updated in vX.Y (Month YYYY)          |
