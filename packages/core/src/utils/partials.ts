@@ -13,7 +13,13 @@ const KNOWN_EXTENSIONS = [
   '.txt',
 ];
 
-async function pathExists(candidate: string): Promise<boolean> {
+// Maximum depth for recursive directory walking to prevent performance issues
+const MAX_WALK_DEPTH = 10;
+
+// Maximum number of files to process per directory to prevent memory issues
+const MAX_FILES_PER_DIR = 1000;
+
+async function directoryExists(candidate: string): Promise<boolean> {
   try {
     const stats = await fs.stat(candidate);
     return stats.isDirectory();
@@ -71,6 +77,16 @@ function normalisePartialName(relativePath: string, stripAtPrefix: boolean): str
   return segments.join('/').replace(/^\/+/, '');
 }
 
+/**
+ * Validates that a resolved path stays within the expected base directory.
+ * Prevents directory traversal attacks.
+ */
+function isPathSafe(resolvedPath: string, baseDir: string): boolean {
+  const normalizedBase = path.resolve(baseDir);
+  const normalizedPath = path.resolve(resolvedPath);
+  return normalizedPath.startsWith(normalizedBase);
+}
+
 async function collectPartialsFromDir(opts: {
   baseDir: string;
   targetMap: Map<string, string>;
@@ -80,37 +96,88 @@ async function collectPartialsFromDir(opts: {
 }): Promise<void> {
   const { baseDir, targetMap, logger, requireAtPrefix = false, label } = opts;
 
-  async function walk(currentDir: string): Promise<void> {
+  // Resolve base directory once for security checks
+  const resolvedBase = path.resolve(baseDir);
+  let fileCount = 0;
+
+  async function walk(currentDir: string, depth = 0): Promise<void> {
+    // Prevent excessive recursion
+    if (depth > MAX_WALK_DEPTH) {
+      logger.warn('Maximum directory depth exceeded', {
+        dir: currentDir,
+        maxDepth: MAX_WALK_DEPTH,
+        source: label,
+      });
+      return;
+    }
+
+    // Validate that we're still within the base directory
+    if (!isPathSafe(currentDir, resolvedBase)) {
+      logger.warn('Attempted directory traversal detected', {
+        dir: currentDir,
+        baseDir: resolvedBase,
+        source: label,
+      });
+      return;
+    }
+
     const entries = await fs.readdir(currentDir, { withFileTypes: true });
+
     for (const entry of entries) {
-      if (entry.name.startsWith('.git')) {
+      // Skip git directories and hidden files
+      if (entry.name.startsWith('.git') || entry.name.startsWith('.')) {
         continue;
       }
+
       const fullPath = path.join(currentDir, entry.name);
-      if (entry.isDirectory()) {
-        await walk(fullPath);
+
+      // Security check: ensure resolved path stays within base directory
+      const resolvedPath = path.resolve(fullPath);
+      if (!isPathSafe(resolvedPath, resolvedBase)) {
+        logger.warn('Skipping file outside base directory', {
+          path: fullPath,
+          baseDir: resolvedBase,
+          source: label,
+        });
         continue;
       }
+
+      if (entry.isDirectory()) {
+        await walk(fullPath, depth + 1);
+        continue;
+      }
+
       if (!entry.isFile()) {
         continue;
+      }
+
+      // Limit total files processed
+      if (fileCount >= MAX_FILES_PER_DIR) {
+        logger.warn('Maximum file count exceeded', {
+          dir: currentDir,
+          maxFiles: MAX_FILES_PER_DIR,
+          source: label,
+        });
+        return;
       }
 
       if (requireAtPrefix && !entry.name.startsWith('@')) {
         continue;
       }
 
-      const relativePath = path.relative(baseDir, fullPath);
+      const relativePath = path.relative(resolvedBase, resolvedPath);
       const partialName = normalisePartialName(relativePath, requireAtPrefix);
       if (!partialName) {
         continue;
       }
 
       try {
-        const content = await fs.readFile(fullPath, 'utf8');
+        const content = await fs.readFile(resolvedPath, 'utf8');
         targetMap.set(partialName, content);
+        fileCount++;
       } catch (error) {
         logger.warn('Failed to load Handlebars partial', {
-          path: fullPath,
+          path: resolvedPath,
           source: label,
           error,
         });
@@ -118,7 +185,7 @@ async function collectPartialsFromDir(opts: {
     }
   }
 
-  await walk(baseDir);
+  await walk(resolvedBase);
 }
 
 export async function loadHandlebarsPartials(opts: {
@@ -138,13 +205,13 @@ export async function loadHandlebarsPartials(opts: {
       const projectPartialsDir = path.join(projectRoot, '.ruleset', 'partials');
       const configPartialsDir = path.join(projectRoot, '.config', 'ruleset', 'partials');
 
-      if (await pathExists(configPartialsDir)) {
+      if (await directoryExists(configPartialsDir)) {
         searchQueue.push({ dir: configPartialsDir, label: 'project-config' });
       }
-      if (await pathExists(projectPartialsDir)) {
+      if (await directoryExists(projectPartialsDir)) {
         searchQueue.push({ dir: projectPartialsDir, label: 'project-partials' });
       }
-      if (await pathExists(rulesDir)) {
+      if (await directoryExists(rulesDir)) {
         searchQueue.push({ dir: rulesDir, requireAt: true, label: 'ruleset-rules' });
       }
     }
@@ -152,26 +219,39 @@ export async function loadHandlebarsPartials(opts: {
 
   const globalDir = GlobalConfig.getInstance().getGlobalDirectory();
   const globalPartialsDir = path.join(globalDir, 'partials');
-  if (await pathExists(globalPartialsDir)) {
+  if (await directoryExists(globalPartialsDir)) {
     searchQueue.unshift({ dir: globalPartialsDir, label: 'global-partials' });
   }
 
-  for (const entry of searchQueue) {
-    try {
-      await collectPartialsFromDir({
-        baseDir: entry.dir,
-        targetMap: partials,
-        logger,
-        requireAtPrefix: entry.requireAt ?? false,
-        label: entry.label,
-      });
-    } catch (error) {
-      logger.warn('Failed to process Handlebars partial directory', {
-        path: entry.dir,
-        source: entry.label,
-        error,
-      });
-    }
+  // Use Promise.allSettled to prevent one failing directory from blocking others
+  const results = await Promise.allSettled(
+    searchQueue.map(async (entry) => {
+      try {
+        await collectPartialsFromDir({
+          baseDir: entry.dir,
+          targetMap: partials,
+          logger,
+          requireAtPrefix: entry.requireAt ?? false,
+          label: entry.label,
+        });
+      } catch (error) {
+        // Log but don't throw - error isolation
+        logger.warn('Failed to process Handlebars partial directory', {
+          path: entry.dir,
+          source: entry.label,
+          error,
+        });
+      }
+    })
+  );
+
+  // Log summary of failed directories if any
+  const failures = results.filter(r => r.status === 'rejected');
+  if (failures.length > 0) {
+    logger.warn('Some partial directories could not be processed', {
+      failureCount: failures.length,
+      totalDirectories: searchQueue.length,
+    });
   }
 
   return Object.fromEntries(partials);
