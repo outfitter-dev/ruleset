@@ -21,12 +21,12 @@
   "license": "MIT",
   "packageManager": "bun@1.2.21",
   "engines": {
-    "node": ">=18.0.0"
+    "bun": ">=1.1"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.2",
     "@changesets/cli": "^2.29.6",
-    "@types/node": "^24.3.0",
+    "@types/bun": "latest",
     "markdownlint-cli": "^0.45.0",
     "typescript": "^5.9.2",
     "ultracite": "5.2.17"

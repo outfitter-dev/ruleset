@@ -2,16 +2,16 @@ import { defineConfig } from 'tsup';
 
 export default defineConfig({
   entry: ['src/index.ts'],
-  format: ['esm', 'cjs'],
+  format: ['esm'],
   dts: false, // Will generate separately due to tsconfig issues
   sourcemap: true,
   clean: true,
   splitting: false,
-  shims: true,
-  external: ['js-yaml', '@iarna/toml', 'semver'], // Only direct dependencies that consumers must install
-  outExtension({ format }) {
+  shims: false, // No Node shims needed for Bun
+  external: ['js-yaml', '@iarna/toml', 'semver', 'handlebars'], // Only direct dependencies that consumers must install
+  outExtension() {
     return {
-      js: format === 'esm' ? '.mjs' : '.cjs',
+      js: '.js',
     };
   },
 });
