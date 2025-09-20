@@ -1,60 +1,100 @@
-import type { ParsedDoc } from '../interfaces';
+import type { HelperDelegate } from 'handlebars';
+import type {
+  DestinationCompilationOptions,
+  Logger,
+  ParsedDoc,
+} from '../interfaces';
 
-/**
- * Read destination-specific configuration from parsed document frontmatter
- */
+export type UnknownRecord = Record<string, unknown>;
+
+export function isPlainObject(value: unknown): value is UnknownRecord {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
 export function readDestinationConfig(
   parsed: ParsedDoc,
   destinationId: string
-): Record<string, unknown> {
+): UnknownRecord | undefined {
   const frontmatter = parsed.source.frontmatter;
-  if (!frontmatter) {
-    return {};
-  }
-
-  // Check for destination-specific config
-  const destinationConfig = frontmatter[destinationId];
-  if (destinationConfig && typeof destinationConfig === 'object' && !Array.isArray(destinationConfig)) {
-    return destinationConfig as Record<string, unknown>;
-  }
-
-  return {};
-}
-
-/**
- * Build Handlebars compilation options from destination config
- */
-export function buildHandlebarsOptions({
-  destinationId,
-  destinationConfig,
-  logger: _logger,
-}: {
-  destinationId: string;
-  destinationConfig: Record<string, unknown>;
-  logger: unknown;
-}): Record<string, unknown> | undefined {
-  // Check if Handlebars is enabled for this destination
-  const handlebarsConfig = destinationConfig.handlebars;
-  if (!handlebarsConfig) {
+  if (!isPlainObject(frontmatter)) {
     return undefined;
   }
 
-  if (typeof handlebarsConfig === 'boolean' && handlebarsConfig) {
-    // Simple boolean flag - enable Handlebars with defaults
-    return {
-      forceHandlebars: true,
-    };
+  const destinations = frontmatter.destinations;
+  if (!isPlainObject(destinations)) {
+    return undefined;
   }
 
-  if (typeof handlebarsConfig === 'object' && !Array.isArray(handlebarsConfig)) {
-    // Detailed configuration
-    const config = handlebarsConfig as Record<string, unknown>;
-    return {
-      forceHandlebars: config.enabled !== false,
-      helpers: config.helpers,
-      partials: config.partials,
-    };
+  const config = destinations[destinationId];
+  if (!isPlainObject(config)) {
+    return undefined;
   }
 
-  return undefined;
+  return config;
+}
+
+export function buildHandlebarsOptions(opts: {
+  destinationId: string;
+  destinationConfig?: UnknownRecord;
+  logger: Logger;
+  helpers?: Record<string, HelperDelegate>;
+  additionalPartials?: Record<string, string>;
+}): DestinationCompilationOptions | undefined {
+  const { destinationId, destinationConfig, helpers, additionalPartials, logger } = opts;
+
+  const handlebarsConfig = isPlainObject(destinationConfig?.handlebars)
+    ? (destinationConfig?.handlebars as UnknownRecord)
+    : undefined;
+
+  const partials = new Map<string, string>();
+  if (additionalPartials) {
+    for (const [name, template] of Object.entries(additionalPartials)) {
+      if (typeof template === 'string' && template.trim().length > 0) {
+        partials.set(name, template);
+      }
+    }
+  }
+
+  if (isPlainObject(handlebarsConfig?.partials)) {
+    for (const [name, template] of Object.entries(
+      handlebarsConfig.partials as UnknownRecord
+    )) {
+      if (typeof template === 'string' && template.trim().length > 0) {
+        partials.set(name, template);
+      } else if (template !== undefined) {
+        logger.warn('Ignoring non-string Handlebars partial', {
+          destination: destinationId,
+          partial: name,
+        });
+      }
+    }
+  }
+
+  const force = handlebarsConfig?.force === true;
+  const projectConfigOverrides = isPlainObject(
+    handlebarsConfig?.projectConfigOverrides
+  )
+    ? (handlebarsConfig?.projectConfigOverrides as UnknownRecord)
+    : undefined;
+
+  const helperEntries = helpers && Object.keys(helpers).length > 0 ? helpers : undefined;
+  const partialsObject = partials.size > 0 ? Object.fromEntries(partials) : undefined;
+
+  const hasHandlebarsOptions = force || helperEntries || partialsObject;
+  const hasOverrides = Boolean(projectConfigOverrides);
+
+  if (!hasHandlebarsOptions && !hasOverrides) {
+    return undefined;
+  }
+
+  return {
+    handlebars: hasHandlebarsOptions
+      ? {
+          force: force || undefined,
+          helpers: helperEntries,
+          partials: partialsObject,
+        }
+      : undefined,
+    projectConfigOverrides,
+  };
 }
