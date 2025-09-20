@@ -1,4 +1,31 @@
+import type { HelperDelegate } from 'handlebars';
+import { HandlebarsRulesetCompiler } from './handlebars-compiler';
 import type { CompiledDoc, ParsedDoc } from '../interfaces';
+import type { Logger } from '../interfaces/logger';
+
+export { HandlebarsRulesetCompiler } from './handlebars-compiler';
+
+const handlebarsCompiler = new HandlebarsRulesetCompiler();
+
+function prefersHandlebars(
+  frontmatter: Record<string, unknown> | undefined,
+  projectConfig: Record<string, unknown>
+): boolean {
+  const rulesets = frontmatter?.rulesets as Record<string, unknown> | undefined;
+  const frontmatterPref = typeof rulesets?.compiler === 'string' ? rulesets.compiler : undefined;
+  const projectPref = typeof projectConfig?.compiler === 'string' ? projectConfig.compiler : undefined;
+  return frontmatterPref === 'handlebars' || projectPref === 'handlebars';
+}
+
+export interface CompileOptions {
+  projectConfig?: Record<string, unknown>;
+  logger?: Logger;
+  handlebars?: {
+    force?: boolean;
+    helpers?: Record<string, HelperDelegate>;
+    partials?: Record<string, string>;
+  };
+}
 
 /**
  * Creates a minimal compiled document for empty files.
@@ -146,19 +173,36 @@ function createCompilationContext(
 export function compile(
   parsedDoc: ParsedDoc,
   destinationId: string,
-  projectConfig: Record<string, unknown> = {}
+  projectConfig: Record<string, unknown> = {},
+  options: CompileOptions = {}
 ): CompiledDoc {
   const { source, ast } = parsedDoc;
+  const { logger, handlebars } = options;
+  const effectiveProjectConfig = options.projectConfig ?? projectConfig;
 
   // Handle empty files consistently
   if (!source.content.trim()) {
-    return createEmptyCompiledDoc(source, destinationId, projectConfig);
+    return createEmptyCompiledDoc(source, destinationId, effectiveProjectConfig);
   }
 
   // Extract the body content (everything after frontmatter)
   const bodyContent = extractBodyContent(source.content, !!source.frontmatter);
 
   // Build the compiled document
+  const shouldUseHandlebars =
+    prefersHandlebars(source.frontmatter, effectiveProjectConfig) ||
+    Boolean(handlebars?.force);
+
+  if (shouldUseHandlebars) {
+    const compiled = handlebarsCompiler.compile(parsedDoc, destinationId, {
+      logger,
+      projectConfig: effectiveProjectConfig,
+      helpers: handlebars?.helpers,
+      partials: handlebars?.partials,
+    });
+    return compiled;
+  }
+
   const compiledDoc: CompiledDoc = {
     source: {
       path: source.path,
@@ -177,10 +221,16 @@ export function compile(
     },
     context: createCompilationContext(
       destinationId,
-      projectConfig,
+      effectiveProjectConfig,
       source.frontmatter
     ),
   };
 
+  logger?.debug?.(
+    `Compiled ${source.path ?? 'inline document'} for ${destinationId}`,
+    { destination: destinationId, file: source.path }
+  );
+
+  
   return compiledDoc;
 }
