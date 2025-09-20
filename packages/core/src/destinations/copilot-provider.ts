@@ -2,16 +2,18 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type {
   CompiledDoc,
-  DestinationPlugin,
+  DestinationProvider,
   JSONSchema7,
   Logger,
+  ParsedDoc,
 } from '../interfaces';
+import { buildHandlebarsOptions, readDestinationConfig } from './utils';
 
 type CopilotConfig = {
   outputPath?: string;
 };
 
-export class CopilotPlugin implements DestinationPlugin {
+export class CopilotProvider implements DestinationProvider {
   get name(): string {
     return 'copilot';
   }
@@ -27,6 +29,23 @@ export class CopilotPlugin implements DestinationPlugin {
       },
       additionalProperties: false,
     };
+  }
+
+  async prepareCompilation({
+    parsed,
+    projectConfig: _projectConfig,
+    logger,
+  }: {
+    parsed: ParsedDoc;
+    projectConfig: Record<string, unknown>;
+    logger: Logger;
+  }) {
+    const destinationConfig = readDestinationConfig(parsed, 'copilot');
+    return buildHandlebarsOptions({
+      destinationId: 'copilot',
+      destinationConfig,
+      logger,
+    });
   }
 
   private async pathLooksLikeDirectory(candidate: string): Promise<boolean> {
@@ -102,7 +121,7 @@ export class CopilotPlugin implements DestinationPlugin {
     logger.info('Writing copilot rules', {
       outputPath,
       destinationId: compiled.context.destinationId,
-      plugin: 'copilot',
+      provider: 'copilot',
     });
 
     try {
@@ -111,11 +130,11 @@ export class CopilotPlugin implements DestinationPlugin {
       logger.debug('Copilot write complete', {
         destinationId: compiled.context.destinationId,
         outputPath,
-        plugin: 'copilot',
+        provider: 'copilot',
       });
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      logger.error(err, { plugin: 'copilot', op: 'write', path: outputPath });
+      logger.error(err, { provider: 'copilot', op: 'write', path: outputPath });
       throw err;
     }
   }

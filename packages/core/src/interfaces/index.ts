@@ -1,3 +1,3 @@
 export * from './compiled-doc';
-export * from './destination-plugin';
+export * from './destination-provider';
 export * from './logger';

@@ -2,12 +2,14 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type {
   CompiledDoc,
-  DestinationPlugin,
+  DestinationProvider,
   JSONSchema7,
   Logger,
+  ParsedDoc,
 } from '../interfaces';
+import { buildHandlebarsOptions, readDestinationConfig } from './utils';
 
-export class CursorPlugin implements DestinationPlugin {
+export class CursorProvider implements DestinationProvider {
   get name(): string {
     return 'cursor';
   }
@@ -28,6 +30,23 @@ export class CursorPlugin implements DestinationPlugin {
       },
       additionalProperties: true,
     };
+  }
+
+  async prepareCompilation({
+    parsed,
+    projectConfig: _projectConfig,
+    logger,
+  }: {
+    parsed: ParsedDoc;
+    projectConfig: Record<string, unknown>;
+    logger: Logger;
+  }) {
+    const destinationConfig = readDestinationConfig(parsed, 'cursor');
+    return buildHandlebarsOptions({
+      destinationId: 'cursor',
+      destinationConfig,
+      logger,
+    });
   }
 
   // TODO: Add Cursor-specific formatting and transformations

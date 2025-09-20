@@ -2,13 +2,18 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type {
   CompiledDoc,
-  DestinationPlugin,
+  DestinationProvider,
   JSONSchema7,
   Logger,
+  ParsedDoc,
 } from '../interfaces';
+import { buildHandlebarsOptions, readDestinationConfig } from './utils';
 
-// TLDR: Writes compiled content to a Claude Code-compatible markdown file (mixd-v0)
-export class ClaudeCodePlugin implements DestinationPlugin {
+/**
+ * Destination provider that renders compiled rules for Claude Code. The
+ * implementation simply writes Markdown content to the configured output path.
+ */
+export class ClaudeCodeProvider implements DestinationProvider {
   get name(): string {
     return 'claude-code';
   }
@@ -24,6 +29,23 @@ export class ClaudeCodePlugin implements DestinationPlugin {
       },
       additionalProperties: true,
     };
+  }
+
+  async prepareCompilation({
+    parsed,
+    projectConfig: _projectConfig,
+    logger,
+  }: {
+    parsed: ParsedDoc;
+    projectConfig: Record<string, unknown>;
+    logger: Logger;
+  }) {
+    const destinationConfig = readDestinationConfig(parsed, 'claude-code');
+    return buildHandlebarsOptions({
+      destinationId: 'claude-code',
+      destinationConfig,
+      logger,
+    });
   }
 
   async write(ctx: {

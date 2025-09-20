@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'bun:test';
 import type { CompiledDoc, Logger } from '../../interfaces';
-import { CopilotPlugin } from '../copilot-plugin';
+import { CopilotProvider } from '../copilot-provider';
 
 const DESTINATION_ID = 'copilot';
 const OUTPUT_CONTENT = 'compiled content';
@@ -23,8 +23,8 @@ const makeCompiled = (
   context: { destinationId: DESTINATION_ID, config: {} },
 });
 
-describe('CopilotPlugin', () => {
-  const plugin = new CopilotPlugin();
+describe('CopilotProvider', () => {
+  const provider = new CopilotProvider();
   let mkdirSpy: ReturnType<typeof vi.spyOn>;
   let writeFileSpy: ReturnType<typeof vi.spyOn>;
   let statSpy: ReturnType<typeof vi.spyOn>;
@@ -47,8 +47,8 @@ describe('CopilotPlugin', () => {
   });
 
   it('writes directly to destination when destPath includes filename', async () => {
-    const destPath = path.join('.rulesets', 'dist', 'copilot.md');
-    await plugin.write({
+    const destPath = path.join('.ruleset', 'dist', 'copilot.md');
+    await provider.write({
       compiled: makeCompiled(),
       destPath,
       config: {},
@@ -68,7 +68,7 @@ describe('CopilotPlugin', () => {
     expect(logger.info).toHaveBeenCalledWith(
       'Writing copilot rules',
       expect.objectContaining({
-        plugin: 'copilot',
+        provider: 'copilot',
         destinationId: DESTINATION_ID,
         outputPath: expectedPath,
       })
@@ -76,7 +76,7 @@ describe('CopilotPlugin', () => {
     expect(logger.debug).toHaveBeenCalledWith(
       'Copilot write complete',
       expect.objectContaining({
-        plugin: 'copilot',
+        provider: 'copilot',
         destinationId: DESTINATION_ID,
         outputPath: expectedPath,
       })
@@ -84,8 +84,8 @@ describe('CopilotPlugin', () => {
   });
 
   it('appends fallback filename when destPath points to a directory', async () => {
-    const destPath = path.join('.rulesets', 'dist', 'copilot');
-    await plugin.write({
+    const destPath = path.join('.ruleset', 'dist', 'copilot');
+    await provider.write({
       compiled: makeCompiled(),
       destPath,
       config: {},
@@ -101,8 +101,8 @@ describe('CopilotPlugin', () => {
   });
 
   it('treats destPath with trailing separator as a directory', async () => {
-    const destPath = path.join('.rulesets', 'dist', 'copilot') + path.sep;
-    await plugin.write({
+    const destPath = path.join('.ruleset', 'dist', 'copilot') + path.sep;
+    await provider.write({
       compiled: makeCompiled(),
       destPath,
       config: {},
@@ -125,8 +125,8 @@ describe('CopilotPlugin', () => {
       return Promise.reject(createEnoent());
     });
 
-    const destPath = path.join('.rulesets', 'dist', 'copilot-output');
-    await plugin.write({
+    const destPath = path.join('.ruleset', 'dist', 'copilot-output');
+    await provider.write({
       compiled: makeCompiled(),
       destPath,
       config: { outputPath: path.join('custom-dir') },
@@ -142,8 +142,8 @@ describe('CopilotPlugin', () => {
   });
 
   it('honours outputPath that ends with a path separator', async () => {
-    const destPath = path.join('.rulesets', 'dist', 'copilot-output');
-    await plugin.write({
+    const destPath = path.join('.ruleset', 'dist', 'copilot-output');
+    await provider.write({
       compiled: makeCompiled(),
       destPath,
       config: { outputPath: 'custom-dir/' },
@@ -159,8 +159,8 @@ describe('CopilotPlugin', () => {
   });
 
   it('trims whitespace in outputPath before resolving', async () => {
-    const destPath = path.join('.rulesets', 'dist', 'copilot-output');
-    await plugin.write({
+    const destPath = path.join('.ruleset', 'dist', 'copilot-output');
+    await provider.write({
       compiled: makeCompiled(),
       destPath,
       config: { outputPath: '  custom-dir/  ' },
@@ -176,9 +176,9 @@ describe('CopilotPlugin', () => {
   });
 
   it('treats file-like outputPath overrides as files', async () => {
-    const destPath = path.join('.rulesets', 'dist', 'copilot-output');
+    const destPath = path.join('.ruleset', 'dist', 'copilot-output');
     const outputPath = path.join('custom-dir', 'copilot.md');
-    await plugin.write({
+    await provider.write({
       compiled: makeCompiled(),
       destPath,
       config: { outputPath },
@@ -194,8 +194,8 @@ describe('CopilotPlugin', () => {
   });
 
   it('uses "<basename>.md" when source has no extension', async () => {
-    const destPath = path.join('.rulesets', 'dist', 'copilot');
-    await plugin.write({
+    const destPath = path.join('.ruleset', 'dist', 'copilot');
+    await provider.write({
       compiled: makeCompiled(path.join('rules', 'instructions')),
       destPath,
       config: {},
@@ -211,8 +211,8 @@ describe('CopilotPlugin', () => {
   });
 
   it('uses "instructions.md" when source path is absent', async () => {
-    const destPath = path.join('.rulesets', 'dist', 'copilot');
-    await plugin.write({
+    const destPath = path.join('.ruleset', 'dist', 'copilot');
+    await provider.write({
       compiled: makeCompiled(null),
       destPath,
       config: {},
@@ -228,19 +228,19 @@ describe('CopilotPlugin', () => {
   });
 
   it('propagates write errors and logs structured metadata', async () => {
-    const destPath = path.join('.rulesets', 'dist', 'copilot.md');
+    const destPath = path.join('.ruleset', 'dist', 'copilot.md');
     const error = new Error('boom');
     writeFileSpy.mockRejectedValueOnce(error);
 
     await expect(
-      plugin.write({ compiled: makeCompiled(), destPath, config: {}, logger })
+      provider.write({ compiled: makeCompiled(), destPath, config: {}, logger })
     ).rejects.toThrow('boom');
 
     const expectedPath = path.resolve(destPath);
     expect(logger.error).toHaveBeenCalledWith(
       error,
       expect.objectContaining({
-        plugin: 'copilot',
+        provider: 'copilot',
         op: 'write',
         path: expectedPath,
       })

@@ -3,10 +3,12 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type {
   CompiledDoc,
-  DestinationPlugin,
+  DestinationProvider,
   JSONSchema7,
   Logger,
+  ParsedDoc,
 } from '../interfaces';
+import { buildHandlebarsOptions, readDestinationConfig } from './utils';
 
 type WindsurfFormat = 'markdown' | 'xml';
 
@@ -15,7 +17,7 @@ type WindsurfConfig = {
   format?: WindsurfFormat;
 };
 
-export class WindsurfPlugin implements DestinationPlugin {
+export class WindsurfProvider implements DestinationProvider {
   get name(): string {
     return 'windsurf';
   }
@@ -37,6 +39,23 @@ export class WindsurfPlugin implements DestinationPlugin {
       },
       additionalProperties: true,
     };
+  }
+
+  async prepareCompilation({
+    parsed,
+    projectConfig: _projectConfig,
+    logger,
+  }: {
+    parsed: ParsedDoc;
+    projectConfig: Record<string, unknown>;
+    logger: Logger;
+  }) {
+    const destinationConfig = readDestinationConfig(parsed, 'windsurf');
+    return buildHandlebarsOptions({
+      destinationId: 'windsurf',
+      destinationConfig,
+      logger,
+    });
   }
 
   private static normaliseFormat(format: unknown): WindsurfFormat {
@@ -80,7 +99,7 @@ export class WindsurfPlugin implements DestinationPlugin {
     }
 
     if (isDir || looksLikeDir) {
-      const filename = WindsurfPlugin.defaultFilename(format);
+      const filename = WindsurfProvider.defaultFilename(format);
       const finalPath = path.join(resolvedPath, filename);
       const message = isDir
         ? `Directory detected, using filename: ${finalPath}`
@@ -105,7 +124,7 @@ export class WindsurfPlugin implements DestinationPlugin {
           : new Error(
               `Failed to create directory: ${dirPath}. ${String(error)}`
             );
-      logger.error(err, { op: 'mkdir', path: dirPath, plugin: 'windsurf' });
+      logger.error(err, { op: 'mkdir', path: dirPath, provider: 'windsurf' });
       throw err;
     }
   }
@@ -126,7 +145,7 @@ export class WindsurfPlugin implements DestinationPlugin {
         error instanceof Error
           ? error
           : new Error(`Failed to write file: ${filePath}. ${String(error)}`);
-      logger.error(err, { op: 'write', path: filePath, plugin: 'windsurf' });
+      logger.error(err, { op: 'write', path: filePath, provider: 'windsurf' });
       if (tmpPath) {
         try {
           await fs.rm(tmpPath, { force: true });
@@ -147,7 +166,7 @@ export class WindsurfPlugin implements DestinationPlugin {
   }): Promise<void> {
     const { compiled, destPath, config, logger } = ctx;
     const cfg = config as WindsurfConfig;
-    const format = WindsurfPlugin.normaliseFormat(cfg.format);
+    const format = WindsurfProvider.normaliseFormat(cfg.format);
 
     // Determine the output path
     const outputPath =
