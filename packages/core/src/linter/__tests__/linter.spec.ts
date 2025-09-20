@@ -11,7 +11,7 @@ const mkDoc = (
   const { content = '# Content', errors } = options;
   const doc: ParsedDoc = {
     source: frontmatter ? { content, frontmatter } : { content },
-    ast: { stems: [], imports: [], variables: [], markers: [] },
+    ast: { sections: [], imports: [], variables: [], markers: [] },
   };
   if (errors) {
     doc.errors = errors;

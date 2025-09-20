@@ -1,8 +1,8 @@
 /**
- * Represents the structure of a parsed Rulesets stem.
- * For v0.1.0, this will be minimal as stems are not processed from the body.
+ * Represents the structure of a parsed Rulesets section.
+ * For v0.1.0, this will be minimal as sections are not processed from the body.
  */
-export type Stem = {
+export type Section = {
   name: string;
   // properties: Record<string, any>; // To be detailed in v0.1+
   // content: string; // To be detailed in v0.1+
@@ -33,7 +33,7 @@ export type Variable = {
  * For v0.1.0, this will be minimal.
  */
 export type Marker = {
-  type: 'stem' | 'import' | 'variable' | 'unknown';
+  type: 'section' | 'import' | 'variable' | 'unknown';
   // rawMarker: string; // To be detailed in v0.1+
   // position: { line: number, column: number }; // To be detailed in v0.1+
 };
@@ -50,7 +50,7 @@ export type ParsedDoc = {
   };
   ast: {
     // Abstract Syntax Tree - minimal for v0
-    stems: Stem[];
+    sections: Section[];
     imports: Import[];
     variables: Variable[];
     markers: Marker[]; // All markers found - empty for v0 body processing
@@ -72,12 +72,12 @@ export type CompiledDoc = {
 
   /**
    * Parsed representation of the source document.
-   * For v0.1.0, `stems`, `imports`, `variables`, and `markers` will be empty
+   * For v0.1.0, `sections`, `imports`, `variables`, and `markers` will be empty
    * or reflect only what might be in frontmatter if we decide to parse that deep.
    * The primary focus for v0.1.0 body content is that it's not processed for markers.
    */
   ast: {
-    stems: Stem[]; // Array of parsed stems (empty for v0 body)
+    sections: Section[]; // Array of parsed sections (empty for v0 body)
     imports: Import[]; // Array of parsed imports (empty for v0 body)
     variables: Variable[]; // Array of parsed variables (empty for v0 body)
     markers: Marker[]; // All markers found in the document (empty for v0 body)

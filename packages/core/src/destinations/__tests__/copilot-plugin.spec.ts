@@ -18,7 +18,7 @@ const makeCompiled = (
     content: '# content',
     frontmatter: {},
   },
-  ast: { stems: [], imports: [], variables: [], markers: [] },
+  ast: { sections: [], imports: [], variables: [], markers: [] },
   output: { content: OUTPUT_CONTENT },
   context: { destinationId: DESTINATION_ID, config: {} },
 });

@@ -164,7 +164,6 @@ When referring to compilation versions:
 ## Terminology Best Practices
 
 - Be consistent with terminology across all documentation and code
-- Align new terminology with the music production theme when appropriate
 - When new terms are introduced, add them to this language spec
 - Prefer clarity over cleverness in technical documentation
 - Use examples liberally to illustrate abstract concepts

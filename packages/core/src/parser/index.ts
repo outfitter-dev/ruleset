@@ -181,7 +181,7 @@ function createParsedDoc(
         Object.keys(frontmatter).length > 0 ? frontmatter : undefined,
     },
     ast: {
-      stems: [], // Empty for v0 - no body processing
+      sections: [], // Empty for v0 - no body processing
       imports: [], // Empty for v0 - no body processing
       variables: [], // Empty for v0 - no body processing
       markers: [], // Empty for v0 - no body processing
@@ -202,7 +202,7 @@ function createParsedDoc(
  * @param content - The raw markdown content to parse
  * @returns ParsedDoc
  */
-// TODO: Add support for stem parsing
+// TODO: Add support for section parsing
 // TODO: Add variable substitution
 export function parse(content: string): ParsedDoc {
   const lines = content.split('\n');
