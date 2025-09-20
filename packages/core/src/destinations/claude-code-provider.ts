@@ -2,14 +2,20 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type {
   CompiledDoc,
-  DestinationPlugin,
+  DestinationProvider,
   JSONSchema7,
   Logger,
+  ParsedDoc,
 } from '../interfaces';
+import { buildHandlebarsOptions, readDestinationConfig } from './utils';
 
-export class CursorPlugin implements DestinationPlugin {
+/**
+ * Destination provider that renders compiled rules for Claude Code. The
+ * implementation simply writes Markdown content to the configured output path.
+ */
+export class ClaudeCodeProvider implements DestinationProvider {
   get name(): string {
-    return 'cursor';
+    return 'claude-code';
   }
 
   configSchema(): JSONSchema7 {
@@ -20,17 +26,28 @@ export class CursorPlugin implements DestinationPlugin {
           type: 'string',
           description: 'Path where the compiled rules file should be written',
         },
-        priority: {
-          type: 'string',
-          enum: ['low', 'medium', 'high'],
-          description: 'Priority level for the rules',
-        },
       },
       additionalProperties: true,
     };
   }
 
-  // TODO: Add Cursor-specific formatting and transformations
+  async prepareCompilation({
+    parsed,
+    projectConfig: _projectConfig,
+    logger,
+  }: {
+    parsed: ParsedDoc;
+    projectConfig: Record<string, unknown>;
+    logger: Logger;
+  }) {
+    const destinationConfig = readDestinationConfig(parsed, 'claude-code');
+    return buildHandlebarsOptions({
+      destinationId: 'claude-code',
+      destinationConfig,
+      logger,
+    });
+  }
+
   async write(ctx: {
     compiled: CompiledDoc;
     destPath: string;
@@ -39,17 +56,20 @@ export class CursorPlugin implements DestinationPlugin {
   }): Promise<void> {
     const { compiled, destPath, config, logger } = ctx;
 
-    logger.info(`Writing Cursor rules to: ${destPath}`);
-
-    // Determine the output path with runtime type-narrowing
-    const rawOutputPath = (config as { outputPath?: unknown })?.outputPath;
+    // Determine the output path with local type-narrowing
+    type ClaudeConfig = {
+      outputPath?: string;
+    };
+    const cfg = config as ClaudeConfig;
     const outputPath =
-      typeof rawOutputPath === 'string' && rawOutputPath.trim().length > 0
-        ? rawOutputPath
+      typeof cfg.outputPath === 'string' && cfg.outputPath.trim() !== ''
+        ? cfg.outputPath
         : destPath;
     const resolvedPath = path.isAbsolute(outputPath)
       ? outputPath
       : path.resolve(outputPath);
+
+    logger.info(`Writing Claude Code rules to: ${resolvedPath}`);
 
     // Ensure directory exists
     const dir = path.dirname(resolvedPath);
@@ -62,19 +82,13 @@ export class CursorPlugin implements DestinationPlugin {
       throw error;
     }
 
-    // For v0, write the raw content
     try {
       await fs.writeFile(resolvedPath, compiled.output.content, {
         encoding: 'utf8',
       });
-      logger.info(`Successfully wrote Cursor rules to: ${resolvedPath}`);
-
-      // Log additional context for debugging
+      logger.info(`Successfully wrote Claude Code rules to: ${resolvedPath}`);
       logger.debug(`Destination: ${compiled.context.destinationId}`);
       logger.debug(`Config: ${JSON.stringify(config)}`);
-      if (compiled.output.metadata?.priority) {
-        logger.debug(`Priority: ${compiled.output.metadata.priority}`);
-      }
     } catch (error) {
       logger.error(
         `Failed to write file: ${resolvedPath}. ${error instanceof Error ? error.message : String(error)}`
