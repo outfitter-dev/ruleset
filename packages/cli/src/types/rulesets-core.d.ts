@@ -1,2 +1,5 @@
-// TLDR: Provide ambient module declaration to allow declaration emit without cross-package path mapping (mixd-v0)
+/**
+ * Ambient module declaration so the CLI can emit type definitions without
+ * depending on workspace path mappings during bundling.
+ */
 declare module '@rulesets/core';

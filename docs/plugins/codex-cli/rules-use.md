@@ -41,17 +41,20 @@ Codex CLI rules files use standard Markdown with clear headings and sections:
 
 ```markdown
 # Coding Standards
+
 - Always use TypeScript for new JavaScript files
 - Follow AirBnB style guide for linting
 - Maximum line length is 100 characters
 - All exports should be typed
 
 # Testing Requirements
+
 - Write unit tests for all new functionality
 - Use Jest for testing framework
 - Maintain at least 80% code coverage
 
 # Command Policy
+
 - Never use git force push unless explicitly requested
 - Always run linting before committing code
 - Use npm for package management
@@ -115,13 +118,8 @@ The `.codex/` directory in your working directory can act as a shared workspace 
 
 ## Version Information
 
-| Aspect | Details |
-|--------|---------|
-| Last-verified release | v1.2.0 (May 2025) |
-| Primary docs | OpenAI Codex CLI documentation website |
-| Instructions specification | Updated in v1.2 (May 2025) |
-
-## Mixdown Integration
-
-> [!NOTE]
-> 🚧 Pending Mixdown integration
+| Aspect                     | Details                                |
+| -------------------------- | -------------------------------------- |
+| Last-verified release      | v1.2.0 (May 2025)                      |
+| Primary docs               | OpenAI Codex CLI documentation website |
+| Instructions specification | Updated in v1.2 (May 2025)             |
