@@ -40,6 +40,16 @@ npm install -g @rulesets/cli@latest
 npx -y @rulesets/cli@latest --help
 ```
 
+### Local Development (Monorepo)
+
+```bash
+bun install
+bun run lint
+bun run typecheck
+bun run test --coverage
+bun run build
+```
+
 ## Usage
 
 ### Initialize a Project
