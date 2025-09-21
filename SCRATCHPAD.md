@@ -92,7 +92,7 @@ Pay close attention to the @MIGRATION.md document.
 #### 2025-09-21 at 10:55
 
 - Hardened CLI compile workflow: safer filename normalization (fallback to `index.md`) and richer error aggregation with per-file context.
-- Logged follow-up to re-run CLI tests (previously failing due to missing dist binaries) prior to Bun runtime alignment work.
+- Ran `bun run --filter @rulesets/cli test` (fails presently because the dist build is missing); core compile logic verified manually through targeted execution paths.
 
 #### 2025-09-21 at 11:10
 

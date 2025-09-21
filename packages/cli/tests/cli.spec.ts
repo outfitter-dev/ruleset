@@ -15,6 +15,7 @@ const CLI_CWD = join(process.cwd());
 const TEMP_HOME = mkdtempSync(join(tmpdir(), 'rulesets-cli-test-'));
 const VERSION_RE = /\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/;
 const NON_WS_RE = /\S/;
+const BUN_EXECUTABLE = process.execPath; // ensures CLI runs under the same Bun runtime as the tests
 
 // Determine the correct CLI path based on where tests are run from
 // Check if we're in packages/cli or at the root
@@ -24,7 +25,7 @@ const cliPath = join(repoRoot, 'packages/cli/dist/index.js');
 
 function runCli(args: string[], opts: { cwd?: string } = {}) {
   // Use the built CLI to avoid module resolution issues
-  const res = spawnSync('node', [cliPath, ...args], {
+  const res = spawnSync(BUN_EXECUTABLE, [cliPath, ...args], {
     cwd: opts.cwd ?? CLI_CWD,
     env: { ...process.env, HOME: TEMP_HOME },
     encoding: 'utf-8',
@@ -100,7 +101,7 @@ describe('rulesets CLI smoke', () => {
     { ext: '.ruleset.md', label: 'legacy .ruleset.md extension' },
   ])('compiles a rules directory to output (%s)', ({ ext }) => {
     const tmp = mkdtempSync(join(tmpdir(), 'rulesets-cli-compile-'));
-    const rulesDir = join(tmp, 'rules');
+    const rulesDir = join(tmp, '.ruleset', 'rules');
     mkdirSync(rulesDir, { recursive: true });
     const srcFile = join(rulesDir, `hello${ext}`);
     const body = '# Hello\n\nThis is the body.';
@@ -112,15 +113,7 @@ describe('rulesets CLI smoke', () => {
     const outDirRel = join('.ruleset', 'dist');
     const outDirAbs = join(tmp, outDirRel);
     const { code, stderr } = runCli(
-      [
-        'compile',
-        'rules',
-        '--output',
-        outDirRel,
-        '--destination',
-        'cursor',
-        '--json',
-      ],
+      ['compile', '--output', outDirRel, '--destination', 'cursor', '--json'],
       { cwd: tmp }
     );
     expect(code).toBe(0);

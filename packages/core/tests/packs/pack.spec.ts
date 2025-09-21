@@ -1,7 +1,7 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'bun:test';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GlobalConfig } from '../../src/config/global-config';
 import { Pack } from '../../src/packs/pack';
 import { PackManager } from '../../src/packs/pack-manager';

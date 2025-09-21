@@ -30,22 +30,20 @@ export function initCommand(): Command {
           );
         } else {
           const configPath = join(process.cwd(), '.ruleset');
-          const configFile = join(configPath, 'config.json');
+          const configFile = join(configPath, 'config.toml');
 
           await fs.mkdir(configPath, { recursive: true });
 
-          const config = {
-            version: '0.1.0',
-            destinations: ['cursor', 'windsurf', 'claude-code'],
-            sources: ['./rules'],
-            output: './.ruleset/dist',
-          };
+          const configToml =
+            `version = "0.1.0"\n` +
+            `sources = ["./.ruleset/rules"]\n` +
+            `output = "./.ruleset/dist"\n` +
+            `destinations = ["cursor", "windsurf", "claude-code"]\n`;
 
-          await fs.writeFile(configFile, JSON.stringify(config, null, 2));
+          await fs.writeFile(configFile, configToml);
 
-          await fs.mkdir(join(process.cwd(), 'rules'), {
-            recursive: true,
-          });
+          await fs.mkdir(join(configPath, 'rules'), { recursive: true });
+          await fs.mkdir(join(configPath, 'dist'), { recursive: true });
 
           const exampleRule = `---
 name: project-conventions
@@ -70,7 +68,7 @@ destinations:
 `;
 
           await fs.writeFile(
-            join(process.cwd(), 'rules', 'project-conventions.md'),
+            join(configPath, 'rules', 'project-conventions.rule.md'),
             exampleRule
           );
 
@@ -79,7 +77,9 @@ destinations:
           );
           logger.info(chalk.dim(`Configuration: ${configFile}`));
           logger.info(
-            chalk.dim('Example rule: ./rules/project-conventions.md')
+            chalk.dim(
+              'Example rule: ./.ruleset/rules/project-conventions.rule.md'
+            )
           );
         }
       } catch (error) {

@@ -1,7 +1,7 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'bun:test';
 import type { Stats } from 'node:fs';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CompiledDoc, Logger } from '../../interfaces';
 import { CopilotPlugin } from '../copilot-plugin';
 

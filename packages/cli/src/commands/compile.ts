@@ -23,32 +23,32 @@ function hasSupportedExtension(filePath: string): boolean {
 }
 
 function normalizeOutputFilename(filename: string): string {
-  if (!filename) {
-    return 'index.md';
-  }
-
   const trimmed = filename.trim();
-  const lastSlash = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'));
+  const lastSlash = Math.max(
+    trimmed.lastIndexOf('/'),
+    trimmed.lastIndexOf('\\')
+  );
   const prefix = lastSlash >= 0 ? trimmed.slice(0, lastSlash + 1) : '';
   const leaf = lastSlash >= 0 ? trimmed.slice(lastSlash + 1) : trimmed;
   const lowerLeaf = leaf.toLowerCase();
 
-  const buildPath = (name: string): string => `${prefix}${name}`;
+  const build = (name: string): string => `${prefix}${name}`;
 
   for (const ext of SUPPORTED_SOURCE_EXTENSIONS) {
     if (lowerLeaf.endsWith(ext)) {
       const base = leaf.slice(0, -ext.length).trim();
       const safeBase = base.length > 0 ? base : 'index';
-      return buildPath(`${safeBase}.md`);
+      return build(`${safeBase}.md`);
     }
   }
 
-  if (lowerLeaf.endsWith('.md')) {
-    return buildPath(leaf.length > 0 ? leaf : 'index.md');
+  const hasMarkdownExtension = lowerLeaf.endsWith('.md');
+  if (hasMarkdownExtension) {
+    return build(leaf.length > 0 ? leaf : 'index.md');
   }
 
   const safeLeaf = leaf.length > 0 ? leaf : 'index';
-  return buildPath(`${safeLeaf}.md`);
+  return build(`${safeLeaf}.md`);
 }
 
 async function listMarkdownFiles(rootPath: string): Promise<string[]> {
@@ -75,6 +75,10 @@ async function listMarkdownFiles(rootPath: string): Promise<string[]> {
   return result;
 }
 
+/**
+ * Creates the `rulesets compile` sub-command. The command compiles source rules
+ * into destination-specific artefacts and can optionally watch for changes.
+ */
 export function compileCommand(): Command {
   return new Command('compile')
     .description('Compile source rules to destination formats')
@@ -90,6 +94,9 @@ export function compileCommand(): Command {
     });
 }
 
+/**
+ * Resolved context shared across compilation helpers.
+ */
 type CompileContext = {
   sourcePath: string;
   outputPath: string;
@@ -98,9 +105,13 @@ type CompileContext = {
   destinations: string[];
 };
 
+/**
+ * Resolves CLI options into a concrete compilation context, including absolute
+ * paths, discovered source files, and the destination list.
+ */
 async function buildContext(
   source: string,
-  options: { output: string; destination?: string }
+  options: Pick<CompileOptions, 'output' | 'destination'>
 ): Promise<CompileContext> {
   const cwd = process.cwd();
   const sourcePath = resolve(cwd, sanitizePath(source));
@@ -147,22 +158,23 @@ async function buildContext(
   };
 }
 
+/**
+ * Compiles a single Rulesets source file into one or more destination outputs.
+ */
 async function compileFile(file: string, ctx: CompileContext): Promise<number> {
   const content = await fs.readFile(file, 'utf-8');
   const parsed = parse(content);
   let compiledCount = 0;
   for (const dest of ctx.destinations) {
     if (!destinations.has(dest)) {
-      logger.warn(chalk.yellow(`  - No provider found for destination: ${dest}`));
+      logger.warn(
+        chalk.yellow(`  - No provider registered for destination: ${dest}`)
+      );
       continue;
     }
     const compiled = await compile(parsed, dest, {});
     const rel = ctx.isDir ? relative(ctx.sourcePath, file) : basename(file);
-    const outfile = join(
-      ctx.outputPath,
-      dest,
-      normalizeOutputFilename(rel)
-    );
+    const outfile = join(ctx.outputPath, dest, normalizeOutputFilename(rel));
     await fs.mkdir(dirname(outfile), { recursive: true });
     await fs.writeFile(outfile, compiled.output.content, { encoding: 'utf8' });
     compiledCount++;
@@ -170,9 +182,10 @@ async function compileFile(file: string, ctx: CompileContext): Promise<number> {
   return compiledCount;
 }
 
-async function compileAll(
-  ctx: CompileContext
-): Promise<{
+/**
+ * Compiles the entire compilation context and accumulates any per-file errors.
+ */
+async function compileAll(ctx: CompileContext): Promise<{
   totalCompiled: number;
   errors: Array<{
     file: string;
@@ -196,7 +209,9 @@ async function compileAll(
       const failure = error instanceof Error ? error : new Error(String(error));
       errors.push({
         file,
-        displayPath: ctx.isDir ? relative(ctx.sourcePath, file) : basename(file),
+        displayPath: ctx.isDir
+          ? relative(ctx.sourcePath, file)
+          : basename(file),
         message: failure.message,
         error: failure,
       });
@@ -206,7 +221,9 @@ async function compileAll(
   return { totalCompiled, errors };
 }
 
-// Helper to handle compilation success
+/**
+ * Resets watcher error state after a successful compilation cycle.
+ */
 function handleSuccess(errorState: {
   count: number;
   timer: NodeJS.Timeout | null;
@@ -218,7 +235,9 @@ function handleSuccess(errorState: {
   }
 }
 
-// Helper to restart watcher after circuit breaker
+/**
+ * Restarts the file watcher after the circuit breaker cool-down completes.
+ */
 async function restartWatcher(ctx: CompileContext) {
   try {
     logger.info(chalk.cyan('Resuming watcher...'));
@@ -230,6 +249,9 @@ async function restartWatcher(ctx: CompileContext) {
   }
 }
 
+/**
+ * Watches the source directory for changes and recompiles affected files.
+ */
 async function startWatcher(ctx: CompileContext): Promise<void> {
   logger.info(chalk.cyan('\nWatching for changes... (Press Ctrl+C to stop)'));
   const { watch } = await import('node:fs');
@@ -291,8 +313,17 @@ async function startWatcher(ctx: CompileContext): Promise<void> {
   });
 }
 
-type CompileOptions = { output: string; destination?: string; watch?: boolean };
+/** Options supported by the CLI compile command. */
+type CompileOptions = {
+  output: string;
+  destination?: string;
+  watch?: boolean;
+};
 
+/**
+ * Entry point for the compile command. Handles non-watch and watch flows, and
+ * renders user-friendly status messages through the CLI spinner.
+ */
 async function runCompile(
   source: string,
   options: CompileOptions
