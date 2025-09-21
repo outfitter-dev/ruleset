@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'bun:test';
+import { describe, expect, it, vi } from 'vitest';
+import { compile } from '../../compiler';
 import type { Logger, ParsedDoc } from '../../interfaces';
 import { CursorProvider } from '../cursor-provider';
 
@@ -11,6 +12,32 @@ const createLogger = (): Logger => ({
 
 describe('CursorProvider.prepareCompilation', () => {
   const provider = new CursorProvider();
+
+  const baseDoc: ParsedDoc = {
+    source: {
+      content:
+        'Hello {{file.frontmatter.destinations.cursor.priority}} {{> footnote}}',
+      frontmatter: {
+        rulesets: { compiler: 'handlebars' },
+        destinations: {
+          cursor: {
+            priority: 'high',
+            handlebars: {
+              partials: {
+                footnote: '::foot::',
+              },
+            },
+          },
+        },
+      },
+    },
+    ast: {
+      sections: [],
+      imports: [],
+      variables: [],
+      markers: [],
+    },
+  };
 
   it('returns undefined when no Handlebars overrides are declared', async () => {
     const parsed: ParsedDoc = {
@@ -34,9 +61,11 @@ describe('CursorProvider.prepareCompilation', () => {
 
   it('returns destination Handlebars options when configured', async () => {
     const parsed: ParsedDoc = {
+      ...baseDoc,
       source: {
         content: '',
         frontmatter: {
+          rulesets: { compiler: 'handlebars' },
           destinations: {
             cursor: {
               handlebars: {
@@ -49,7 +78,6 @@ describe('CursorProvider.prepareCompilation', () => {
           },
         },
       },
-      ast: { sections: [], imports: [], variables: [], markers: [] },
     };
 
     const result = await provider.prepareCompilation({
@@ -65,5 +93,73 @@ describe('CursorProvider.prepareCompilation', () => {
         partials: { footer: 'Footer content' },
       },
     });
+  });
+
+  it('applies destination-defined partials during compilation', async () => {
+    const logger = createLogger();
+    const preparation = await provider.prepareCompilation({
+      parsed: baseDoc,
+      projectConfig: {},
+      logger,
+    });
+
+    expect(preparation?.handlebars).toBeDefined();
+
+    const compiled = compile(
+      baseDoc,
+      'cursor',
+      {},
+      {
+        handlebars: {
+          force: preparation?.handlebars?.force,
+          helpers: preparation?.handlebars?.helpers,
+          partials: preparation?.handlebars?.partials,
+        },
+      }
+    );
+
+    expect(compiled.output.content).toBe('Hello high ::foot::');
+  });
+
+  it('forces Handlebars when configured in destination frontmatter', async () => {
+    const parsed: ParsedDoc = {
+      ...baseDoc,
+      source: {
+        content: 'Priority: {{file.frontmatter.destinations.cursor.priority}}',
+        frontmatter: {
+          rulesets: { compiler: 'handlebars' },
+          destinations: {
+            cursor: {
+              priority: 'high',
+              handlebars: {
+                force: true,
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const logger = createLogger();
+    const preparation = await provider.prepareCompilation({
+      parsed,
+      projectConfig: {},
+      logger,
+    });
+
+    const compiled = compile(
+      parsed,
+      'cursor',
+      {},
+      {
+        handlebars: {
+          force: preparation?.handlebars?.force,
+          helpers: preparation?.handlebars?.helpers,
+          partials: preparation?.handlebars?.partials,
+        },
+      }
+    );
+
+    expect(compiled.output.content).toBe('Priority: high');
   });
 });
