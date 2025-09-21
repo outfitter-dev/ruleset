@@ -26,7 +26,7 @@ Rulesets is a CommonMark-compliant rules compiler that lets you author a single 
 
 ## Project Structure for AI Agent Navigation
 
-- `/docs`: Legacy documentation (reference only; migrate material into `.agents/docs/`)
+- `/docs`: Legacy documentation (reference only; migrate relevant content into `.agents/docs/`)
   - `.agents/docs/language.md`: Terminology and language spec for consistent communication
   - `.agents/docs/overview.md`: Project overview and guidance
   - `.agents/docs/architecture.md`: Technical architecture details
