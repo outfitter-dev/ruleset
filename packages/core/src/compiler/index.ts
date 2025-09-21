@@ -1,8 +1,10 @@
 import type { HelperDelegate } from 'handlebars';
+import { HandlebarsRulesetCompiler } from './handlebars-compiler';
 import type { CompiledDoc, ParsedDoc } from '../interfaces';
 import type { Logger } from '../interfaces/logger';
 import { extractBodyFromContent } from '../utils/frontmatter';
-import { HandlebarsRulesetCompiler } from './handlebars-compiler';
+
+export { HandlebarsRulesetCompiler } from './handlebars-compiler';
 
 const handlebarsCompiler = new HandlebarsRulesetCompiler();
 
@@ -11,16 +13,12 @@ function prefersHandlebars(
   projectConfig: Record<string, unknown>
 ): boolean {
   const rulesets = frontmatter?.rulesets as Record<string, unknown> | undefined;
-  const frontmatterPref =
-    typeof rulesets?.compiler === 'string' ? rulesets.compiler : undefined;
-  const projectPref =
-    typeof projectConfig?.compiler === 'string'
-      ? projectConfig.compiler
-      : undefined;
+  const frontmatterPref = typeof rulesets?.compiler === 'string' ? rulesets.compiler : undefined;
+  const projectPref = typeof projectConfig?.compiler === 'string' ? projectConfig.compiler : undefined;
   return frontmatterPref === 'handlebars' || projectPref === 'handlebars';
 }
 
-export type CompileOptions = {
+export interface CompileOptions {
   projectConfig?: Record<string, unknown>;
   logger?: Logger;
   handlebars?: {
@@ -30,7 +28,7 @@ export type CompileOptions = {
     strict?: boolean;
     noEscape?: boolean;
   };
-};
+}
 
 /**
  * Creates a minimal compiled document for empty files.
@@ -150,11 +148,7 @@ export function compile(
 
   // Handle empty files consistently
   if (!source.content.trim()) {
-    return createEmptyCompiledDoc(
-      source,
-      destinationId,
-      effectiveProjectConfig
-    );
+    return createEmptyCompiledDoc(source, destinationId, effectiveProjectConfig);
   }
 
   // Extract the body content (everything after frontmatter)
@@ -207,6 +201,5 @@ export function compile(
     `Compiled ${source.path ?? 'inline document'} for ${destinationId}`,
     { destination: destinationId, file: source.path }
   );
-
   return compiledDoc;
 }

@@ -1,5 +1,5 @@
-import type { HelperDelegate } from 'handlebars';
 import Handlebars from 'handlebars';
+import type { HelperDelegate } from 'handlebars';
 import type { CompiledDoc, ParsedDoc } from '../interfaces';
 import type { Logger } from '../interfaces/logger';
 import { extractBodyFromContent } from '../utils/frontmatter';
@@ -7,19 +7,19 @@ import { extractBodyFromContent } from '../utils/frontmatter';
 /**
  * Optional configuration when compiling with the Handlebars compiler.
  */
-export type HandlebarsCompileOptions = {
+export interface HandlebarsCompileOptions {
   logger?: Logger;
   projectConfig?: Record<string, unknown>;
   helpers?: Record<string, HelperDelegate>;
   partials?: Record<string, string>;
   strict?: boolean;
   noEscape?: boolean;
-};
+}
 
 /**
  * Runtime context passed to templates while rendering.
  */
-export type HandlebarsContext = {
+export interface HandlebarsContext {
   provider: {
     id: string;
   };
@@ -30,7 +30,7 @@ export type HandlebarsContext = {
   };
   project?: Record<string, unknown>;
   timestamp: string;
-};
+}
 
 function buildContext(
   parsedDoc: ParsedDoc,
@@ -39,8 +39,7 @@ function buildContext(
 ): HandlebarsContext {
   const frontmatter = parsedDoc.source.frontmatter ?? {};
   const project = options.projectConfig;
-  const name =
-    typeof frontmatter.name === 'string' ? frontmatter.name : undefined;
+  const name = typeof frontmatter.name === 'string' ? frontmatter.name : undefined;
 
   return {
     provider: {
@@ -63,6 +62,8 @@ function buildContext(
 export class HandlebarsRulesetCompiler {
   private readonly helpers = new Map<string, HelperDelegate>();
   private readonly partials = new Map<string, string>();
+
+  constructor() {}
 
   /**
    * Compiles a parsed Rulesets document using Handlebars templates.
@@ -88,13 +89,16 @@ export class HandlebarsRulesetCompiler {
       });
       compiledBody = template(context);
     } catch (error) {
-      const failure = error instanceof Error ? error : new Error(String(error));
-      const sourcePath = parsedDoc.source.path ?? '<inline>';
+      const sourcePath = parsedDoc.source.path ?? '<inline>'; // fallback for inline docs
+      const originalError = error instanceof Error ? error : new Error(String(error));
       const contextualError = new Error(
-        `Handlebars compilation failed for ${sourcePath}: ${failure.message}`,
-        { cause: failure }
+        `Handlebars compilation failed for ${sourcePath}: ${originalError.message}`,
+        { cause: originalError }
       );
-      logger?.error(contextualError);
+      logger?.error(contextualError, {
+        sourcePath,
+        destination: destinationId,
+      });
       throw contextualError;
     }
 
@@ -150,9 +154,9 @@ export class HandlebarsRulesetCompiler {
   }
 
   private registerCoreHelpers(runtime: typeof Handlebars): void {
-    runtime.registerHelper('uppercase', (value: unknown) =>
-      typeof value === 'string' ? value.toUpperCase() : (value ?? '')
-    );
+    runtime.registerHelper('uppercase', function (value: unknown) {
+      return typeof value === 'string' ? value.toUpperCase() : value ?? '';
+    });
 
     runtime.registerHelper(
       'if-provider',

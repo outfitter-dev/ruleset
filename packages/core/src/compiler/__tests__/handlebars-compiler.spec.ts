@@ -1,13 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Logger, LogMetadata, ParsedDoc } from '../../interfaces';
+import type { ParsedDoc } from '../../interfaces';
+import type { Logger, LogMetadata } from '../../interfaces';
 import { HandlebarsRulesetCompiler } from '../handlebars-compiler';
 
-const HANDLEBARS_FAILURE_RE = /Handlebars compilation failed/;
-
-const baseDoc = (
-  content: string,
-  frontmatter: Record<string, unknown> = {}
-): ParsedDoc => ({
+const baseDoc = (content: string, frontmatter: Record<string, unknown> = {}): ParsedDoc => ({
   source: {
     content,
     frontmatter,
@@ -24,7 +20,7 @@ describe('HandlebarsRulesetCompiler', () => {
   it('renders simple replacements with default helpers', () => {
     const compiler = new HandlebarsRulesetCompiler();
     const parsed = baseDoc(
-      '---\nname: onboarding\n---\n\n## Welcome\n\nHi {{uppercase file.frontmatter.name}}!',
+      `---\nname: onboarding\n---\n\n## Welcome\n\nHi {{uppercase file.frontmatter.name}}!`,
       { name: 'onboarding' }
     );
 
@@ -44,34 +40,40 @@ describe('HandlebarsRulesetCompiler', () => {
 
   it('escapes HTML output by default', () => {
     const compiler = new HandlebarsRulesetCompiler();
-    const parsed = baseDoc('Payload: {{payload}}');
+    const parsed = baseDoc('Output: {{userInput}}', {
+      destinations: {
+        cursor: { handlebars: { force: true } },
+      },
+    });
 
     const result = compiler.compile(parsed, 'cursor', {
+      projectConfig: {},
       helpers: {
-        payload: () => '<script>alert(1)</script>',
+        userInput: () => '<script>alert(1)</script>',
       },
     });
 
     expect(result.output.content).toContain(
-      'Payload: &lt;script&gt;alert(1)&lt;/script&gt;'
+      'Output: &lt;script&gt;alert(1)&lt;/script&gt;'
     );
   });
 
-  it('respects noEscape override when explicitly disabled', () => {
+  it('allows disabling escaping via options', () => {
     const compiler = new HandlebarsRulesetCompiler();
-    const parsed = baseDoc('Payload: {{payload}}');
+    const parsed = baseDoc('Output: {{value}}');
 
     const result = compiler.compile(parsed, 'cursor', {
       noEscape: true,
+      partials: {},
       helpers: {
-        payload: () => '<strong>bold</strong>',
+        value: () => '<strong>bold</strong>',
       },
     });
 
-    expect(result.output.content).toContain('Payload: <strong>bold</strong>');
+    expect(result.output.content).toContain('Output: <strong>bold</strong>');
   });
 
-  it('enforces strict mode by default and logs contextual error', () => {
+  it('enforces strict mode by default and logs contextual errors', () => {
     const compiler = new HandlebarsRulesetCompiler();
     const errorMock = vi.fn<void, [string | Error, LogMetadata?]>();
     const logger: Logger = {
@@ -80,20 +82,20 @@ describe('HandlebarsRulesetCompiler', () => {
       warn: vi.fn(),
       error: errorMock,
     };
-    const parsed = baseDoc('Missing: {{unknownValue}}');
+    const parsed = baseDoc('Missing value: {{unknownProperty}}');
 
     expect(() => compiler.compile(parsed, 'cursor', { logger })).toThrow(
-      HANDLEBARS_FAILURE_RE
+      /Handlebars compilation failed/
     );
     expect(errorMock).toHaveBeenCalledTimes(1);
     const [errorArg, metadata] = errorMock.mock.calls[0] ?? [];
     expect(errorArg).toBeInstanceOf(Error);
-    expect(metadata).toMatchObject({ destination: 'cursor' });
+    expect(metadata).toMatchObject({ destination: 'cursor', sourcePath: '<inline>' });
   });
 
-  it('allows opting out of strict mode when requested', () => {
+  it('can relax strict mode when explicitly disabled', () => {
     const compiler = new HandlebarsRulesetCompiler();
-    const parsed = baseDoc('Optional: {{unknownValue}}');
+    const parsed = baseDoc('Optional: {{undefinedValue}}');
 
     const result = compiler.compile(parsed, 'cursor', { strict: false });
 
