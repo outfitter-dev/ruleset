@@ -100,6 +100,11 @@ Pay close attention to the @MIGRATION.md document.
   - Extracted regex patterns to module constants for better performance
 - All tests passing after improvements (`bun run --filter @rulesets/core test`)
 
+#### 2025-09-21 at 09:20
+
+- Applied follow-up review tweaks to partials support: reordered common extensions list for faster checks, enriched partial load logging with attempted extension, and added validation for inline Handlebars partial identifiers in destination config.
+- Verified `@rulesets/core` suite remains green with `bun run --filter @rulesets/core test`.
+
 #### 2025-09-21 at 10:05
 
 - Hardened Handlebars compiler defaults (strict mode enabled, escaping enforced) with optional overrides and centralized body extraction via `utils/frontmatter.ts`.
@@ -131,6 +136,10 @@ Pay close attention to the @MIGRATION.md document.
 
 - Fixed CLI smoke tests by standardising on the Bun runtime: updated the CLI shebang, removed the redundant tsup banner, and adjusted the test harness to invoke the compiled binary via `process.execPath`; `bun run --filter @rulesets/cli test` now passes.
 - End-to-end validation: `bun run lint`, `bun run typecheck`, `bun run test --coverage`, and `bun run build` all succeed on the top of stack; verified `./packages/cli/dist/index.js --help` and `--version` execute successfully.
+
+#### 2025-09-21 at 12:40
+
+- Addressed remaining review feedback: partial loader now processes sources sequentially, provider helpers/partials validate input deterministically, and new compiler/provider tests cover security + override behaviour. Entire stack (#15→#21) currently green awaiting refreshed CodeRabbit reviews.
 
 ### 2025-09-19
 
