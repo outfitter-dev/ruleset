@@ -10,7 +10,6 @@ import type {
 import { ConsoleLogger } from './interfaces';
 import { type LinterConfig, type LintResult, lint } from './linter';
 import { parse } from './parser';
-import { loadHandlebarsPartials } from './utils/partials';
 
 export { compile, compile as Compiler } from './compiler';
 export { GlobalConfig } from './config/global-config';
@@ -289,12 +288,6 @@ async function processDestinations(
   const frontmatter = parsedDoc.source.frontmatter || {};
   const results: DestinationResult[] = [];
 
-  const sharedPartials = await loadHandlebarsPartials({
-    parsed: parsedDoc,
-    logger,
-  });
-  const hasSharedPartials = Object.keys(sharedPartials).length > 0;
-
   for (const destinationId of destinationIds) {
     logger.info(`Processing destination: ${destinationId}`, {
       destination: destinationId,
@@ -339,17 +332,6 @@ async function processDestinations(
             partials: preparation.handlebars.partials,
           };
         }
-      }
-
-      if (hasSharedPartials) {
-        const existingPartials = compileOptions.handlebars?.partials ?? {};
-        compileOptions.handlebars = {
-          ...compileOptions.handlebars,
-          partials: {
-            ...sharedPartials,
-            ...existingPartials,
-          },
-        };
       }
 
       // Compile for this destination
