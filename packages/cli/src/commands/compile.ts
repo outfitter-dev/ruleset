@@ -14,7 +14,7 @@ import { Command } from 'commander';
 import { logger } from '../utils/logger';
 import { createSpinner } from '../utils/spinner';
 
-// TLDR: Compile rules from a file or directory into per-destination outputs (mixd-v0)
+// Compile source rules from a file or directory into per-destination outputs
 const SUPPORTED_SOURCE_EXTENSIONS = ['.rule.md', '.ruleset.md'] as const;
 
 function hasSupportedExtension(filePath: string): boolean {
