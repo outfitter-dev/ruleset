@@ -95,7 +95,7 @@ This document provides terminology guidance for consistent language in Rulesets 
 |-------------|-------------------|---------|
 | Source Rules files | `kebab-case.rule.md` | `coding-standards.rule.md` |
 | Directory | `kebab-case` | `_mixins` |
-| Config files | `kebab-case.config.toml` | `rulesets.config.toml` |
+| Config files | `config.json` | `.ruleset/config.json` |
 | Section markers | `kebab-case` | `{{user-instructions}}` |
 | XML Tags in compiled rules | `snake_case` | `<user_instructions>` |
 

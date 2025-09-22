@@ -27,29 +27,13 @@
 
 ## Target Terminology
 
-### Target Tool
+### Destination
 
-- **Description:** The AI assistant platform
-- **Current:** "Target", "Tool", "Target provider", "Target platform", "Target tool"
-- **Recommendation**: Distinguish between the tool itself and its configuration.
-- **Decision:** Use "Target tool" when referring to the actual AI assistant platform and "Target" when referring to its configuration.
-- **Proposed:
-  1. ✴️ "Target tool" ← "Target", "Tool", "Target provider" (when referring to the actual tool)
-     - Reasoning: "Target tool" clearly distinguishes the actual AI assistant platform from the configuration.
-     - Example: "Cursor is a supported target tool"
-  2. ✴️ "Target" ← "Target" (when referring to configuration)
-     - Reasoning: Keep as "Target" when referring to configuration for simplicity and consistency with existing terminology.
-     - Example: "Each target defines specific criteria for compiling mixes"
-  3. "Target platform" ← "Target", "Tool" (when emphasizing the platform aspect)
-     - Reasoning: Emphasizes the platform nature of the target tool, useful when discussing technical integration aspects.
-     - Example: "Rulesets supports multiple target platforms like Claude Code and Cursor"
-- **Decision:**
-  - We should consolidate around "Destination" as the base term for all things target-related.
-    - "Target tool" will simply be "destination"
-    - `target` in specific contexts should be `destination`
-    - "Destination Directory" refers to a specific rules directory and may not apply to all circumstances. `**/.cursor/rules` is a destination directory, but where `CLAUDE.md` would be placed does not apply.
-      - Claude Code doesn't use a specific directory for `CLAUDE.md` but for their slash commands, they do use `.claude/commands` so this would be a destination directory.
-    - "Destination Path" refers to the file system location where compiled rules are placed for use by AI assistants.
+- **Description:** The AI assistant platform and its configuration context
+- **Decision:** Use **Destination** for both the platform and configuration. Avoid "Target"/"Target tool" in new documentation.
+- **Guidance:**
+  - Use **Destination directory** for filesystem locations that store compiled rules (for example, `.cursor/rules`, `.claude/commands`).
+  - Use **Destination path** when referring to the fully qualified path for a compiled artifact written by the compiler.
 
 ## Output Terminology
 

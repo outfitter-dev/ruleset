@@ -85,7 +85,7 @@ Rulesets is a CommonMark-compliant rules compiler that lets you author a single 
 
 - Syntax: `{{$key}}` or `$key` if used within a `{{...}}` marker
 - Dynamic values replaced inline at compile time
-- Examples: `{{$destination}}`, `{{$.front matter.key}}`, `{{$alias}}`
+- Examples: `{{$destination}}`, `{{$.front_matter.key}}`, `{{$alias}}`
 
 ## Project Goals
 
@@ -205,7 +205,7 @@ version: 2.0 # version number for this file
 
 - Source rules files: `kebab-case.rule.md` (preferred) (e.g., `coding-standards.rule.md`); `.ruleset.md` remains supported for compatibility.
 - Directories: `kebab-case` (e.g., `_mixins`)
-- Config files: prefer TOML (e.g., `.ruleset/config.toml`); JSON, JSONC, and YAML are accepted.
+- Config files: prefer JSON (e.g., `.ruleset/config.json`); TOML, JSONC, and YAML are accepted.
 - Section names: `kebab-case` (e.g., `{{user-instructions}}`)
 - XML output tags: `snake_case` (e.g., `<user_instructions>`)
 
