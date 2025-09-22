@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { GlobalConfig } from '../../src/config/global-config';
 import type { Logger, ParsedDoc } from '../../src/interfaces';
 import { loadHandlebarsPartials } from '../../src/utils/partials';
 
@@ -13,6 +14,10 @@ describe('Partials Security Tests', () => {
   beforeEach(async () => {
     // Create a temporary directory for testing
     tempDir = await fs.mkdtemp(join(tmpdir(), 'rulesets-security-test-'));
+
+    // Isolate global configuration for each test
+    process.env.RULESETS_HOME = join(tempDir, 'global');
+    GlobalConfig.resetForTest();
 
     // Mock logger to capture security violations
     logEntries = [];
@@ -35,6 +40,8 @@ describe('Partials Security Tests', () => {
     if (tempDir) {
       await fs.rm(tempDir, { recursive: true, force: true });
     }
+    delete process.env.RULESETS_HOME;
+    GlobalConfig.resetForTest();
   });
 
   describe('Directory Traversal Protection', () => {

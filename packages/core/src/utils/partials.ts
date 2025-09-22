@@ -94,7 +94,8 @@ function normalisePartialName(
 function isPathSafe(resolvedPath: string, baseDir: string): boolean {
   const normalizedBase = path.resolve(baseDir);
   const normalizedPath = path.resolve(resolvedPath);
-  return normalizedPath.startsWith(normalizedBase);
+  const relative = path.relative(normalizedBase, normalizedPath);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
 }
 
 async function collectPartialsFromDir(opts: {
@@ -257,7 +258,7 @@ export async function loadHandlebarsPartials(opts: {
     searchQueue.unshift({ dir: globalPartialsDir, label: 'global-partials' });
   }
 
-  // Use Promise.allSettled to prevent one failing directory from blocking others
+  // Process each directory serially so later entries override earlier sources deterministically
   const failures: Array<{ path: string; label: string; error: string }> = [];
 
   for (const entry of searchQueue) {
