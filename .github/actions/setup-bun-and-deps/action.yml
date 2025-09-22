@@ -47,5 +47,5 @@ runs:
 
     - name: Test
       if: inputs.run-test == 'true'
-      run: bun run test
+      run: bun run test --coverage
       shell: bash
