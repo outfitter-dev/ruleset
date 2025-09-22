@@ -55,7 +55,7 @@ export class PackManager {
 
   constructor(options: PackManagerOptions = {}) {
     this.globalDir =
-      options.globalDir || join(process.env.HOME || '', '.rulesets');
+      options.globalDir || join(process.env.HOME || '', '.ruleset');
     this.projectDir = options.projectDir || process.cwd();
     this.packsDir = join(this.globalDir, 'packs');
   }
@@ -373,7 +373,7 @@ export class PackManager {
    * Get installed packs
    */
   async getInstalledPacks(): Promise<Record<string, PackTrackingEntry>> {
-    const trackingFile = join(this.projectDir, '.rulesets', 'packs.json');
+    const trackingFile = join(this.projectDir, '.ruleset', 'packs.json');
 
     try {
       const content = await fs.readFile(trackingFile, 'utf-8');
@@ -401,7 +401,7 @@ export class PackManager {
     configuration: PackConfiguration
   ): Promise<void> {
     // Store pack configuration for future reference
-    const configFile = join(this.projectDir, '.rulesets', 'pack-config.json');
+    const configFile = join(this.projectDir, '.ruleset', 'pack-config.json');
 
     let existingConfig: Record<string, PackConfiguration> = {};
     try {
@@ -427,7 +427,7 @@ export class PackManager {
     installedSets: string[],
     destinations: string[]
   ): Promise<void> {
-    const trackingFile = join(this.projectDir, '.rulesets', 'packs.json');
+    const trackingFile = join(this.projectDir, '.ruleset', 'packs.json');
 
     let tracking: Record<string, PackTrackingEntry> = {};
     try {
@@ -453,7 +453,7 @@ export class PackManager {
   }
 
   private async removePackTracking(packName: string): Promise<void> {
-    const trackingFile = join(this.projectDir, '.rulesets', 'packs.json');
+    const trackingFile = join(this.projectDir, '.ruleset', 'packs.json');
 
     try {
       const content = await fs.readFile(trackingFile, 'utf-8');

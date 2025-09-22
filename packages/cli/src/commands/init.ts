@@ -29,7 +29,7 @@ export function initCommand(): Command {
             chalk.dim(`Configuration file: ${config.getConfigPath()}`)
           );
         } else {
-          const configPath = join(process.cwd(), '.rulesets');
+          const configPath = join(process.cwd(), '.ruleset');
           const configFile = join(configPath, 'config.json');
 
           await fs.mkdir(configPath, { recursive: true });
@@ -38,7 +38,7 @@ export function initCommand(): Command {
             version: '0.1.0',
             destinations: ['cursor', 'windsurf', 'claude-code'],
             sources: ['./rules'],
-            output: './.rulesets/dist',
+            output: './.ruleset/dist',
           };
 
           await fs.writeFile(configFile, JSON.stringify(config, null, 2));

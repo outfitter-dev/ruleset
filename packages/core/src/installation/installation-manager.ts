@@ -36,7 +36,7 @@ export class InstallationManager {
 
   constructor(globalConfig: GlobalConfig, projectDir: string = process.cwd()) {
     this.projectDir = projectDir;
-    this.trackingFile = join(projectDir, '.rulesets', 'installed.json');
+    this.trackingFile = join(projectDir, '.ruleset', 'installed.json');
     this.globalConfig = globalConfig;
     const globalDir = this.globalConfig.getGlobalDirectory();
     this.rulesetManager = new RulesetManager(this.globalConfig, { globalDir });

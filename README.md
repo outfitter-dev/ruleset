@@ -60,7 +60,7 @@ rulesets init
 
 This creates:
 
-- `.rulesets/config.json` - Configuration file
+- `.ruleset/config.json` - Configuration file
 - `rules/` - Directory for your rule files
 - Example rule file to get started
 
@@ -120,32 +120,32 @@ Rulesets compiles to these AI tool formats:
 
 | Tool | Output Location | Format |
 |------|----------------|--------|
-| Cursor | `.rulesets/dist/cursor/*.md` | Markdown |
-| Windsurf | `.rulesets/dist/windsurf/*.{md,xml}` | Markdown (or XML\*) |
-| Claude Code | `.rulesets/dist/claude-code/*.md` | Markdown |
-| AGENTS.md | `.rulesets/dist/agents-md/AGENTS.md` | Markdown |
-| GitHub Copilot | `.rulesets/dist/copilot/*.md` | Markdown |
+| Cursor | `.ruleset/dist/cursor/*.md` | Markdown |
+| Windsurf | `.ruleset/dist/windsurf/*.{md,xml}` | Markdown (or XML\*) |
+| Claude Code | `.ruleset/dist/claude-code/*.md` | Markdown |
+| AGENTS.md | `.ruleset/dist/agents-md/AGENTS.md` | Markdown |
+| GitHub Copilot | `.ruleset/dist/copilot/*.md` | Markdown |
 
-\* Windsurf defaults to Markdown but can emit XML when `format: "xml"` is specified in destination config (for example, in `.rulesets/config.json`: `{ "destinations": { "windsurf": { "format": "xml" } } }`).
+\* Windsurf defaults to Markdown but can emit XML when `format: "xml"` is specified in destination config (for example, in `.ruleset/config.json`: `{ "destinations": { "windsurf": { "format": "xml" } } }`).
 
-Note: `rulesets compile` writes to `.rulesets/dist/…`. Add these paths to `.gitignore` to avoid committing compiled artefacts. A future `rulesets sync` may copy outputs into tool‑specific locations.
+Note: `rulesets compile` writes to `.ruleset/dist/…`. Add these paths to `.gitignore` to avoid committing compiled artefacts. A future `rulesets sync` may copy outputs into tool‑specific locations.
 
 ```gitignore
 # Rulesets build output
-.rulesets/dist/
+.ruleset/dist/
 # e.g.
-# .rulesets/dist/cursor/
-# .rulesets/dist/windsurf/
-# .rulesets/dist/claude-code/
-# .rulesets/dist/agents-md/
-# .rulesets/dist/copilot/
+# .ruleset/dist/cursor/
+# .ruleset/dist/windsurf/
+# .ruleset/dist/claude-code/
+# .ruleset/dist/agents-md/
+# .ruleset/dist/copilot/
 ```
 
 ## Project Structure
 
 ```text
 your-project/
-├── .rulesets/
+├── .ruleset/
 │   ├── config.json      # Rulesets configuration
 │   └── dist/            # Compiled output
 │       ├── cursor/      # Cursor-specific rules
@@ -162,14 +162,14 @@ your-project/
 
 ## Configuration
 
-`.rulesets/config.json`:
+`.ruleset/config.json`:
 
 ```json
 {
   "version": "0.1.0",
   "destinations": ["cursor", "windsurf", "claude-code", "agents-md", "copilot"],
   "sources": ["./rules"],
-  "output": "./.rulesets/dist"
+  "output": "./.ruleset/dist"
 }
 ```
 
@@ -188,7 +188,7 @@ destinations:
 
 ### Known Limitations
 
-- **Array Form for Destinations (frontmatter only)**: In v0.1.0, the simple array form is not supported in per-file frontmatter. Use the object form with `include`/`exclude` (see the "Write Rules" example above). The array form is supported in `.rulesets/config.json` (see Configuration).
+- **Array Form for Destinations (frontmatter only)**: In v0.1.0, the simple array form is not supported in per-file frontmatter. Use the object form with `include`/`exclude` (see the "Write Rules" example above). The array form is supported in `.ruleset/config.json` (see Configuration).
   - Incorrect frontmatter:
 
     ```yaml

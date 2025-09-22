@@ -11,8 +11,8 @@ export class GlobalConfig {
   private readonly globalDir: string;
 
   private constructor() {
-    // Default to ~/.rulesets
-    this.globalDir = process.env.RULESETS_HOME || join(homedir(), '.rulesets');
+    // Default to ~/.ruleset
+    this.globalDir = process.env.RULESETS_HOME || join(homedir(), '.ruleset');
   }
 
   /**

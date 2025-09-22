@@ -51,7 +51,7 @@ Arguments:
   source  Source file or directory (default: "./rules")
 
 Options:
-  -o, --output <dir>       Output directory (default: "./.rulesets/dist")
+  -o, --output <dir>       Output directory (default: "./.ruleset/dist")
   -d, --destination <dest> Specific destination to compile for
   -w, --watch             Watch for changes and recompile
 ```

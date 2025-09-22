@@ -153,7 +153,7 @@ async function compileFile(file: string, ctx: CompileContext): Promise<number> {
   let compiledCount = 0;
   for (const dest of ctx.destinations) {
     if (!destinations.has(dest)) {
-      logger.warn(chalk.yellow(`  - No plugin found for destination: ${dest}`));
+      logger.warn(chalk.yellow(`  - No provider found for destination: ${dest}`));
       continue;
     }
     const compiled = await compile(parsed, dest, {});
