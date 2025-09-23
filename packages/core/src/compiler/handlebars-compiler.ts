@@ -14,6 +14,13 @@ export interface HandlebarsCompileOptions {
   partials?: Record<string, string>;
   strict?: boolean;
   noEscape?: boolean;
+  providerInfo?: {
+    id: string;
+    name?: string;
+  };
+  registryInfo?: {
+    destinations: string[];
+  };
 }
 
 /**
@@ -22,13 +29,26 @@ export interface HandlebarsCompileOptions {
 export interface HandlebarsContext {
   provider: {
     id: string;
+    name?: string;
   };
   file: {
     name?: string;
     path?: string;
     frontmatter: Record<string, unknown>;
+    metadata: {
+      title?: unknown;
+      description?: unknown;
+      version?: string;
+      created?: unknown;
+      updated?: unknown;
+      labels?: unknown;
+      globs?: string[];
+    };
   };
   project?: Record<string, unknown>;
+  registry?: {
+    destinations: string[];
+  };
   timestamp: string;
 }
 
@@ -40,17 +60,39 @@ function buildContext(
   const frontmatter = parsedDoc.source.frontmatter ?? {};
   const project = options.projectConfig;
   const name = typeof frontmatter.name === 'string' ? frontmatter.name : undefined;
+  const provider = options.providerInfo ?? { id: destinationId };
+
+  // Extract structured rule fields for easier template access
+  const ruleValue = frontmatter.rule;
+  const rule = ruleValue && typeof ruleValue === 'object' && !Array.isArray(ruleValue)
+    ? ruleValue as Record<string, unknown>
+    : {};
+
+  const extractedMetadata = {
+    title: frontmatter.title,
+    description: frontmatter.description,
+    version: (typeof rule.version === 'string' ? rule.version : frontmatter.version) as string | undefined,
+    created: frontmatter.created,
+    updated: frontmatter.updated,
+    labels: frontmatter.labels,
+    globs: Array.isArray(rule.globs) ? rule.globs.filter((g): g is string => typeof g === 'string') : undefined,
+  };
 
   return {
     provider: {
-      id: destinationId,
+      id: provider.id,
+      name: provider.name ?? provider.id,
     },
     file: {
       name,
       path: parsedDoc.source.path,
       frontmatter,
+      metadata: extractedMetadata, // Structured access to common metadata fields
     },
     project,
+    registry: options.registryInfo
+      ? { destinations: [...options.registryInfo.destinations] }
+      : undefined,
     timestamp: new Date().toISOString(),
   };
 }
@@ -92,9 +134,10 @@ export class HandlebarsRulesetCompiler {
       const sourcePath = parsedDoc.source.path ?? '<inline>'; // fallback for inline docs
       const originalError = error instanceof Error ? error : new Error(String(error));
       const contextualError = new Error(
-        `Handlebars compilation failed for ${sourcePath}: ${originalError.message}`,
-        { cause: originalError }
+        `Handlebars compilation failed for ${sourcePath}: ${originalError.message}`
       );
+      // Add cause property for debugging
+      (contextualError as any).cause = originalError;
       logger?.error(contextualError, {
         sourcePath,
         destination: destinationId,

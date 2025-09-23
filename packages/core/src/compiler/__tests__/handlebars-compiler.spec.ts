@@ -41,9 +41,7 @@ describe('HandlebarsRulesetCompiler', () => {
   it('escapes HTML output by default', () => {
     const compiler = new HandlebarsRulesetCompiler();
     const parsed = baseDoc('Output: {{userInput}}', {
-      destinations: {
-        cursor: { handlebars: { force: true } },
-      },
+      cursor: { handlebars: { force: true } },
     });
 
     const result = compiler.compile(parsed, 'cursor', {

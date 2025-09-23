@@ -5,13 +5,16 @@ Core library for Rulesets - parser, compiler, linter, and providers.
 ## Installation
 
 ```bash
-npm install @rulesets/core
+bun add @rulesets/core
+
+# Node users can install via npm if needed
+# npm install @rulesets/core
 ```
 
 ## Usage
 
 ```typescript
-import { parse, compile, destinations, type Logger } from '@rulesets/core'
+import { parse, compile, providers, type Logger } from '@rulesets/core'
 
 // Parse a source rules file
 const content = `
@@ -29,11 +32,11 @@ destinations:
 
 const parsed = parse(content)
 
-// Compile for a specific destination
+// Compile for a specific provider
 const compiled = compile(parsed, 'cursor', {})
 
-// Access destination providers
-const cursorProvider = destinations.get('cursor')
+// Access providers
+const cursorProvider = providers.get('cursor')
 if (!cursorProvider) {
   throw new Error('cursor provider not registered')
 }
@@ -60,15 +63,15 @@ Core types are exported from `@rulesets/core` for convenience, including `Sectio
 
 Parse Markdown content with front matter into a structured document.
 
-### compile(doc: ParsedDoc, destination: string, config: object, options?: CompileOptions): CompiledDoc
+### compile(doc: ParsedDoc, provider: string, config: object, options?: CompileOptions): CompiledDoc
 
-Compile a parsed document for a specific destination. Pass an optional `options` object to fine-tune Handlebars compilation (for example `options.handlebars.force = true` to opt in even when front matter does not).
+Compile a parsed document for a specific provider. Pass an optional `options` object to fine-tune Handlebars compilation (for example `options.handlebars.force = true` to opt in even when front matter does not).
 
-### destinations: Map<string, DestinationProvider>
+### providers: Map<string, DestinationProvider>
 
-Registry of available destination providers.
+Registry of available providers.
 
-Each provider may expose `prepareCompilation(parsed, projectConfig, logger)` to return destination-specific Handlebars settings or project-config overrides. The compiler merges those results with the shared partial discovery described below before rendering.
+Each provider may expose `prepareCompilation(parsed, projectConfig, logger)` to return provider-specific Handlebars settings or project-config overrides. The compiler merges those results with the shared partial discovery described below before rendering.
 
 ### Handlebars partial discovery
 
@@ -79,9 +82,9 @@ When Handlebars is enabled, partials are loaded from the following locations (la
 3. `./.ruleset/partials/**/*`
 4. `./.ruleset/rules/` files whose names start with `@`
 
-Supported extensions include `.rule.md`, `.ruleset.md`, `.md`, `.mdc`, `.hbs`, `.handlebars`, and `.txt`. Inline rule partials drop the leading `@` when registered. Prefer partials for shared content rather than importing sections from other rule files.
+Supported extensions include `.rule.md`, `.md`, `.hbs`, `.handlebars`, and `.txt`. Inline rule partials drop the leading `@` when registered. Prefer partials for shared content rather than importing sections from other rule files.
 
-### Supported Destinations
+### Supported Providers
 
 - `cursor` - Cursor IDE
 - `windsurf` - Windsurf IDE
@@ -93,7 +96,7 @@ Supported extensions include `.rule.md`, `.ruleset.md`, `.md`, `.mdc`, `.hbs`, `
 
 ```typescript
 import type {
-  DestinationCompilationOptions,
+  ProviderCompilationOptions,
   DestinationProvider,
 } from '@rulesets/core';
 
@@ -120,7 +123,7 @@ interface CompiledDoc {
     metadata?: Record<string, unknown>;
   };
   context: {
-    destinationId: string;
+    providerId: string;
     config: Record<string, unknown>;
   };
 }
@@ -152,7 +155,7 @@ interface Logger {
 
 type LogMetadata = {
   file?: string;
-  destination?: string;
+  provider?: string;
   line?: number;
   [key: string]: unknown;
 };

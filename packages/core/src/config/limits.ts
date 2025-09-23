@@ -69,7 +69,7 @@ export const RESOURCE_LIMITS = {
 } as const;
 
 export const FILE_EXTENSIONS = {
-  markdown: ['.md', '.mix.md'],
+  markdown: ['.md'],
   toml: ['.toml'],
   json: ['.json', '.jsonc'],
 } as const;

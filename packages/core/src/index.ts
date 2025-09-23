@@ -1,13 +1,20 @@
 import { promises as fs } from 'node:fs';
 import { type CompileOptions, compile } from './compiler';
 import { destinations } from './destinations';
+import { resolveProviderSettings } from './destinations/utils';
 import type { CompiledDoc, Logger, ParsedDoc } from './interfaces';
-import { ConsoleLogger } from './interfaces';
+import { ConsoleLogger, createDefaultLogger } from './interfaces';
 import { type LinterConfig, type LintResult, lint } from './linter';
 import { parse } from './parser';
+import { loadHandlebarsPartials } from './utils/partials';
+
+// High-level API exports
+export * from './api';
 
 export { compile, compile as Compiler } from './compiler';
+export { AgentsComposer } from './compiler/agents-composer';
 export { GlobalConfig } from './config/global-config';
+export { loadProjectConfig } from './config/project-config';
 export {
   DESTINATION_IDS,
   FILE_EXTENSIONS,
@@ -18,15 +25,18 @@ export {
   destinations as DestinationProviderRegistry,
 } from './destinations';
 export { ClaudeCodeProvider } from './destinations/claude-code-provider';
+export { CodexProvider } from './destinations/codex-provider';
 export { CursorProvider } from './destinations/cursor-provider';
 export { WindsurfProvider } from './destinations/windsurf-provider';
 export { InstallationManager } from './installation/installation-manager';
 // Export all public APIs
 export * from './interfaces';
 export { type LinterConfig, type LintResult, lint } from './linter';
-export { parse, parse as Parser } from './parser';
+export { parse, parse as Parser, RulesetParser } from './parser';
+export { PresetManager } from './presets/preset-manager';
 export { RulesetManager } from './rulesets/ruleset-manager';
 export * from './utils/security';
+export * from './utils/types';
 
 /**
  * Reads a source file from disk.
@@ -170,24 +180,110 @@ function processLintResults(
  * @returns Array of destination IDs to compile for
  */
 function determineDestinations(parsedDoc: ParsedDoc): string[] {
-  const fm = (parsedDoc.source.frontmatter ?? {}) as Record<string, unknown>;
-  const value = fm.destinations as unknown;
-
-  // Support object mapping: { cursor: {...}, windsurf: {...} }
-  if (value && typeof value === 'object' && !Array.isArray(value)) {
-    const obj = value as Record<string, unknown>;
-    // Support schema: { include: ["cursor", "windsurf"], ... }
-    const include = obj.include as unknown;
-    if (Array.isArray(include) && include.every((v) => typeof v === 'string')) {
-      return include as string[];
-    }
-    const keys = Object.keys(obj);
-    return keys.length > 0 ? keys : Array.from(destinations.keys());
+  if (parsedDoc.source.isRule === false) {
+    return [];
   }
 
-  // Simple array form is not supported in v0.1.0 – default to all destinations
+  const registryIds = Array.from(destinations.keys());
+  const enabled = new Set(registryIds);
+  const frontmatter = (parsedDoc.source.frontmatter ?? {}) as Record<
+    string,
+    unknown
+  >;
 
-  return Array.from(destinations.keys());
+  const legacyBlock = frontmatter.destinations as
+    | Record<string, unknown>
+    | undefined;
+  if (legacyBlock && typeof legacyBlock === 'object' && !Array.isArray(legacyBlock)) {
+    const include = legacyBlock.include;
+    if (Array.isArray(include) && include.every((v) => typeof v === 'string')) {
+      return include.filter((destinationId) => destinations.has(destinationId));
+    }
+
+    const legacyKeys = Object.keys(legacyBlock).filter((key) =>
+      destinations.has(key)
+    );
+    if (legacyKeys.length > 0) {
+      return legacyKeys;
+    }
+  }
+
+  for (const destinationId of registryIds) {
+    const settings = resolveProviderSettings(frontmatter, destinationId);
+    if (!settings) {
+      continue;
+    }
+
+    if (settings.enabled === false) {
+      enabled.delete(destinationId);
+      continue;
+    }
+
+    if (settings.enabled === true) {
+      enabled.add(destinationId);
+      continue;
+    }
+
+    if (settings.source === 'provider') {
+      // Presence of a provider block implies opt-in unless explicitly disabled.
+      enabled.add(destinationId);
+      continue;
+    }
+
+    if (settings.source === 'legacy' && settings.config) {
+      enabled.add(destinationId);
+    }
+  }
+
+  return Array.from(enabled);
+}
+
+function shouldEnableHandlebars(
+  frontmatter: Record<string, unknown> | undefined,
+  projectConfig: Record<string, unknown>,
+  compileOptions: CompileOptions
+): boolean {
+  if (compileOptions.handlebars?.force) {
+    return true;
+  }
+
+  const ruleValue = frontmatter?.rule;
+  const rule =
+    ruleValue && typeof ruleValue === 'object' && !Array.isArray(ruleValue)
+      ? (ruleValue as Record<string, unknown>)
+      : undefined;
+  const frontmatterTemplate =
+    typeof rule?.template === 'boolean' ? (rule.template as boolean) : undefined;
+  if (frontmatterTemplate !== undefined) {
+    return frontmatterTemplate;
+  }
+
+  const projectRuleValue = projectConfig['rule'];
+  const projectRule =
+    projectRuleValue &&
+    typeof projectRuleValue === 'object' &&
+    !Array.isArray(projectRuleValue)
+      ? (projectRuleValue as Record<string, unknown>)
+      : undefined;
+  const projectTemplate =
+    typeof projectRule?.template === 'boolean'
+      ? (projectRule.template as boolean)
+      : undefined;
+  if (projectTemplate !== undefined) {
+    return projectTemplate;
+  }
+
+  const rulesets = frontmatter?.rulesets as Record<string, unknown> | undefined;
+  if (typeof rulesets?.compiler === 'string' && rulesets.compiler === 'handlebars') {
+    return true;
+  }
+
+  const projectCompiler = projectConfig['compiler'];
+  if (typeof projectCompiler === 'string' && projectCompiler === 'handlebars') {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -232,13 +328,8 @@ async function writeToDestination(
   }
 
   // Determine output path
-  const frontmatterDestinations = frontmatter.destinations as
-    | Record<string, unknown>
-    | undefined;
-  const destConfig =
-    (frontmatterDestinations?.[destinationId] as
-      | Record<string, unknown>
-      | undefined) || {};
+  const destSettings = resolveProviderSettings(frontmatter, destinationId);
+  const destConfig = (destSettings?.config as Record<string, unknown> | undefined) || {};
   const defaultPath = `.ruleset/dist/${destinationId}/my-rules.md`;
   const destPath =
     (destConfig.outputPath as string) ||
@@ -283,6 +374,8 @@ async function processDestinations(
 
   const frontmatter = parsedDoc.source.frontmatter || {};
   const results: DestinationResult[] = [];
+  let cachedPartials: Record<string, string> | undefined;
+  const registryDestinations = Array.from(destinations.keys());
 
   for (const destinationId of destinationIds) {
     logger.info(`Processing destination: ${destinationId}`, {
@@ -331,6 +424,41 @@ async function processDestinations(
           };
         }
       }
+
+      if (
+        shouldEnableHandlebars(
+          frontmatter as Record<string, unknown> | undefined,
+          destinationProjectConfig,
+          compileOptions
+        )
+      ) {
+        if (cachedPartials === undefined) {
+          cachedPartials = await loadHandlebarsPartials({
+            parsed: parsedDoc,
+            logger,
+          });
+        }
+
+        if (Object.keys(cachedPartials).length > 0) {
+          const existingPartials =
+            compileOptions.handlebars?.partials ?? undefined;
+          compileOptions.handlebars = {
+            ...(compileOptions.handlebars ?? {}),
+            partials: {
+              ...cachedPartials,
+              ...(existingPartials ?? {}),
+            },
+          };
+        } else if (!compileOptions.handlebars) {
+          compileOptions.handlebars = {};
+        }
+      }
+
+      compileOptions.providerInfo = {
+        id: destinationId,
+        name: provider.name ?? destinationId,
+      };
+      compileOptions.registryInfo = { destinations: registryDestinations };
 
       // Compile for this destination
       const compiledDoc = compileForDestination(
@@ -381,12 +509,12 @@ async function processDestinations(
  * @example
  * ```typescript
  * import { runRulesetsV0 } from '@rulesets/core';
- * import { ConsoleLogger } from '@rulesets/core';
+ * import { createDefaultLogger } from '@rulesets/core';
  *
  * async function main() {
- *   const logger = new ConsoleLogger();
+ *   const logger = createDefaultLogger();
  *   try {
- *     await runRulesetsV0('./my-rules.rule.md', logger);
+ *     await runRulesetsV0('./my-rules.md', logger);
  *     logger.info('Rulesets v0.1.0 process completed.');
  *   } catch (error) {
  *     logger.error('Rulesets v0.1.0 process failed:', error);
@@ -396,14 +524,14 @@ async function processDestinations(
  * main();
  * ```
  *
- * @param sourceFilePath - The path to the source Rulesets file (e.g., my-rules.rule.md).
+ * @param sourceFilePath - The path to the source Rulesets file (e.g., my-rules.md).
  * @param logger - An instance of the Logger interface.
  * @param projectConfig - Optional: The root Rulesets project configuration.
  * @returns A promise that resolves when the process is complete, or rejects on error.
  */
 export async function runRulesetsV0(
   sourceFilePath: string,
-  logger: Logger = new ConsoleLogger(),
+  logger: Logger = createDefaultLogger(),
   projectConfig: Record<string, unknown> = {}
 ): Promise<void> {
   logger.info(`Starting Rulesets v0.1.0 processing for: ${sourceFilePath}`);

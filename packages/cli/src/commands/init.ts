@@ -1,6 +1,4 @@
-import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
-import { GlobalConfig } from '@rulesets/core';
+import { GlobalConfig, initializeProject } from '@rulesets/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { logger } from '../utils/logger';
@@ -29,57 +27,15 @@ export function initCommand(): Command {
             chalk.dim(`Configuration file: ${config.getConfigPath()}`)
           );
         } else {
-          const configPath = join(process.cwd(), '.ruleset');
-          const configFile = join(configPath, 'config.toml');
-
-          await fs.mkdir(configPath, { recursive: true });
-
-          const configToml =
-            `version = "0.1.0"\n` +
-            `sources = ["./.ruleset/rules"]\n` +
-            `output = "./.ruleset/dist"\n` +
-            `destinations = ["cursor", "windsurf", "claude-code"]\n`;
-
-          await fs.writeFile(configFile, configToml);
-
-          await fs.mkdir(join(configPath, 'rules'), { recursive: true });
-          await fs.mkdir(join(configPath, 'dist'), { recursive: true });
-
-          const exampleRule = `---
-name: project-conventions
-description: Project coding conventions
-destinations:
-  include: ["cursor", "windsurf", "claude-code"]
----
-
-# Project Conventions
-
-## Code Style
-
-- Use TypeScript with strict mode enabled
-- Follow ESLint and Prettier configurations
-- Write comprehensive tests for all features
-
-## Git Workflow
-
-- Use conventional commits
-- Create feature branches from main
-- Write descriptive PR descriptions
-`;
-
-          await fs.writeFile(
-            join(configPath, 'rules', 'project-conventions.rule.md'),
-            exampleRule
-          );
+          // Use the high-level API for project initialization
+          await initializeProject({
+            baseDir: process.cwd(),
+            createExamples: true,
+            logger,
+          });
 
           spinner.succeed(
             chalk.green('Rulesets initialized in current project')
-          );
-          logger.info(chalk.dim(`Configuration: ${configFile}`));
-          logger.info(
-            chalk.dim(
-              'Example rule: ./.ruleset/rules/project-conventions.rule.md'
-            )
           );
         }
       } catch (error) {

@@ -2,9 +2,12 @@
 import { Command } from 'commander';
 import { compileCommand } from './commands/compile.js';
 import { initCommand } from './commands/init.js';
+import { importCommand } from './commands/import.js';
 import { installCommand } from './commands/install.js';
 import { listCommand } from './commands/list.js';
-import { syncCommand } from './commands/sync.js';
+import { promoteCommand } from './commands/promote.js';
+// import { syncCommand } from './commands/sync.js'; // Disabled for v0.2.0
+import { updateCommand } from './commands/update.js';
 
 // Pre-parse global flags anywhere in argv for env setup
 function preParseGlobalFlags(argv: string[]) {
@@ -30,7 +33,7 @@ const program = new Command();
 program
   .name('rulesets')
   .description('AI rules compiler - manage and compile rulesets for AI tools')
-  .version('0.1.0')
+  .version('0.2.0')
   .option('--json', 'Output JSON logs for machine consumption', false)
   .option('--log-level <level>', 'Log level: debug|info|warn|error', 'info')
   .option('-q, --quiet', 'Quiet mode: only errors are printed', false)
@@ -60,7 +63,10 @@ program.hook('preAction', (thisCommand) => {
 
 program.addCommand(initCommand());
 program.addCommand(installCommand());
-program.addCommand(syncCommand());
+program.addCommand(updateCommand());
+// program.addCommand(syncCommand()); // Disabled for v0.2.0
+program.addCommand(importCommand());
+program.addCommand(promoteCommand());
 program.addCommand(listCommand());
 program.addCommand(compileCommand());
 

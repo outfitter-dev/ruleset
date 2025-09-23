@@ -41,3 +41,6 @@ bun-debug.log*
 # Private journal artifacts (should not be committed)
 /.private-journal/
 *.embedding
+
+# Archived agent docs
+.agents/.archive/

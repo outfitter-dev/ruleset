@@ -5,12 +5,9 @@ import type { Logger, ParsedDoc } from '../interfaces';
 
 // Order common extensions first so we short-circuit faster on the typical cases.
 const KNOWN_EXTENSIONS = [
-  '.rule.md',
   '.md',
   '.hbs',
   '.handlebars',
-  '.ruleset.md',
-  '.mdc',
   '.txt',
 ];
 

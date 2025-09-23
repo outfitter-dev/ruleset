@@ -1,11 +1,25 @@
 {
   "name": "@rulesets/cli",
-  "version": "0.1.0",
   "description": "CLI for Rulesets - AI rules compiler",
-  "type": "module",
-  "types": "./dist/index.d.ts",
+  "version": "0.2.0",
   "bin": {
     "rulesets": "./dist/index.js"
+  },
+  "dependencies": {
+    "@rulesets/core": "0.2.0",
+    "chalk": "^5.6.2",
+    "commander": "^14.0.1",
+    "js-yaml": "^4.1.0",
+    "picomatch": "^4.0.2",
+    "ora": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "exports": {
     ".": {
@@ -17,28 +31,16 @@
     "dist",
     "README.md"
   ],
-  "scripts": {
-    "dev": "bun run src/index.ts",
-    "build": "tsup",
-    "typecheck": "tsc --noEmit",
-    "test": "bun test",
-    "clean": "rm -rf dist"
-  },
-  "dependencies": {
-    "@rulesets/core": "workspace:*",
-    "chalk": "^5.3.0",
-    "commander": "^12.1.0",
-    "ora": "^8.2.0"
-  },
-  "devDependencies": {
-    "@types/node": "^24.3.0",
-    "tsup": "^8.5.0",
-    "typescript": "^5.9.2"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "scripts": {
+    "build": "tsup",
+    "clean": "rm -rf dist",
+    "dev": "bun run src/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts"
 }

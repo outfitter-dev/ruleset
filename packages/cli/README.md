@@ -5,7 +5,10 @@ Command-line interface for Rulesets - AI rules compiler.
 ## Installation
 
 ```bash
-npm install -g @rulesets/cli
+bun add --global @rulesets/cli
+
+# Or run without installing
+bunx @rulesets/cli --help
 ```
 
 ## Usage
@@ -42,7 +45,7 @@ Options:
 
 ### compile
 
-Compile source rules to destination formats.
+Compile source rules to provider formats.
 
 ```bash
 rulesets compile [source] [options]
@@ -51,9 +54,10 @@ Arguments:
   source  Source file or directory (default: "./rules")
 
 Options:
-  -o, --output <dir>       Output directory (default: "./.ruleset/dist")
-  -d, --destination <dest> Specific destination to compile for
-  -w, --watch             Watch for changes and recompile
+  -o, --output <dir>     Output directory (default: "./.ruleset/dist")
+  -p, --provider <id>    Specific provider to compile for
+      --destination <id> Deprecated alias for --provider
+  -w, --watch            Watch for changes and recompile
 ```
 
 ### list
@@ -85,7 +89,7 @@ Options:
 
 ### sync
 
-Sync installed rulesets to their destinations.
+Sync installed rulesets to their providers.
 
 ```bash
 rulesets sync [options]

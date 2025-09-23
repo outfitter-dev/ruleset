@@ -2,6 +2,7 @@ import { load as yamlLoad } from 'js-yaml';
 import { RESOURCE_LIMITS } from '../config/limits';
 import type { ParsedDoc } from '../interfaces';
 import { validateObjectDepth } from '../utils/security';
+import { validateFrontmatterSchema } from './schema-validator';
 
 /**
  * Represents the boundaries of the frontmatter section.
@@ -161,6 +162,22 @@ function processFrontmatter(lines: string[]): {
   return result;
 }
 
+function hasRuleMetadata(frontmatter: Record<string, unknown>): boolean {
+  if (!frontmatter || typeof frontmatter !== 'object') {
+    return false;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(frontmatter, 'rule')) {
+    return true;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(frontmatter, 'rulesets')) {
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * Creates a ParsedDoc structure from the parsed content.
  *
@@ -174,11 +191,16 @@ function createParsedDoc(
   frontmatter: Record<string, unknown>,
   errors: ParseError[]
 ): ParsedDoc {
+  const hasFrontmatter = Object.keys(frontmatter).length > 0;
+  const isRuleDoc = hasFrontmatter
+    ? hasRuleMetadata(frontmatter)
+    : false;
+
   const parsedDoc: ParsedDoc = {
     source: {
       content,
-      frontmatter:
-        Object.keys(frontmatter).length > 0 ? frontmatter : undefined,
+      frontmatter: hasFrontmatter ? frontmatter : undefined,
+      isRule: hasFrontmatter ? isRuleDoc : false,
     },
     ast: {
       sections: [], // Empty for v0 - no body processing
@@ -204,8 +226,41 @@ function createParsedDoc(
  */
 // TODO: Add support for section parsing
 // TODO: Add variable substitution
-export function parse(content: string): ParsedDoc {
+export function parse(content: string, filePath?: string): ParsedDoc {
   const lines = content.split('\n');
-  const { frontmatter, errors } = processFrontmatter(lines);
-  return createParsedDoc(content, frontmatter, errors);
+  const { frontmatter, errors: parseErrors } = processFrontmatter(lines);
+
+  // Validate frontmatter schema if we have valid frontmatter
+  const schemaErrors: ParseError[] = [];
+  if (Object.keys(frontmatter).length > 0) {
+    const validationErrors = validateFrontmatterSchema(frontmatter);
+    schemaErrors.push(
+      ...validationErrors.map(err => ({
+        message: `Schema validation error: ${err.path} ${err.message}`,
+        line: 1, // Schema errors are associated with the frontmatter block
+        column: 1,
+      }))
+    );
+  }
+
+  const allErrors = [...parseErrors, ...schemaErrors];
+  const doc = createParsedDoc(content, frontmatter, allErrors);
+
+  if (filePath) {
+    doc.source.path = filePath;
+  }
+
+  return doc;
+}
+
+/**
+ * RulesetParser class for use in composition scenarios
+ */
+export class RulesetParser {
+  /**
+   * Parse a Rulesets document
+   */
+  parse(content: string, filePath?: string): ParsedDoc {
+    return parse(content, filePath);
+  }
 }

@@ -55,7 +55,7 @@ function reportSyncResults(
 
 export function syncCommand(): Command {
   return new Command('sync')
-    .description('Sync installed rulesets to their destinations')
+    .description('Sync installed rulesets to their providers')
     .option('--json', 'Output JSON logs for machine consumption')
     .option('--log-level <level>', 'Log level: debug|info|warn|error')
     .option('-q, --quiet', 'Quiet mode: only errors are printed')

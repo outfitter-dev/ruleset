@@ -3,6 +3,7 @@ import type { Logger, ParsedDoc } from '../../interfaces';
 import {
   buildHandlebarsOptions,
   readDestinationConfig,
+  resolveProviderSettings,
   type UnknownRecord,
 } from '../utils';
 
@@ -19,9 +20,7 @@ describe('destination utils', () => {
       source: {
         content: '',
         frontmatter: {
-          destinations: {
-            cursor: { enabled: true },
-          },
+          cursor: { enabled: true },
         },
       },
       ast: { sections: [], imports: [], variables: [], markers: [] },
@@ -36,7 +35,7 @@ describe('destination utils', () => {
     const parsed: ParsedDoc = {
       source: {
         content: '',
-        frontmatter: { destinations: {} },
+        frontmatter: {},
       },
       ast: { sections: [], imports: [], variables: [], markers: [] },
     };
@@ -44,6 +43,13 @@ describe('destination utils', () => {
     const config = readDestinationConfig(parsed, 'cursor');
 
     expect(config).toBeUndefined();
+  });
+
+
+  it('captures provider-level enabled flags', () => {
+    const settings = resolveProviderSettings({ cursor: false }, 'cursor');
+
+    expect(settings).toEqual({ enabled: false, source: 'provider' });
   });
 
   it('builds Handlebars options from boolean config', () => {

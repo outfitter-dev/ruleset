@@ -5,11 +5,11 @@ describe('parser', () => {
   describe('parse', () => {
     it('should parse a document with frontmatter and body', () => {
       const content = `---
-rulesets: v0
+rule:
+  version: '0.2.0'
 title: Test Rule
-destinations:
-  cursor:
-    path: ".cursor/rules/test.mdc"
+cursor:
+  path: ".cursor/rules/test.mdc"
 ---
 
 # Test Content
@@ -20,12 +20,10 @@ This is the body content.`;
 
       expect(result.source.content).toBe(content);
       expect(result.source.frontmatter).toEqual({
-        rulesets: 'v0',
+        rule: { version: '0.2.0' },
         title: 'Test Rule',
-        destinations: {
-          cursor: {
-            path: '.cursor/rules/test.mdc',
-          },
+        cursor: {
+          path: '.cursor/rules/test.mdc',
         },
       });
       expect(result.ast.sections).toEqual([]);
@@ -118,6 +116,72 @@ This has {{sections}} and {{$variables}} and {{>imports}} that should be preserv
       const expectedBody =
         '\n# Test Content\n\nThis has {{sections}} and {{$variables}} and {{>imports}} that should be preserved.';
       expect(result.source.content).toContain(expectedBody);
+    });
+  });
+
+  describe('schema validation', () => {
+    it('should validate rule metadata schema', () => {
+      const content = `---
+rule:
+  version: 123
+  template: "not-boolean"
+---
+
+# Test Content`;
+
+      const result = parse(content);
+
+      expect(result.errors).toBeDefined();
+      expect(result.errors).toHaveLength(2);
+      expect(result.errors?.[0].message).toContain('Schema validation error: rule.version must be a string');
+      expect(result.errors?.[1].message).toContain('Schema validation error: rule.template must be a boolean');
+    });
+
+
+    it('should allow valid rule metadata without errors', () => {
+      const content = `---
+rule:
+  version: "0.2.0"
+  template: true
+  globs: ["**/*.md"]
+  name: "test-rule"
+  description: "A test rule"
+---
+
+# Test Content`;
+
+      const result = parse(content);
+
+      expect(result.errors).toBeUndefined();
+      expect(result.source.frontmatter).toEqual({
+        rule: {
+          version: '0.2.0',
+          template: true,
+          globs: ['**/*.md'],
+          name: 'test-rule',
+          description: 'A test rule',
+        },
+      });
+    });
+
+    it('should allow frontmatter without rule metadata', () => {
+      const content = `---
+title: Test Rule
+cursor:
+  path: ".cursor/rules/test.mdc"
+---
+
+# Test Content`;
+
+      const result = parse(content);
+
+      expect(result.errors).toBeUndefined();
+      expect(result.source.frontmatter).toEqual({
+        title: 'Test Rule',
+        cursor: {
+          path: '.cursor/rules/test.mdc',
+        },
+      });
     });
   });
 });

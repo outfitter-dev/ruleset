@@ -1,278 +1,152 @@
 import { promises as fs } from 'node:fs';
-import { basename, dirname, join, relative, resolve } from 'node:path';
+import { basename, resolve } from 'node:path';
 import {
-  compile,
-  destinations,
-  isPathWithinBoundary,
-  isPathWithinBoundaryReal,
-  parse,
+  compileRules,
+  discoverRulesFiles,
   RESOURCE_LIMITS,
-  sanitizePath,
+  type CompilationOptions,
 } from '@rulesets/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { logger } from '../utils/logger';
 import { createSpinner } from '../utils/spinner';
 
-// Compile source rules from a file or directory into per-destination outputs
-const SUPPORTED_SOURCE_EXTENSIONS = ['.rule.md', '.ruleset.md'] as const;
-
-function hasSupportedExtension(filePath: string): boolean {
-  const lower = filePath.toLowerCase();
-  return SUPPORTED_SOURCE_EXTENSIONS.some((ext) => lower.endsWith(ext));
-}
-
-function normalizeOutputFilename(filename: string): string {
-  const trimmed = filename.trim();
-  const lastSlash = Math.max(
-    trimmed.lastIndexOf('/'),
-    trimmed.lastIndexOf('\\')
-  );
-  const prefix = lastSlash >= 0 ? trimmed.slice(0, lastSlash + 1) : '';
-  const leaf = lastSlash >= 0 ? trimmed.slice(lastSlash + 1) : trimmed;
-  const lowerLeaf = leaf.toLowerCase();
-
-  const build = (name: string): string => `${prefix}${name}`;
-
-  for (const ext of SUPPORTED_SOURCE_EXTENSIONS) {
-    if (lowerLeaf.endsWith(ext)) {
-      const base = leaf.slice(0, -ext.length).trim();
-      const safeBase = base.length > 0 ? base : 'index';
-      return build(`${safeBase}.md`);
-    }
-  }
-
-  const hasMarkdownExtension = lowerLeaf.endsWith('.md');
-  if (hasMarkdownExtension) {
-    return build(leaf.length > 0 ? leaf : 'index.md');
-  }
-
-  const safeLeaf = leaf.length > 0 ? leaf : 'index';
-  return build(`${safeLeaf}.md`);
-}
-
-async function listMarkdownFiles(rootPath: string): Promise<string[]> {
-  const stats = await fs.stat(rootPath);
-  if (!stats.isDirectory()) {
-    return hasSupportedExtension(rootPath) ? [rootPath] : [];
-  }
-
-  const result: string[] = [];
-
-  async function walk(dir: string) {
-    const entries = await fs.readdir(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      const full = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        await walk(full);
-      } else if (entry.isFile() && hasSupportedExtension(full)) {
-        result.push(full);
-      }
-    }
-  }
-
-  await walk(rootPath);
-  return result;
-}
+// Compile source rules from a file or directory into per-provider outputs
 
 /**
  * Creates the `rulesets compile` sub-command. The command compiles source rules
- * into destination-specific artefacts and can optionally watch for changes.
+ * into provider-specific artefacts and can optionally watch for changes.
  */
 export function compileCommand(): Command {
   return new Command('compile')
-    .description('Compile source rules to destination formats')
+    .description('Compile source rules to provider formats')
     .option('--json', 'Output JSON logs for machine consumption')
     .option('--log-level <level>', 'Log level: debug|info|warn|error')
     .option('-q, --quiet', 'Quiet mode: only errors are printed')
     .argument('[source]', 'Source file or directory', './.ruleset/rules')
     .option('-o, --output <dir>', 'Output directory', './.ruleset/dist')
-    .option('-d, --destination <dest>', 'Specific destination to compile for')
+    .option(
+      '-p, --provider <id>',
+      'Specific provider to compile for (preferred)'
+    )
+    .option(
+      '-d, --destination <dest>',
+      'Deprecated alias for --provider'
+    )
     .option('-w, --watch', 'Watch for changes and recompile')
-    .action(async (source: string, options) => {
-      await runCompile(source, options);
+    .action(async (source: string, options, command) => {
+      const usedDefaultSource = command.args.length === 0;
+      await runCompile(source, options, usedDefaultSource);
     });
 }
 
-/**
- * Resolved context shared across compilation helpers.
- */
-type CompileContext = {
-  sourcePath: string;
-  outputPath: string;
-  isDir: boolean;
-  files: string[];
-  destinations: string[];
+/** Options supported by the CLI compile command. */
+type CompileOptions = {
+  output: string;
+  provider?: string;
+  destination?: string; // Deprecated alias, kept for backwards compatibility
+  watch?: boolean;
 };
 
 /**
- * Resolves CLI options into a concrete compilation context, including absolute
- * paths, discovered source files, and the destination list.
+ * Entry point for the compile command. Handles non-watch and watch flows, and
+ * renders user-friendly status messages through the CLI spinner.
  */
-async function buildContext(
+async function runCompile(
   source: string,
-  options: Pick<CompileOptions, 'output' | 'destination'>
-): Promise<CompileContext> {
-  const cwd = process.cwd();
-  const sourcePath = resolve(cwd, sanitizePath(source));
-  const outputPath = resolve(cwd, sanitizePath(options.output));
+  options: CompileOptions,
+  usedDefaultSource: boolean
+): Promise<void> {
+  const spinner = createSpinner('Compiling rulesets...');
+  const targetProvider = options.provider ?? options.destination;
 
-  // Validate paths stay within project boundaries
-  if (!isPathWithinBoundary(sourcePath, cwd)) {
-    throw new Error(`Source path '${source}' is outside project directory`);
-  }
-  if (!isPathWithinBoundary(outputPath, cwd)) {
-    throw new Error(
-      `Output path '${options.output}' is outside project directory`
+  if (options.destination && !options.provider) {
+    logger.warn(
+      chalk.dim('`--destination` is deprecated; use `--provider` instead.')
     );
   }
-
-  const [sourceWithinReal, outputWithinReal] = await Promise.all([
-    isPathWithinBoundaryReal(sourcePath, cwd),
-    isPathWithinBoundaryReal(outputPath, cwd),
-  ]);
-
-  if (!sourceWithinReal) {
-    throw new Error(
-      `Source path '${source}' resolves outside project directory`
-    );
-  }
-
-  if (!outputWithinReal) {
-    throw new Error(
-      `Output path '${options.output}' resolves outside project directory`
-    );
-  }
-
-  const isDir = (await fs.stat(sourcePath)).isDirectory();
-  const files = await listMarkdownFiles(sourcePath);
-  const destinationsList = options.destination
-    ? [options.destination]
-    : (Array.from(destinations.keys()) as string[]);
-  return {
-    sourcePath,
-    outputPath,
-    isDir,
-    files,
-    destinations: destinationsList,
-  };
-}
-
-/**
- * Compiles a single Rulesets source file into one or more destination outputs.
- */
-async function compileFile(file: string, ctx: CompileContext): Promise<number> {
-  const content = await fs.readFile(file, 'utf-8');
-  const parsed = parse(content);
-  let compiledCount = 0;
-  for (const dest of ctx.destinations) {
-    if (!destinations.has(dest)) {
-      logger.warn(
-        chalk.yellow(`  - No provider registered for destination: ${dest}`)
-      );
-      continue;
-    }
-    const compiled = await compile(parsed, dest, {});
-    const rel = ctx.isDir ? relative(ctx.sourcePath, file) : basename(file);
-    const outfile = join(ctx.outputPath, dest, normalizeOutputFilename(rel));
-    await fs.mkdir(dirname(outfile), { recursive: true });
-    await fs.writeFile(outfile, compiled.output.content, { encoding: 'utf8' });
-    compiledCount++;
-  }
-  return compiledCount;
-}
-
-/**
- * Compiles the entire compilation context and accumulates any per-file errors.
- */
-async function compileAll(ctx: CompileContext): Promise<{
-  totalCompiled: number;
-  errors: Array<{
-    file: string;
-    displayPath: string;
-    message: string;
-    error: Error;
-  }>;
-}> {
-  const errors: Array<{
-    file: string;
-    displayPath: string;
-    message: string;
-    error: Error;
-  }> = [];
-  let totalCompiled = 0;
-  for (const file of ctx.files) {
-    try {
-      const count = await compileFile(file, ctx);
-      totalCompiled += count;
-    } catch (error) {
-      const failure = error instanceof Error ? error : new Error(String(error));
-      errors.push({
-        file,
-        displayPath: ctx.isDir
-          ? relative(ctx.sourcePath, file)
-          : basename(file),
-        message: failure.message,
-        error: failure,
-      });
-      logger.error(failure);
-    }
-  }
-  return { totalCompiled, errors };
-}
-
-/**
- * Resets watcher error state after a successful compilation cycle.
- */
-function handleSuccess(errorState: {
-  count: number;
-  timer: NodeJS.Timeout | null;
-}) {
-  errorState.count = 0;
-  if (errorState.timer) {
-    clearTimeout(errorState.timer);
-    errorState.timer = null;
-  }
-}
-
-/**
- * Restarts the file watcher after the circuit breaker cool-down completes.
- */
-async function restartWatcher(ctx: CompileContext) {
   try {
-    logger.info(chalk.cyan('Resuming watcher...'));
-    const files = await listMarkdownFiles(ctx.sourcePath);
-    await compileAll({ ...ctx, files });
-    await startWatcher({ ...ctx, files });
-  } catch (err) {
-    logger.error(err instanceof Error ? err : new Error(String(err)));
+    // Prepare compilation options
+    const compilationOptions: CompilationOptions = {
+      source,
+      output: options.output,
+      destination: targetProvider,
+      logger,
+      lint: true, // Enable linting by default
+    };
+
+    // Compile using the high-level API
+    const result = await compileRules(compilationOptions);
+
+    // Report results
+    if (result.errors.length > 0) {
+      spinner.warn(chalk.yellow(`Compiled with ${result.errors.length} error(s)`));
+      for (const err of result.errors) {
+        logger.error(chalk.red(`  - ${err.file}: ${err.message}`));
+      }
+    } else if (result.compiledCount === 0) {
+      spinner.warn(chalk.yellow('No files compiled'));
+    } else {
+      spinner.succeed(
+        chalk.green(`Successfully compiled ${result.compiledCount} file(s)`)
+      );
+    }
+
+    logger.info(chalk.dim(`Output: ${result.outputPath}`));
+
+    // Handle watch mode
+    if (options.watch) {
+      await startWatchMode(source, compilationOptions);
+    }
+  } catch (error) {
+    spinner.fail(chalk.red('Failed to compile rulesets'));
+    logger.error(error instanceof Error ? error : String(error));
+    process.exit(1);
   }
 }
 
 /**
- * Watches the source directory for changes and recompiles affected files.
+ * Start watch mode for file changes.
  */
-async function startWatcher(ctx: CompileContext): Promise<void> {
+async function startWatchMode(
+  source: string,
+  compilationOptions: CompilationOptions
+): Promise<void> {
+  const sourcePath = resolve(source);
+  const isDirectory = await fs.stat(sourcePath).then(s => s.isDirectory()).catch(() => false);
+
+  if (!isDirectory) {
+    logger.info('Watch mode only supports directories');
+    return;
+  }
+
   logger.info(chalk.cyan('\nWatching for changes... (Press Ctrl+C to stop)'));
+
   const { watch } = await import('node:fs');
-  const watcher = watch(ctx.sourcePath, { recursive: true });
+  const watcher = watch(sourcePath, { recursive: true });
 
-  const errorState = { count: 0, timer: null as NodeJS.Timeout | null };
   const { watcher: limits } = RESOURCE_LIMITS;
+  const errorState = { count: 0, timer: null as NodeJS.Timeout | null };
 
-  // Handle file change events
-  async function handleFileChange(filename: string | null) {
-    if (!(filename && hasSupportedExtension(filename))) {
+  watcher.on('change', async (_eventType: string, filename: string | null) => {
+    if (!filename || !filename.endsWith('.md') || basename(filename).startsWith('@')) {
       return;
     }
 
     logger.info(chalk.dim(`\nFile changed: ${filename}`));
-    const changedFile = join(ctx.sourcePath, filename);
 
     try {
-      await compileFile(changedFile, ctx);
-      logger.info(chalk.green('  ✓ Recompiled successfully'));
-      handleSuccess(errorState);
+      const result = await compileRules(compilationOptions);
+      if (result.compiledCount > 0) {
+        logger.info(chalk.green('  ✓ Recompiled successfully'));
+      }
+
+      // Reset error state on success
+      errorState.count = 0;
+      if (errorState.timer) {
+        clearTimeout(errorState.timer);
+        errorState.timer = null;
+      }
     } catch (error) {
       errorState.count++;
       logger.error(error instanceof Error ? error : new Error(String(error)));
@@ -284,7 +158,7 @@ async function startWatcher(ctx: CompileContext): Promise<void> {
           )
         );
         watcher.close();
-        setTimeout(() => restartWatcher(ctx), limits.errorResetTime);
+        setTimeout(() => startWatchMode(source, compilationOptions), limits.errorResetTime);
         return;
       }
 
@@ -295,66 +169,12 @@ async function startWatcher(ctx: CompileContext): Promise<void> {
         }, limits.errorResetTime);
       }
     }
-  }
-
-  watcher.on('change', (_eventType: string, filename: string | null) => {
-    handleFileChange(filename).catch((err) => {
-      logger.error(err instanceof Error ? err : new Error(String(err)));
-    });
   });
 
   watcher.on('error', (error: Error) => {
     logger.error(error);
     logger.info(chalk.cyan('Attempting to restart watcher...'));
     watcher.close();
-    setTimeout(async () => {
-      await startWatcher(ctx);
-    }, limits.restartDelay);
+    setTimeout(() => startWatchMode(source, compilationOptions), limits.restartDelay);
   });
-}
-
-/** Options supported by the CLI compile command. */
-type CompileOptions = {
-  output: string;
-  destination?: string;
-  watch?: boolean;
-};
-
-/**
- * Entry point for the compile command. Handles non-watch and watch flows, and
- * renders user-friendly status messages through the CLI spinner.
- */
-async function runCompile(
-  source: string,
-  options: CompileOptions
-): Promise<void> {
-  const spinner = createSpinner('Compiling rulesets...');
-  try {
-    const ctx = await buildContext(source, options);
-    if (ctx.files.length === 0) {
-      spinner.warn(chalk.yellow('No source files found'));
-      return;
-    }
-    spinner.text = `Found ${ctx.files.length} source file(s)`;
-
-    const { totalCompiled, errors } = await compileAll(ctx);
-    if (errors.length > 0) {
-      spinner.warn(chalk.yellow(`Compiled with ${errors.length} error(s)`));
-      for (const err of errors) {
-        logger.error(chalk.red(`  - ${err.displayPath}: ${err.message}`));
-      }
-    } else {
-      spinner.succeed(
-        chalk.green(`Successfully compiled ${totalCompiled} file(s)`)
-      );
-    }
-    logger.info(chalk.dim(`Output: ${ctx.outputPath}`));
-    if (options.watch) {
-      await startWatcher(ctx);
-    }
-  } catch (error) {
-    spinner.fail(chalk.red('Failed to compile rulesets'));
-    logger.error(error instanceof Error ? error : String(error));
-    process.exit(1);
-  }
 }
