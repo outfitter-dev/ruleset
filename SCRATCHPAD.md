@@ -89,6 +89,10 @@ Pay close attention to the @MIGRATION.md document.
 - Updated provider instantiation/export map, logging metadata, and re-exports; refreshed README examples accordingly.
 - Verified provider test suite via `bun run --filter @rulesets/core test`.
 
+#### 2025-09-21 at 11:35
+
+- Clarified documentation sources in `AGENTS.md` and removed the lingering music-metaphor note from `.agents/docs/language.md` per doc-reorg review feedback.
+
 ### 2025-09-19
 
 #### 2025-09-19 at 15:16
