@@ -2,16 +2,18 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type {
   CompiledDoc,
-  DestinationPlugin,
+  DestinationProvider,
   JSONSchema7,
   Logger,
+  ParsedDoc,
 } from '../interfaces';
+import { buildHandlebarsOptions, readDestinationConfig } from './utils';
 
 type AgentsMdConfig = {
   outputPath?: string;
 };
 
-export class AgentsMdPlugin implements DestinationPlugin {
+export class AgentsMdProvider implements DestinationProvider {
   get name(): string {
     return 'agents-md';
   }
@@ -27,6 +29,23 @@ export class AgentsMdPlugin implements DestinationPlugin {
       },
       additionalProperties: true,
     };
+  }
+
+  async prepareCompilation({
+    parsed,
+    projectConfig: _projectConfig,
+    logger,
+  }: {
+    parsed: ParsedDoc;
+    projectConfig: Record<string, unknown>;
+    logger: Logger;
+  }) {
+    const destinationConfig = readDestinationConfig(parsed, 'agents-md');
+    return buildHandlebarsOptions({
+      destinationId: 'agents-md',
+      destinationConfig,
+      logger,
+    });
   }
 
   async write(ctx: {
@@ -63,7 +82,7 @@ export class AgentsMdPlugin implements DestinationPlugin {
       });
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      logger.error(err, { plugin: 'agents-md', op: 'write', path: outputPath });
+      logger.error(err, { provider: 'agents-md', op: 'write', path: outputPath });
       throw err;
     }
   }

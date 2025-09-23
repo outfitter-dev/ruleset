@@ -4,9 +4,9 @@
  */
 export type Section = {
   name: string;
-  // properties: Record<string, any>; // To be detailed in v0.1+
-  // content: string; // To be detailed in v0.1+
-  // rawMarker: string; // To be detailed in v0.1+
+  properties?: Record<string, unknown>;
+  content?: string;
+  rawMarker?: string;
 };
 
 /**
@@ -60,7 +60,7 @@ export type ParsedDoc = {
 
 /**
  * Represents a document that has been compiled for a specific destination.
- * This is the primary data structure passed to destination plugins.
+ * This is the primary data structure passed to destination providers.
  */
 export type CompiledDoc = {
   /** Original source content and metadata */

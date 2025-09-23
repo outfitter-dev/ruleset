@@ -1,7 +1,12 @@
 import { promises as fs } from 'node:fs';
-import { compile } from './compiler';
+import { compile, type CompileOptions } from './compiler';
 import { destinations } from './destinations';
-import type { CompiledDoc, Logger, ParsedDoc } from './interfaces';
+import type {
+  CompiledDoc,
+  DestinationCompilationOptions,
+  Logger,
+  ParsedDoc,
+} from './interfaces';
 import { ConsoleLogger } from './interfaces';
 import { type LinterConfig, type LintResult, lint } from './linter';
 import { parse } from './parser';
@@ -15,11 +20,11 @@ export {
 } from './config/limits';
 export {
   destinations,
-  destinations as DestinationPluginRegistry,
+  destinations as DestinationProviderRegistry,
 } from './destinations';
-export { ClaudeCodePlugin } from './destinations/claude-code-plugin';
-export { CursorPlugin } from './destinations/cursor-plugin';
-export { WindsurfPlugin } from './destinations/windsurf-plugin';
+export { ClaudeCodeProvider } from './destinations/claude-code-provider';
+export { CursorProvider } from './destinations/cursor-provider';
+export { WindsurfProvider } from './destinations/windsurf-provider';
 export { InstallationManager } from './installation/installation-manager';
 // Export all public APIs
 export * from './interfaces';
@@ -204,13 +209,13 @@ function compileForDestination(
   parsedDoc: ParsedDoc,
   destinationId: string,
   projectConfig: Record<string, unknown>,
-  _logger: Logger
+  compileOptions: CompileOptions
 ): CompiledDoc {
-  return compile(parsedDoc, destinationId, projectConfig);
+  return compile(parsedDoc, destinationId, projectConfig, compileOptions);
 }
 
 /**
- * Writes compiled document using the appropriate destination plugin.
+ * Writes compiled document using the appropriate destination provider.
  *
  * @param compiledDoc - The compiled document
  * @param destinationId - Target destination ID
@@ -245,7 +250,7 @@ async function writeToDestination(
     (destConfig.path as string) ||
     defaultPath;
 
-  // Write using the plugin
+  // Write using the provider
   await provider.write({
     compiled: compiledDoc,
     destPath,
@@ -289,12 +294,52 @@ async function processDestinations(
     });
 
     try {
+      const provider = destinations.get(destinationId);
+      if (!provider) {
+        const error = new Error(
+          `Destination provider not registered: ${destinationId}`
+        );
+        logger.warn(error.message, { destination: destinationId });
+        results.push({ destinationId, success: false, error });
+        continue;
+      }
+
+      let destinationProjectConfig: Record<string, unknown> = projectConfig;
+      const compileOptions: CompileOptions = {
+        projectConfig: destinationProjectConfig,
+        logger,
+      };
+
+      if (provider.prepareCompilation) {
+        const preparation = await provider.prepareCompilation({
+          parsed: parsedDoc,
+          projectConfig,
+          logger,
+        });
+
+        if (preparation?.projectConfigOverrides) {
+          destinationProjectConfig = {
+            ...projectConfig,
+            ...preparation.projectConfigOverrides,
+          };
+          compileOptions.projectConfig = destinationProjectConfig;
+        }
+
+        if (preparation?.handlebars) {
+          compileOptions.handlebars = {
+            force: preparation.handlebars.force,
+            helpers: preparation.handlebars.helpers,
+            partials: preparation.handlebars.partials,
+          };
+        }
+      }
+
       // Compile for this destination
       const compiledDoc = compileForDestination(
         parsedDoc,
         destinationId,
-        projectConfig,
-        logger
+        destinationProjectConfig,
+        compileOptions
       );
 
       // Write to destination
@@ -343,7 +388,7 @@ async function processDestinations(
  * async function main() {
  *   const logger = new ConsoleLogger();
  *   try {
- *     await runRulesetsV0('./my-rules.mix.md', logger);
+ *     await runRulesetsV0('./my-rules.rule.md', logger);
  *     logger.info('Rulesets v0.1.0 process completed.');
  *   } catch (error) {
  *     logger.error('Rulesets v0.1.0 process failed:', error);
@@ -353,7 +398,7 @@ async function processDestinations(
  * main();
  * ```
  *
- * @param sourceFilePath - The path to the source Rulesets file (e.g., my-rules.mix.md).
+ * @param sourceFilePath - The path to the source Rulesets file (e.g., my-rules.rule.md).
  * @param logger - An instance of the Logger interface.
  * @param projectConfig - Optional: The root Rulesets project configuration.
  * @returns A promise that resolves when the process is complete, or rejects on error.

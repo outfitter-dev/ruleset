@@ -156,7 +156,7 @@ describe('linter', () => {
         rulesets: { version: '0.1.0' },
         destinations: {
           include: ['cursor'],
-          cursor: { path: './rules' },
+          cursor: { path: './.ruleset/rules' },
         },
       });
 

@@ -55,7 +55,7 @@ export class PackManager {
 
   constructor(options: PackManagerOptions = {}) {
     this.globalDir =
-      options.globalDir || join(process.env.HOME || '', '.ruleset');
+      options.globalDir || GlobalConfig.getInstance().getGlobalDirectory();
     this.projectDir = options.projectDir || process.cwd();
     this.packsDir = join(this.globalDir, 'packs');
   }

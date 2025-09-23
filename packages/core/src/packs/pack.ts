@@ -50,7 +50,7 @@ export class Pack {
   };
   configuration: PackConfiguration = {};
 
-  // biome-ignore lint/style/useReadonlyClassProperties: flips to true after load() (mixd-v0)
+  // biome-ignore lint/style/useReadonlyClassProperties: set to true after load()
   private _loaded: boolean;
   private _rulesetManager?: RulesetManager;
 

@@ -1,24 +1,24 @@
-import type { DestinationPlugin } from '../interfaces';
-import { AgentsMdPlugin } from './agents-md-plugin';
-import { ClaudeCodePlugin } from './claude-code-plugin';
-import { CopilotPlugin } from './copilot-plugin';
-import { CursorPlugin } from './cursor-plugin';
-import { WindsurfPlugin } from './windsurf-plugin';
+import type { DestinationProvider } from '../interfaces';
+import { AgentsMdProvider } from './agents-md-provider';
+import { ClaudeCodeProvider } from './claude-code-provider';
+import { CopilotProvider } from './copilot-provider';
+import { CursorProvider } from './cursor-provider';
+import { WindsurfProvider } from './windsurf-provider';
 
 // Create singleton instances
-export const cursorPlugin = new CursorPlugin();
-export const windsurfPlugin = new WindsurfPlugin();
-export const claudeCodePlugin = new ClaudeCodePlugin();
-export const agentsMdPlugin = new AgentsMdPlugin();
-export const copilotPlugin = new CopilotPlugin();
+export const cursorProvider = new CursorProvider();
+export const windsurfProvider = new WindsurfProvider();
+export const claudeCodeProvider = new ClaudeCodeProvider();
+export const agentsMdProvider = new AgentsMdProvider();
+export const copilotProvider = new CopilotProvider();
 
 // Export as a map for easy lookup
-export const destinations: ReadonlyMap<string, DestinationPlugin> = new Map([
-  ['cursor', cursorPlugin],
-  ['windsurf', windsurfPlugin],
-  ['claude-code', claudeCodePlugin],
-  ['agents-md', agentsMdPlugin],
-  ['copilot', copilotPlugin],
+export const destinations: ReadonlyMap<string, DestinationProvider> = new Map([
+  ['cursor', cursorProvider],
+  ['windsurf', windsurfProvider],
+  ['claude-code', claudeCodeProvider],
+  ['agents-md', agentsMdProvider],
+  ['copilot', copilotProvider],
 ]);
 
-// Intentionally do not re-export plugin classes here to avoid barrel-file lint warnings.
+// Intentionally do not re-export provider classes here to avoid barrel-file lint warnings.
