@@ -46,7 +46,7 @@ const logger: Logger = {
 
 await cursorPlugin.write({
   compiled,
-  destPath: '.rulesets/dist/cursor/my-rules.md',
+  destPath: '.ruleset/dist/cursor/my-rules.md',
   config: {},
   logger,
 });

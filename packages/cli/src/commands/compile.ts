@@ -14,14 +14,47 @@ import { Command } from 'commander';
 import { logger } from '../utils/logger';
 import { createSpinner } from '../utils/spinner';
 
-// TLDR: Compile rules from a file or directory into per-destination outputs (mixd-v0)
-const MIX_EXT_RE = /\.mix\.md$/i; // mixd-perf: precompiled regex for extension replacement
+// Compile source rules from a file or directory into per-destination outputs
+const SUPPORTED_SOURCE_EXTENSIONS = ['.rule.md', '.ruleset.md'] as const;
+
+function hasSupportedExtension(filePath: string): boolean {
+  const lower = filePath.toLowerCase();
+  return SUPPORTED_SOURCE_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+function normalizeOutputFilename(filename: string): string {
+  if (!filename) {
+    return 'index.md';
+  }
+
+  const trimmed = filename.trim();
+  const lastSlash = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'));
+  const prefix = lastSlash >= 0 ? trimmed.slice(0, lastSlash + 1) : '';
+  const leaf = lastSlash >= 0 ? trimmed.slice(lastSlash + 1) : trimmed;
+  const lowerLeaf = leaf.toLowerCase();
+
+  const buildPath = (name: string): string => `${prefix}${name}`;
+
+  for (const ext of SUPPORTED_SOURCE_EXTENSIONS) {
+    if (lowerLeaf.endsWith(ext)) {
+      const base = leaf.slice(0, -ext.length).trim();
+      const safeBase = base.length > 0 ? base : 'index';
+      return buildPath(`${safeBase}.md`);
+    }
+  }
+
+  if (lowerLeaf.endsWith('.md')) {
+    return buildPath(leaf.length > 0 ? leaf : 'index.md');
+  }
+
+  const safeLeaf = leaf.length > 0 ? leaf : 'index';
+  return buildPath(`${safeLeaf}.md`);
+}
 
 async function listMarkdownFiles(rootPath: string): Promise<string[]> {
   const stats = await fs.stat(rootPath);
   if (!stats.isDirectory()) {
-    const isMd = rootPath.endsWith('.md') || rootPath.endsWith('.mix.md');
-    return isMd ? [rootPath] : [];
+    return hasSupportedExtension(rootPath) ? [rootPath] : [];
   }
 
   const result: string[] = [];
@@ -32,10 +65,7 @@ async function listMarkdownFiles(rootPath: string): Promise<string[]> {
       const full = join(dir, entry.name);
       if (entry.isDirectory()) {
         await walk(full);
-      } else if (
-        entry.isFile() &&
-        (full.endsWith('.md') || full.endsWith('.mix.md'))
-      ) {
+      } else if (entry.isFile() && hasSupportedExtension(full)) {
         result.push(full);
       }
     }
@@ -51,8 +81,8 @@ export function compileCommand(): Command {
     .option('--json', 'Output JSON logs for machine consumption')
     .option('--log-level <level>', 'Log level: debug|info|warn|error')
     .option('-q, --quiet', 'Quiet mode: only errors are printed')
-    .argument('[source]', 'Source file or directory', './rules')
-    .option('-o, --output <dir>', 'Output directory', './.rulesets/dist')
+    .argument('[source]', 'Source file or directory', './.ruleset/rules')
+    .option('-o, --output <dir>', 'Output directory', './.ruleset/dist')
     .option('-d, --destination <dest>', 'Specific destination to compile for')
     .option('-w, --watch', 'Watch for changes and recompile')
     .action(async (source: string, options) => {
@@ -123,12 +153,16 @@ async function compileFile(file: string, ctx: CompileContext): Promise<number> {
   let compiledCount = 0;
   for (const dest of ctx.destinations) {
     if (!destinations.has(dest)) {
-      logger.warn(chalk.yellow(`  - No plugin found for destination: ${dest}`));
+      logger.warn(chalk.yellow(`  - No provider found for destination: ${dest}`));
       continue;
     }
     const compiled = await compile(parsed, dest, {});
     const rel = ctx.isDir ? relative(ctx.sourcePath, file) : basename(file);
-    const outfile = join(ctx.outputPath, dest, rel.replace(MIX_EXT_RE, '.md'));
+    const outfile = join(
+      ctx.outputPath,
+      dest,
+      normalizeOutputFilename(rel)
+    );
     await fs.mkdir(dirname(outfile), { recursive: true });
     await fs.writeFile(outfile, compiled.output.content, { encoding: 'utf8' });
     compiledCount++;
@@ -138,18 +172,35 @@ async function compileFile(file: string, ctx: CompileContext): Promise<number> {
 
 async function compileAll(
   ctx: CompileContext
-): Promise<{ totalCompiled: number; errors: string[] }> {
-  const errors: string[] = [];
+): Promise<{
+  totalCompiled: number;
+  errors: Array<{
+    file: string;
+    displayPath: string;
+    message: string;
+    error: Error;
+  }>;
+}> {
+  const errors: Array<{
+    file: string;
+    displayPath: string;
+    message: string;
+    error: Error;
+  }> = [];
   let totalCompiled = 0;
   for (const file of ctx.files) {
     try {
       const count = await compileFile(file, ctx);
       totalCompiled += count;
     } catch (error) {
-      errors.push(`Failed to compile ${file}: ${String(error)}`);
-      if (error instanceof Error) {
-        logger.error(error);
-      }
+      const failure = error instanceof Error ? error : new Error(String(error));
+      errors.push({
+        file,
+        displayPath: ctx.isDir ? relative(ctx.sourcePath, file) : basename(file),
+        message: failure.message,
+        error: failure,
+      });
+      logger.error(failure);
     }
   }
   return { totalCompiled, errors };
@@ -189,9 +240,7 @@ async function startWatcher(ctx: CompileContext): Promise<void> {
 
   // Handle file change events
   async function handleFileChange(filename: string | null) {
-    if (
-      !(filename && (filename.endsWith('.md') || filename.endsWith('.mix.md')))
-    ) {
+    if (!(filename && hasSupportedExtension(filename))) {
       return;
     }
 
@@ -261,7 +310,7 @@ async function runCompile(
     if (errors.length > 0) {
       spinner.warn(chalk.yellow(`Compiled with ${errors.length} error(s)`));
       for (const err of errors) {
-        logger.error(chalk.red(`  - ${err}`));
+        logger.error(chalk.red(`  - ${err.displayPath}: ${err.message}`));
       }
     } else {
       spinner.succeed(

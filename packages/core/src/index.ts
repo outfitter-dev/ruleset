@@ -225,9 +225,9 @@ async function writeToDestination(
   frontmatter: Record<string, unknown>,
   logger: Logger
 ): Promise<void> {
-  const plugin = destinations.get(destinationId);
-  if (!plugin) {
-    logger.warn(`No plugin found for destination: ${destinationId}`);
+  const provider = destinations.get(destinationId);
+  if (!provider) {
+    logger.warn(`No provider found for destination: ${destinationId}`);
     return;
   }
 
@@ -239,14 +239,14 @@ async function writeToDestination(
     (frontmatterDestinations?.[destinationId] as
       | Record<string, unknown>
       | undefined) || {};
-  const defaultPath = `.rulesets/dist/${destinationId}/my-rules.md`;
+  const defaultPath = `.ruleset/dist/${destinationId}/my-rules.md`;
   const destPath =
     (destConfig.outputPath as string) ||
     (destConfig.path as string) ||
     defaultPath;
 
   // Write using the plugin
-  await plugin.write({
+  await provider.write({
     compiled: compiledDoc,
     destPath,
     config: destConfig,

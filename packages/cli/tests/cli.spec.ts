@@ -95,18 +95,21 @@ describe('rulesets CLI smoke', () => {
     expect(stdout.trim().length === 0 || !NON_WS_RE.test(stdout)).toBeTruthy();
   });
 
-  it('compiles a rules directory to output', () => {
+  it.each([
+    { ext: '.rule.md', label: 'preferred .rule.md extension' },
+    { ext: '.ruleset.md', label: 'legacy .ruleset.md extension' },
+  ])('compiles a rules directory to output (%s)', ({ ext }) => {
     const tmp = mkdtempSync(join(tmpdir(), 'rulesets-cli-compile-'));
     const rulesDir = join(tmp, 'rules');
-    mkdirSync(rulesDir);
-    const srcFile = join(rulesDir, 'hello.mix.md');
+    mkdirSync(rulesDir, { recursive: true });
+    const srcFile = join(rulesDir, `hello${ext}`);
     const body = '# Hello\n\nThis is the body.';
     writeFileSync(
       srcFile,
       `---\nname: test\ndescription: demo\n---\n\n${body}\n`
     );
 
-    const outDirRel = join('.rulesets', 'dist');
+    const outDirRel = join('.ruleset', 'dist');
     const outDirAbs = join(tmp, outDirRel);
     const { code, stderr } = runCli(
       [
@@ -120,17 +123,13 @@ describe('rulesets CLI smoke', () => {
       ],
       { cwd: tmp }
     );
-    if (code !== 0) {
-      // Test failed - stderr/stdout will be shown in test output
-    }
     expect(code).toBe(0);
-    // Should produce cursor/hello.md
+
     const outFile = join(outDirAbs, 'cursor', 'hello.md');
     expect(existsSync(outFile)).toBe(true);
     const content = readFileSync(outFile, 'utf-8');
     expect(content).toContain('Hello');
     expect(content).toContain('This is the body.');
-    // no frontmatter in output
     expect(content).not.toContain('name: test');
     expect(stderr).toBe('');
   });
