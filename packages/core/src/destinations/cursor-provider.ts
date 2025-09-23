@@ -84,10 +84,13 @@ export class CursorProvider implements DestinationProvider {
     try {
       await fs.mkdir(dir, { recursive: true });
     } catch (error) {
-      logger.error(
-        `Failed to create directory: ${dir}. ${error instanceof Error ? error.message : String(error)}`
-      );
-      throw error;
+      const failure = error instanceof Error ? error : new Error(String(error));
+      logger.error('Failed to create directory for Cursor provider', {
+        destination: this.name,
+        path: dir,
+        error: failure.message,
+      });
+      throw failure;
     }
 
     // For v0, write the raw content
@@ -104,10 +107,13 @@ export class CursorProvider implements DestinationProvider {
         logger.debug(`Priority: ${compiled.output.metadata.priority}`);
       }
     } catch (error) {
-      logger.error(
-        `Failed to write file: ${resolvedPath}. ${error instanceof Error ? error.message : String(error)}`
-      );
-      throw error;
+      const failure = error instanceof Error ? error : new Error(String(error));
+      logger.error('Failed to write Cursor rules', {
+        destination: this.name,
+        path: resolvedPath,
+        error: failure.message,
+      });
+      throw failure;
     }
   }
 }

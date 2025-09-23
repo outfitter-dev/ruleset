@@ -141,6 +141,10 @@ Note: `rulesets compile` writes to `.ruleset/dist/…`. Add these paths to `.git
 # .ruleset/dist/copilot/
 ```
 
+## Handlebars Safety
+
+Some destination providers opt into Handlebars-templated compilation when you set `destinations.<provider>.handlebars` in frontmatter or project config. Rulesets enables Handlebars strict mode and HTML escaping by default to avoid leaking unexpected data or emitting unescaped markup. Only disable these safeguards (`force: true`, `strict: false`, or `noEscape: true`) when you fully control the template inputs, and prefer partials over helpers for sharing content across destinations.
+
 ## Project Structure
 
 ```text

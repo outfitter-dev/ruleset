@@ -89,6 +89,11 @@ Pay close attention to the @MIGRATION.md document.
 - Updated provider instantiation/export map, logging metadata, and re-exports; refreshed README examples accordingly.
 - Verified provider test suite via `bun run --filter @rulesets/core test`.
 
+#### 2025-09-21 at 10:40
+
+- Tightened provider preparation utilities: added typed Handlebars option builder, validated partial inputs, and improved Cursor provider error handling.
+- Added documentation nudge on Handlebars safety plus new tests for destination utils and `CursorProvider.prepareCompilation`; confirmed with `bun run --filter @rulesets/core test`.
+
 #### 2025-09-21 at 10:55
 
 - Hardened CLI compile workflow: safer filename normalization (fallback to `index.md`) and richer error aggregation with per-file context.
