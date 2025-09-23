@@ -58,9 +58,9 @@ This document outlines proposed changes and clarifications for `spec/overview.md
 +> While options are processed left-to-right, certain option types like `name()` might have special handling if specified multiple times. When in doubt about complex combinations, the last specified option for a particular feature usually takes precedence.
 +
 +
- 
+
  #### Target-scoped Option Overrides
- 
+
 
 ````
 
@@ -74,16 +74,16 @@ This document outlines proposed changes and clarifications for `spec/overview.md
 
 **Proposed Examples:**
 
-````markdown
+```markdown
 **Comprehensive Target Scoping Examples:**
 
 - **Target-specific option (block included for all targets unless otherwise specified):**
   `{{instructions cursor:name(cursor-specific-rules)}}`
-  *(Applies `name(cursor-specific-rules)` only for the `cursor` target. The block itself is included for all targets by default.)*
+  _(Applies `name(cursor-specific-rules)` only for the `cursor` target. The block itself is included for all targets by default.)_
 
 - **Target-specific multiple options (block included for all targets):**
   `{{instructions cursor:[name(cursor-rules) code-js]}}`
-  *(Applies `name(cursor-rules)` and `code-js` only for the `cursor` target.)*
+  _(Applies `name(cursor-rules)` and `code-js` only for the `cursor` target.)_
 
 - **Inclusion for a target with a specific option:**
   `{{instructions +cursor:name(only-for-cursor)}}`
@@ -95,25 +95,24 @@ This document outlines proposed changes and clarifications for `spec/overview.md
 
 - **Exclusion for a target, even if a scoped option is present:**
   `{{instructions !cursor:name(ignored-for-cursor)}}`
-  *(Excludes this track for the `cursor` target. The `name(ignored-for-cursor)` option would not apply as the track is excluded for `cursor`.)*
-  
+  _(Excludes this track for the `cursor` target. The `name(ignored-for-cursor)` option would not apply as the track is excluded for `cursor`.)_
 - **Exclusion for a target with multiple specific options (options are moot due to exclusion):**
   `{{instructions !cursor:[name(cursor-rules) code-js]}}`
-  *(Excludes this track for the `cursor` target.)*
+  _(Excludes this track for the `cursor` target.)_
 
 - **Group inclusion with member exclusion and scoped options for the group:**
   `{{instructions +ide:[code-block] !cursor}}`
-  *(Includes this track for all targets in the `ide` group, applying the `code-block` option, but explicitly excludes it for the `cursor` target, even if `cursor` is part of the `ide` group. Assumes `ide` is a defined group.)*
-````
+  _(Includes this track for all targets in the `ide` group, applying the `code-block` option, but explicitly excludes it for the `cursor` target, even if `cursor` is part of the `ide` group. Assumes `ide` is a defined group.)_
+```
 
 **Diff for `spec/overview.md`:**
 
-````diff
+```diff
 --- a/spec/overview.md
 +++ b/spec/overview.md
 @@ -230,6 +230,29 @@
  This applies both `name(cursor-rules)` and `code-js` options only when building for the cursor target, without affecting other targets. The square brackets group the options that are scoped to that specific target.
- 
+
  #### Self-Closing Tags
 +
 +**Further Target Scoping Examples:**
@@ -138,15 +137,15 @@ This document outlines proposed changes and clarifications for `spec/overview.md
 +  `{{instructions +ide:[code-block] !cursor}}`
 +  *(Includes this track for all targets in the `ide` group, applying the `code-block` option, but explicitly excludes it for the `cursor` target, even if `cursor` is part of the `ide` group. Assumes `ide` is a defined group, typically in `mixdown.config.json`.)*
 +
- 
- For tracks with no content, you can use a self-closing tag format:
- 
 
-````
+ For tracks with no content, you can use a self-closing tag format:
+
+
+```
 
 ## 3. Whitespace Handling in Option Groups
 
-**Observation:** The current "Option Bracketing Rules" section or general "Whitespace Handling" doesn't explicitly detail whitespace *within* the `[]` of option groups.
+**Observation:** The current "Option Bracketing Rules" section or general "Whitespace Handling" doesn't explicitly detail whitespace _within_ the `[]` of option groups.
 
 **Proposal:** Clarify that leading and trailing whitespace within the square brackets `[]` of an option group is optional and ignored by the parser, similar to whitespace around `{{` and `}}`.
 
@@ -164,7 +163,7 @@ This document outlines proposed changes and clarifications for `spec/overview.md
 +
 +Leading and trailing whitespace within the option group brackets `[]` is optional and will be ignored by the parser. Spaces between options within the brackets are necessary delimiters. For example, `[ option1  option2 ]` is equivalent to `[option1 option2]`.
  ```
- 
+
  When used with snippets, if the language is omitted (`code`), the system will automatically determine the language based on the snippet file's extension:
 
 ````
@@ -185,7 +184,7 @@ This document outlines proposed changes and clarifications for `spec/overview.md
 @@ -414,6 +414,20 @@
  Leading and trailing whitespace within the option group brackets `[]` is optional and will be ignored by the parser. Spaces between options within the brackets are necessary delimiters. For example, `[ option1  option2 ]` is equivalent to `[option1 option2]`.
  ```
- 
+
 +#### Option Grouping & Scoping: Common Patterns
 +
 +The following table provides a quick reference to common invocation patterns for option grouping and target scoping:
@@ -204,7 +203,7 @@ This document outlines proposed changes and clarifications for `spec/overview.md
 +| Group Inclusion + Member Exclusion          | `{{track +group:[opt1] !member}}`               | Includes for `group` with `opt1`, but excludes for `member`.                |
 +
  When used with snippets, if the language is omitted (`code`), the system will automatically determine the language based on the snippet file's extension:
- 
+
 
 ````
 
@@ -214,45 +213,47 @@ This section covers areas that could benefit from minor clarifications or points
 
 ### 5.1. Potential Confusion: `target:[options]` vs. `+target:[options]`
 
-**Observation:** The distinction between `{{track target:[option-a option-b]}}` and `{{track +target:[option-a option-b]}}` is subtle but critical.
-    - `target:[options]` applies options *if* the block is being rendered for that target (i.e., the block is included by default or via another rule). It does *not* cause the block to be included solely for that target.
-    - `+target:[options]` explicitly includes the block *only* for that target and applies the specified options.
+**Observation:** The distinction between `{{track target:[option-a option-b]}}` and `{{track +target:[option-a option-b]}}` is subtle but critical. - `target:[options]` applies options _if_ the block is being rendered for that target (i.e., the block is included by default or via another rule). It does _not_ cause the block to be included solely for that target. - `+target:[options]` explicitly includes the block _only_ for that target and applies the specified options.
 
 **Proposal:** Ensure this distinction is very clearly articulated, perhaps with a dedicated note or more explicit phrasing in the relevant examples. The "Further Target Scoping Examples" (added in item #2 above) aims to clarify this through examples. An additional explicit note could be beneficial.
 
 **Suggested Text (example for a note):**
+
 > [!IMPORTANT]
 > Differentiating Scoped Options from Scoped Inclusion:
+>
 > - `target:[my-option]` means "If this track is rendered for `target`, apply `my-option`." The track's general inclusion is determined elsewhere (e.g. by default, or by a `+target` on its own).
-> - `+target:[my-option]` means "Render this track *only* for `target`, and when doing so, apply `my-option`." This controls both inclusion and target-specific options simultaneously.
+> - `+target:[my-option]` means "Render this track _only_ for `target`, and when doing so, apply `my-option`." This controls both inclusion and target-specific options simultaneously.
 
 ### 5.2. Clarity: Custom XML Attributes `key="value"` vs. Structured Option `name(value)`
 
 **Observation:**
+
 - `spec/overview.md` (line 283) correctly lists `name(value)` as setting a name and "Custom `key="value"`" for passthrough attributes.
 - The description for `name(value)` in the "Track Options" table is "Sets a name with a specified value for the track."
-- The "Multi-line Markers for Readability" section (line 264) states: "Note: Using the `name(value)` syntax tells Mixdown to include this attribute in the rendered output". This is true, but *any* `key="value"` custom attribute is also included in the rendered output if not `tag-omit`.
+- The "Multi-line Markers for Readability" section (line 264) states: "Note: Using the `name(value)` syntax tells Mixdown to include this attribute in the rendered output". This is true, but _any_ `key="value"` custom attribute is also included in the rendered output if not `tag-omit`.
 - The key distinction is that `name(some-name)` specifically sets the XML `name` attribute (e.g. `<instructions name="some-name">`), which might have special meaning for Mixdown or certain targets. Other `key="value"` pairs are generic passthrough attributes.
 
-**Proposal:** Slightly rephrase the note on line 264-265 to emphasize that `name(value)` sets a *specific* XML attribute named `name`, distinct from general custom attributes.
+**Proposal:** Slightly rephrase the note on line 264-265 to emphasize that `name(value)` sets a _specific_ XML attribute named `name`, distinct from general custom attributes.
 
 **Diff for `spec/overview.md`:**
-````diff
+
+```diff
 --- a/spec/overview.md
 +++ b/spec/overview.md
 @@ -262,8 +262,8 @@
  This is the content of the instructions section.
  {{/instructions}}
- 
+
 -<!-- Note: Using the name(value) syntax tells Mixdown
 -  to include this attribute in the rendered output -->
-+<!-- Note: Using the name(value) syntax specifically sets the 'name' attribute 
++<!-- Note: Using the name(value) syntax specifically sets the 'name' attribute
 +  (e.g., name="important-rules") in the rendered XML output. -->
- 
- ---
- 
 
-````
+ ---
+
+
+```
 
 ### 5.3. Simplification Review: `code` vs. `code-auto`
 
@@ -264,41 +265,41 @@ This section covers areas that could benefit from minor clarifications or points
 
 **Observation:** `spec/overview.md` (line 512, note) states: "Standard Markdown links will work in previews as expected within the `.mixdown/mixes` directory, but `{{link ...}}` will not."
 
-**Proposal:** Briefly add *why* `{{link ...}}` doesn't work in standard previews to manage user expectations.
+**Proposal:** Briefly add _why_ `{{link ...}}` doesn't work in standard previews to manage user expectations.
 
 **Suggested Addition to the Note (line 513):**
+
 > ...but `{{link ...}}` will not, as it requires compilation by Mixdown to resolve paths relative to the final output directory and apply any target-specific link transformations.
 
 **Diff for `spec/overview.md`:**
+
 ````diff
 --- a/spec/overview.md
 +++ b/spec/overview.md
 @@ -510,7 +510,7 @@
  ```
- 
+
  > [!NOTE]
 -> Standard Markdown links will work in previews as expected within the `.mixdown/mixes` directory, but `{{link ...}}` will not.
 +> Standard Markdown links will work in previews as expected within the `.mixdown/mixes` directory, but `{{link ...}}` will not, as it requires compilation by Mixdown to resolve paths relative to the final output directory and apply any target-specific link transformations.
- 
+
  #### Linking to Project Files
- 
+
 
 ````
 
 ### 5.5. Variable Scope and Potential Namespace Clarity
 
-**Observation:** Variables `{{$key}}` (alias), `{{$.key}}` (frontmatter), and `{{$target}}`/`{{$target.id}}` (system) are generally clear.
-    - The `.` in `{{$.key}}` effectively namespaces frontmatter variables away from aliases.
-    - System variables like `$target` are distinct.
+**Observation:** Variables `{{$key}}` (alias), `{{$.key}}` (front matter), and `{{$target}}`/`{{$target.id}}` (system) are generally clear. - The `.` in `{{$.key}}` effectively namespaces front matter variables away from aliases. - System variables like `$target` are distinct.
 
 **Consideration (Minor):** Is there any scenario where an alias could be named, for example, `target` (i.e., `{{$target}}`) and clash with the system variable `{{$target}}`? Or does the system variable always take precedence / have a protected namespace?
-This is likely handled by a defined order of precedence (e.g., system > frontmatter > alias, or specific parsing rules).
+This is likely handled by a defined order of precedence (e.g., system > front matter > alias, or specific parsing rules).
 
 **Proposal:** If not already implicitly covered by parser design, a brief note on variable resolution order or namespace protection in the "Variables" section could be useful for advanced users, though likely not critical for a general overview. For now, this is more of a thought-point for internal consistency checks rather than a specific doc change unless major ambiguity is perceived.
 
 ### 5.6. Target Group Definition Source
 
-**Observation:** The proposal and examples (e.g., `+ide:[code-block] !cursor`) use the concept of "target groups" (like `ide`). The `spec/overview.md` document doesn't explicitly state *where* these groups are defined (presumably in `mixdown.config.json`).
+**Observation:** The proposal and examples (e.g., `+ide:[code-block] !cursor`) use the concept of "target groups" (like `ide`). The `spec/overview.md` document doesn't explicitly state _where_ these groups are defined (presumably in `mixdown.config.json`).
 
 **Proposal:** Add a brief parenthetical note when target groups are first exemplified, indicating their typical definition source.
 
@@ -309,4 +310,4 @@ This seems sufficient for an overview document.
 
 ---
 
-This document should serve as a good basis for refining `spec/overview.md`. 
+This document should serve as a good basis for refining `spec/overview.md`.

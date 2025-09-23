@@ -5,9 +5,9 @@ Support different formats for headings and tags
 Handle hierarchical relationships automatically
 }
 
-### Source Rule Configuration (frontmatter)
+### Source Rule Configuration (front matter)
 
-```yaml
+````yaml
 ---
 mixdown:
   heading:
@@ -58,7 +58,7 @@ Adding a heading-based output format would allow users to represent nested struc
 
 ## Core Concept
 
-I propose adding a new `heading` output format with optional level specification (defaulting to the stem's nesting level), along with frontmatter/config settings to control minimum/maximum heading levels and text case transformation.
+I propose adding a new `heading` output format with optional level specification (defaulting to the stem's nesting level), along with front matter/config settings to control minimum/maximum heading levels and text case transformation.
 
 ## Proposed Format Properties
 
@@ -88,7 +88,7 @@ Add the following output value within a stem:
 {{stem-name heading}}
 This content will be preceded by a heading based on the stem name
 {{/stem-name}}
-```
+````
 
 This would output:
 
@@ -108,6 +108,7 @@ This content will use an h3 heading regardless of nesting
 {{/stem-name}}
 
 <!-- Or using the shorthand notation -->
+
 {{stem-name h-3}}
 This content will also use an h3 heading
 {{/stem-name}}
@@ -172,19 +173,19 @@ Nesting more content
 
 ### 4. Heading Level Configuration
 
-In frontmatter or config file:
+In front matter or config file:
 
 ```yaml
 ---
 mixdown:
   heading:
     level:
-      min: 2      # Minimum heading level to start at (default: 2)
-      max: 5      # Maximum heading level (default: 5, capped at 6)
-    case: "title" # Optional: stem name case transformation
+      min: 2 # Minimum heading level to start at (default: 2)
+      max: 5 # Maximum heading level (default: 5, capped at 6)
+    case: 'title' # Optional: stem name case transformation
     line_breaks:
       before: true # Insert blank line before heading (default: true)
-      after: true   # Insert blank line after heading (default: true)
+      after: true # Insert blank line after heading (default: true)
 ---
 ```
 
@@ -281,25 +282,25 @@ Third inner section with shorthand heading notation
 }
 ```
 
-### Per-Mix Configuration (frontmatter)
+### Per-Mix Configuration (front matter)
 
 ```yaml
 ---
 mixdown:
   heading:
     level:
-      min: 2             # Minimum heading level to start at (default: 2)
-      max: 5             # Maximum heading level (default: 5, capped at 6)
-    case: "title"        # Propertyal: stem name case transformation
+      min: 2 # Minimum heading level to start at (default: 2)
+      max: 5 # Maximum heading level (default: 5, capped at 6)
+    case: 'title' # Propertyal: stem name case transformation
     line_breaks:
-      before: true       # Insert blank line before heading (default: true)
-      after: true        # Insert blank line after heading (default: true)
+      before: true # Insert blank line before heading (default: true)
+      after: true # Insert blank line after heading (default: true)
   stem:
     numbering:
-      heading: "before"     # before, after, or none
-      tag: "after"          # before, after, or none
-      children: 3           # max depth for hierarchical numbering
-      separator: "."        # separator between numbers (e.g., 1.[2.3])
+      heading: 'before' # before, after, or none
+      tag: 'after' # before, after, or none
+      children: 3 # max depth for hierarchical numbering
+      separator: '.' # separator between numbers (e.g., 1.[2.3])
 ---
 ```
 
@@ -324,6 +325,7 @@ mixdown:
 
    ```markdown
    {{stem-name heading="replace"}}
+
    # Existing Heading
 
    This content has an existing heading that will be replaced with the stem name
@@ -352,7 +354,7 @@ mixdown:
 
    ```markdown
    ## Stem Name
-   
+
    Content
    ```
 
@@ -391,14 +393,14 @@ Section content
 {{/section}}
 ```
 
-| Property | Description |
-|--------|-------------|
+| Property         | Description                                     |
+| ---------------- | ----------------------------------------------- |
 | `heading:before` | Place number before heading text ("1. Section") |
-| `heading:after` | Place number after heading text ("Section 1") |
-| `heading:none` | No numbering in headings |
-| `tag:before` | Place number before tag string (`<1_section>`) |
-| `tag:after` | Place number after tag string (`<section_1>`) |
-| `tag:none` | No numbering in tags |
+| `heading:after`  | Place number after heading text ("Section 1")   |
+| `heading:none`   | No numbering in headings                        |
+| `tag:before`     | Place number before tag string (`<1_section>`)  |
+| `tag:after`      | Place number after tag string (`<section_1>`)   |
+| `tag:none`       | No numbering in tags                            |
 
 ### 3. Hierarchical Numbering
 
@@ -470,10 +472,10 @@ Control numbering globally or per-mix:
 mixdown:
   stem:
     numbering:
-      heading: "before"      # before, after, or none
-      tag: "after"           # before, after, or none
-      children: 3            # max depth for hierarchical numbering
-      separator: "."         # separator between numbers (e.g., 1.[2.3])
+      heading: 'before' # before, after, or none
+      tag: 'after' # before, after, or none
+      children: 3 # max depth for hierarchical numbering
+      separator: '.' # separator between numbers (e.g., 1.[2.3])
 ```
 
 ## Implementation Considerations
@@ -502,9 +504,10 @@ mixdown:
 
 ```markdown
 {{instructions heading}}
+
 - Follow these guidelines
 - Use consistent formatting
-{{/instructions}}
+  {{/instructions}}
 ```
 
 Renders as:
@@ -520,6 +523,7 @@ Renders as:
 
 ```markdown
 {{implementation-details heading="replace"}}
+
 # Implementation
 
 This section covers details about how to implement the feature.
@@ -540,19 +544,22 @@ The implementation should follow these principles...
 
 ```markdown
 {{project-details heading="1"}}
+
 ## Project Overview
 
 {{key-features}}
 The project includes the following features:
+
 - Feature 1
 - Feature 2
-{{/key-features}}
+  {{/key-features}}
 
 {{requirements heading}}
 System requirements:
+
 - Requirement 1
 - Requirement 2
-{{/requirements}}
+  {{/requirements}}
 
 {{/project-details}}
 ```
@@ -566,28 +573,33 @@ Renders as:
 
 <key_features>
 The project includes the following features:
+
 - Feature 1
 - Feature 2
-</key_features>
+  </key_features>
 
 ## Requirements
 
 System requirements:
+
 - Requirement 1
 - Requirement 2
 ```
 
 ### Simplified Heading Syntax
 
-```markdown
+````markdown
 {{"Getting Started"}}
 This section explains how to get started with the project.
 
 {{"Installation"}}
 First, install the dependencies:
+
 ```bash
 npm install
 ```
+````
+
 {{/"Installation"}}
 
 {{"Configuration"}}
@@ -595,7 +607,8 @@ Next, configure your environment...
 {{/"Configuration"}}
 
 {{/"Getting Started"}}
-```
+
+````
 
 Renders as:
 
@@ -609,9 +622,12 @@ This section explains how to get started with the project.
 First, install the dependencies:
 ```bash
 npm install
-```
+````
 
 ### Configuration
 
 Next, configure your environment...
+
+```
+
 ```

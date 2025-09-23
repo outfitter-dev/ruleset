@@ -216,6 +216,7 @@ Content 3
 ```
 
 Properties:
+
 - Close all previous stems (resulting in sequential stems)
 - Only auto-close stems of the same level (allowing nesting)
 
@@ -241,6 +242,7 @@ Content 2
 ```
 
 Properties:
+
 - No inheritance (each stem has its own properties)
 - Inherit non-conflicting properties from parent
 - Inherit specifically marked properties
@@ -282,14 +284,15 @@ Consider whether auto-closed sections should adjust indentation to reflect nesti
 {{stem-1}}
 Content 1
 
-  {{stem-2}}
-  Content 2
+{{stem-2}}
+Content 2
 
     {{stem-3}}
     Content 3
 ```
 
 Properties:
+
 - Preserve original indentation (simpler)
 - Adjust indentation to reflect nesting (more complex but potentially more readable)
 
@@ -302,7 +305,7 @@ Recommendation: Preserve original indentation to maintain maximum fidelity with 
 An alternative could be to provide a special notation that explicitly indicates auto-closing behavior:
 
 ```markdown
-{{stem-1>}}  <!-- '>' indicates this stem will close when another stem appears -->
+{{stem-1>}} <!-- '>' indicates this stem will close when another stem appears -->
 Content 1
 
 {{stem-2>}}
@@ -317,20 +320,20 @@ Content 3
 Explicit level markers could be added:
 
 ```markdown
-{{1:stem-1}}  <!-- Level 1 -->
+{{1:stem-1}} <!-- Level 1 -->
 Content 1
 
-{{2:stem-2}}  <!-- Level 2 -->
+{{2:stem-2}} <!-- Level 2 -->
 Content 2
 
-{{3:stem-3}}  <!-- Level 3 -->
+{{3:stem-3}} <!-- Level 3 -->
 Content 3
 ```
 
 ## Implementation Recommendation
 
 1. Implement auto-closing as an opt-in feature initially
-2. Allow configuration via frontmatter or config with `auto-close: true|false`
+2. Allow configuration via front matter or config with `auto-close: true|false`
 3. Provide clear error messages when auto-closing creates ambiguous situations
 4. Consider default level detection based on indentation
 5. Maintain explicit LIFO ordering for auto-closing
@@ -412,7 +415,7 @@ This is a subsection.
 
 {{code-example}}
 function example() {
-  console.log("Hello world");
+console.log("Hello world");
 }
 {{/code-example}}
 
@@ -433,13 +436,14 @@ This is a subsection.
 
 <code_example>
 function example() {
-  console.log("Hello world");
+console.log("Hello world");
 }
 </code_example>
 
 ### Another Subsection
 
 This is another subsection.
+
 </section>
 </subsection>
 </another-subsection>
@@ -459,6 +463,7 @@ Both features would be complementary within the Mixdown ecosystem.
 Auto-closing stems would provide a more intuitive and efficient way to author hierarchical content in Mixdown. The implementation would need careful consideration of edge cases, but would result in cleaner source documents with less redundancy.
 
 This feature would be particularly valuable when:
+
 - Creating deeply nested document structures
 - Using heading-based output formats
 - Rapidly authoring new content where exact nesting is still being determined

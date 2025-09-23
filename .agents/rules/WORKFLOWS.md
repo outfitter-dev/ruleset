@@ -5,63 +5,79 @@ Quick reference guide for common development workflows in the Rulesets project. 
 ## Core Development
 
 ### [Build](./workflows/build.md)
+
 Commands for building the project, packages, and managing build artifacts.
 
 ### [Test](./workflows/test.md)
+
 Testing commands including unit tests, integration tests, coverage, and watch mode.
 
 ### [Lint & Format](./workflows/lint.md)
+
 Code quality tools for linting, formatting, and type checking.
 
 ### [Development](./workflows/development.md)
+
 Daily development commands for dependency management and dev server operations.
 
 ## Rules Compilation
 
 ### [Compile Rules](./workflows/compile.md)
+
 Compile source rules into provider-specific formats for Cursor, Claude Code, Windsurf, and more.
 
 ### [Provider Plugin Development](./workflows/provider-plugin.md)
+
 Create and test new provider plugins for additional AI tools.
 
 ## Version Control
 
 ### [Git](./workflows/git.md)
+
 Essential git commands for branching, committing, and managing changes.
 
 ### [Pull Request](./workflows/pull-request.md)
+
 GitHub PR workflow from creation through review to merge.
 
 ### [Release](./workflows/release.md)
+
 Manage releases with changesets, versioning, and npm publishing.
 
 ## CI/CD & Deployment
 
 ### [CI/CD](./workflows/ci-cd.md)
+
 Continuous integration commands for GitHub Actions and deployment.
 
 ## Documentation
 
 ### [Documentation](./workflows/documentation.md)
+
 Generate, preview, and maintain project documentation.
 
 ## Setup & Troubleshooting
 
 ### [Setup](./workflows/setup.md)
+
 Initial project setup and environment configuration.
 
 ### [Troubleshooting](./workflows/troubleshooting.md)
+
 Common issues and their solutions for build, test, and runtime problems.
 
 ### [Debugging](./workflows/debugging.md)
+
 Advanced debugging techniques for development and production issues.
 
 ## Complete Workflows
 
 ### [Feature Implementation](./workflows/feature-implementation.md)
+
 End-to-end workflow for implementing new features from planning to merge.
 
 ### [Bug Fix](./workflows/bug-fix.md)
+
 Systematic approach to investigating, fixing, and deploying bug fixes.
 
 ## Quick Reference

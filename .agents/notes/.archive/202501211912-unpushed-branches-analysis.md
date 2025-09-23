@@ -13,7 +13,7 @@ Analyzed 6 local branches that appeared to have unpushed commits. Found that all
 
 **Commits:**
 
-- `9426bb6` feat: rename override files from .rulesekeep to .rulesetkeep for consistency
+- `9426bb6` feat: rename override files from .rulesetkeep to .rulesetkeep for consistency
 - `acacb22` feat: implement Amp provider for Rulesets
 - `f1ffe24` feat: implement CodexProvider for OpenAI Codex CLI
 - `8c9a9fc` feat: implement comprehensive Claude Code provider for Rulesets
@@ -87,11 +87,13 @@ Analyzed 6 local branches that appeared to have unpushed commits. Found that all
 ## Recommendations for Future Agents
 
 1. **Review WIP template caching:** The `feature/consolidate-all-prs` branch contains substantial template caching implementation that may be valuable:
+
    - File: `packages/core/src/compiler/__tests__/template-caching.test.ts` (310 lines)
    - File: `packages/core/src/compiler/handlebars-compiler.ts` (238+ lines modified)
    - File: `packages/core/src/index.ts` (745+ lines added)
 
 2. **Safe to clean:** The following local branches can be deleted as their commits exist in remotes:
+
    - `release/v1.0`
    - `feat/ci-and-config-improvements`
    - `feature/complete-music-terminology-removal`
