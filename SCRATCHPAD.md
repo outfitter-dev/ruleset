@@ -89,9 +89,23 @@ Pay close attention to the @MIGRATION.md document.
 - Updated provider instantiation/export map, logging metadata, and re-exports; refreshed README examples accordingly.
 - Verified provider test suite via `bun run --filter @rulesets/core test`.
 
+#### 2025-09-21 at 10:55
+
+- Hardened CLI compile workflow: safer filename normalization (fallback to `index.md`) and richer error aggregation with per-file context.
+- Logged follow-up to re-run CLI tests (previously failing due to missing dist binaries) prior to Bun runtime alignment work.
+
+#### 2025-09-21 at 11:25
+
+- Updated CI workflows to run the full Bun toolchain (lint, typecheck, coverage) without allowing silent failures; documented Bun-first local development steps in the README.
+
 #### 2025-09-21 at 11:35
 
 - Clarified documentation sources in `AGENTS.md` and removed the lingering music-metaphor note from `.agents/docs/language.md` per doc-reorg review feedback.
+
+#### 2025-09-21 at 12:05
+
+- Fixed CLI smoke tests by standardising on the Bun runtime: updated the CLI shebang, removed the redundant tsup banner, and adjusted the test harness to invoke the compiled binary via `process.execPath`; `bun run --filter @rulesets/cli test` now passes.
+- End-to-end validation: `bun run lint`, `bun run typecheck`, `bun run test --coverage`, and `bun run build` all succeed on the top of stack; verified `./packages/cli/dist/index.js --help` and `--version` execute successfully.
 
 ### 2025-09-19
 
