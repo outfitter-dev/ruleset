@@ -89,6 +89,11 @@ Pay close attention to the @MIGRATION.md document.
 - Updated provider instantiation/export map, logging metadata, and re-exports; refreshed README examples accordingly.
 - Verified provider test suite via `bun run --filter @rulesets/core test`.
 
+#### 2025-09-21 at 10:05
+
+- Hardened Handlebars compiler defaults (strict mode enabled, escaping enforced) with optional overrides and centralized body extraction via `utils/frontmatter.ts`.
+- Enhanced error logging to include source + destination context and added tests covering escaping, strict-mode failures, and relaxed configuration; validated with `bun run --filter @rulesets/core test`.
+
 #### 2025-09-21 at 10:40
 
 - Tightened provider preparation utilities: added typed Handlebars option builder, validated partial inputs, and improved Cursor provider error handling.

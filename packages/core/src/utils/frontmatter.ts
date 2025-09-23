@@ -1,8 +1,12 @@
-export type ExtractBodyOptions = {
+export interface ExtractBodyOptions {
   hasFrontmatter: boolean;
   trim?: boolean;
-};
+}
 
+/**
+ * Removes YAML frontmatter from a Markdown document and returns the remaining body.
+ * When `hasFrontmatter` is false, the content is returned unchanged (optionally trimmed).
+ */
 export function extractBodyFromContent(
   content: string,
   { hasFrontmatter, trim = false }: ExtractBodyOptions

@@ -10,6 +10,10 @@ export type DestinationHandlebarsOptions = {
   helpers?: Record<string, HelperDelegate>;
   /** Partials to register before rendering. */
   partials?: Record<string, string>;
+  /** Toggle Handlebars strict mode (defaults to true). */
+  strict?: boolean;
+  /** Toggle escaping (defaults to true). */
+  noEscape?: boolean;
 };
 
 export type DestinationCompilationOptions = {
