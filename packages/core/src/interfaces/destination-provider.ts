@@ -10,9 +10,9 @@ export type DestinationHandlebarsOptions = {
   helpers?: Record<string, HelperDelegate>;
   /** Partials to register before rendering. */
   partials?: Record<string, string>;
-  /** Toggle Handlebars strict mode (defaults to true). */
+  /** Enable strict mode runtime checks during Handlebars compilation. */
   strict?: boolean;
-  /** Toggle escaping (defaults to true). */
+  /** Disable HTML escaping during Handlebars compilation. */
   noEscape?: boolean;
 };
 
@@ -47,9 +47,10 @@ export type DestinationProvider = {
     parsed: ParsedDoc;
     projectConfig: Record<string, unknown>;
     logger: Logger;
-  }): Promise<DestinationCompilationOptions | undefined> |
-    DestinationCompilationOptions |
-    undefined;
+  }):
+    | Promise<DestinationCompilationOptions | undefined>
+    | DestinationCompilationOptions
+    | undefined;
 
   /**
    * Writes the compiled document to the destination.
@@ -61,7 +62,7 @@ export type DestinationProvider = {
    * @param ctx.config - The validated provider-specific configuration.
    * @param ctx.logger - A logger instance for outputting messages.
    * @returns A promise that resolves when the write operation is complete.
-  */
+   */
   write(ctx: {
     compiled: CompiledDoc;
     destPath: string;

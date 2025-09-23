@@ -211,9 +211,14 @@ The value is {{$myVariable}}.`,
         },
       };
 
-      const result = compile(parsedDoc, 'cursor', {}, {
-        handlebars: { force: true },
-      });
+      const result = compile(
+        parsedDoc,
+        'cursor',
+        {},
+        {
+          handlebars: { force: true },
+        }
+      );
 
       expect(result.output.content).toBe('Hello CURSOR!');
     });
@@ -231,22 +236,26 @@ The value is {{$myVariable}}.`,
         },
       };
 
-      const result = compile(parsedDoc, 'cursor', {}, {
-        handlebars: {
-          force: true,
-          helpers: {
-            greet: (value: unknown) =>
-              typeof value === 'string' ? `Hello ${value}` : 'Hello',
+      const result = compile(
+        parsedDoc,
+        'cursor',
+        {},
+        {
+          handlebars: {
+            force: true,
+            helpers: {
+              greet: (value: unknown) =>
+                typeof value === 'string' ? `Hello ${value}` : 'Hello',
+            },
+            partials: {
+              footer: '::footer::',
+            },
           },
-          partials: {
-            footer: '::footer::',
-          },
-        },
-      });
+        }
+      );
 
       expect(result.output.content).toBe('Hello Rulesets ::footer::');
     });
-
 
     it('respects handlebars compiler preference in frontmatter', () => {
       const parsedDoc: ParsedDoc = {
