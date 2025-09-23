@@ -226,8 +226,10 @@ bun install
 # Build all packages
 bun run build
 
-# Run tests
-bun test
+# Lint, typecheck, and run tests with coverage
+bun run lint
+bun run typecheck
+bun run test --coverage
 ```
 
 ### Packages
