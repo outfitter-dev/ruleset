@@ -6,8 +6,6 @@ import { extractBodyFromContent } from '../utils/frontmatter';
 
 export { HandlebarsRulesetCompiler } from './handlebars-compiler';
 
-export { HandlebarsRulesetCompiler } from './handlebars-compiler';
-
 const handlebarsCompiler = new HandlebarsRulesetCompiler();
 
 function prefersHandlebars(

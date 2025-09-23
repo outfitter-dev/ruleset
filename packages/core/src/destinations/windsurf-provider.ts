@@ -41,7 +41,7 @@ export class WindsurfProvider implements DestinationProvider {
     };
   }
 
-  async prepareCompilation({
+  prepareCompilation({
     parsed,
     projectConfig: _projectConfig,
     logger,

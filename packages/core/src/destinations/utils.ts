@@ -7,68 +7,21 @@ import type {
 
 export type UnknownRecord = Record<string, unknown>;
 
-export function isPlainObject(value: unknown): value is UnknownRecord {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
+type HandlebarsConfigShape = {
+  force?: unknown;
+  enabled?: unknown;
+  partials?: unknown;
+  projectConfigOverrides?: unknown;
+};
 
 const HANDLEBARS_PARTIAL_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
 
-function isValidPartialName(name: string): boolean {
+function isValidHandlebarsPartialName(name: string): boolean {
   return HANDLEBARS_PARTIAL_NAME_PATTERN.test(name);
 }
 
-function addAdditionalPartials(
-  target: Map<string, string>,
-  additional: Record<string, string> | undefined
-): void {
-  if (!additional) {
-    return;
-  }
-
-  for (const [name, template] of Object.entries(additional)) {
-    if (typeof template === 'string' && template.trim().length > 0) {
-      target.set(name, template);
-    }
-  }
-}
-
-function addConfiguredPartials(
-  target: Map<string, string>,
-  partialsConfig: unknown,
-  destinationId: string,
-  logger: Logger
-): void {
-  if (partialsConfig === undefined) {
-    return;
-  }
-
-  if (!isPlainObject(partialsConfig)) {
-    logger.warn('Ignoring non-object Handlebars partials configuration', {
-      destination: destinationId,
-    });
-    return;
-  }
-
-  for (const [name, template] of Object.entries(
-    partialsConfig as UnknownRecord
-  )) {
-    if (!isValidPartialName(name)) {
-      logger.warn('Invalid Handlebars partial name, skipping entry', {
-        destination: destinationId,
-        partial: name,
-      });
-      continue;
-    }
-
-    if (typeof template === 'string' && template.trim().length > 0) {
-      target.set(name, template);
-    } else if (template !== undefined) {
-      logger.warn('Ignoring non-string Handlebars partial', {
-        destination: destinationId,
-        partial: name,
-      });
-    }
-  }
+export function isPlainObject(value: unknown): value is UnknownRecord {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 export function readDestinationConfig(
@@ -77,18 +30,23 @@ export function readDestinationConfig(
 ): UnknownRecord | undefined {
   const frontmatter = parsed.source.frontmatter;
   if (!isPlainObject(frontmatter)) {
-    return undefined;
+    return;
   }
 
   const destinations = frontmatter.destinations;
   if (!isPlainObject(destinations)) {
-    return undefined;
+    return;
   }
 
-  const destinationConfig = destinations[destinationId];
-  return isPlainObject(destinationConfig) ? destinationConfig : undefined;
+  const config = destinations[destinationId];
+  if (!isPlainObject(config)) {
+    return;
+  }
+
+  return config;
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Handlebars option parsing requires multiple validation branches.
 export function buildHandlebarsOptions(opts: {
   destinationId: string;
   destinationConfig?: UnknownRecord;
@@ -99,22 +57,15 @@ export function buildHandlebarsOptions(opts: {
   const {
     destinationId,
     destinationConfig,
-    logger,
     helpers,
     additionalPartials,
+    logger,
   } = opts;
 
-  if (!isPlainObject(destinationConfig)) {
-    return undefined;
-  }
+  const rawHandlebarsConfig = destinationConfig?.handlebars;
 
-  const handlebarsConfigRaw = destinationConfig.handlebars;
-  if (handlebarsConfigRaw === undefined) {
-    return undefined;
-  }
-
-  if (handlebarsConfigRaw === true) {
-    const gatheredPartials =
+  if (rawHandlebarsConfig === true) {
+    const partialsFromAdditional =
       additionalPartials && Object.keys(additionalPartials).length > 0
         ? additionalPartials
         : undefined;
@@ -123,62 +74,84 @@ export function buildHandlebarsOptions(opts: {
       handlebars: {
         force: true,
         helpers,
-        partials: gatheredPartials,
+        partials: partialsFromAdditional,
       },
     };
   }
 
-  if (!isPlainObject(handlebarsConfigRaw)) {
+  if (
+    rawHandlebarsConfig !== undefined &&
+    !isPlainObject(rawHandlebarsConfig)
+  ) {
     logger.warn('Ignoring invalid Handlebars configuration', {
       destination: destinationId,
-      value: handlebarsConfigRaw,
+      value: rawHandlebarsConfig,
     });
-    return undefined;
+    return;
   }
 
-  const handlebarsConfig = handlebarsConfigRaw as UnknownRecord;
+  const handlebarsConfig = rawHandlebarsConfig as
+    | HandlebarsConfigShape
+    | undefined;
 
   const partials = new Map<string, string>();
-  addAdditionalPartials(partials, additionalPartials);
-  addConfiguredPartials(
-    partials,
-    handlebarsConfig.partials,
-    destinationId,
-    logger
-  );
+  if (additionalPartials) {
+    for (const [name, template] of Object.entries(additionalPartials)) {
+      if (typeof template === 'string' && template.trim().length > 0) {
+        partials.set(name, template);
+      }
+    }
+  }
+
+  if (isPlainObject(handlebarsConfig?.partials)) {
+    const partialRecords = handlebarsConfig.partials as UnknownRecord;
+    for (const [name, template] of Object.entries(partialRecords)) {
+      if (!isValidHandlebarsPartialName(name)) {
+        logger.warn('Invalid Handlebars partial name, skipping entry', {
+          destination: destinationId,
+          partial: name,
+        });
+        continue;
+      }
+      if (typeof template === 'string' && template.trim().length > 0) {
+        partials.set(name, template);
+      } else if (template !== undefined) {
+        logger.warn('Ignoring non-string Handlebars partial', {
+          destination: destinationId,
+          partial: name,
+        });
+      }
+    }
+  }
 
   const force =
-    handlebarsConfig.force === true || handlebarsConfig.enabled === true;
-  const gatheredHelpers =
-    helpers && Object.keys(helpers).length > 0 ? helpers : undefined;
-  const gatheredPartials =
-    partials.size > 0 ? Object.fromEntries(partials.entries()) : undefined;
+    handlebarsConfig?.force === true || handlebarsConfig?.enabled === true;
   const projectConfigOverrides = isPlainObject(
-    handlebarsConfig.projectConfigOverrides
+    handlebarsConfig?.projectConfigOverrides
   )
     ? (handlebarsConfig.projectConfigOverrides as UnknownRecord)
     : undefined;
 
-  if (
-    !(
-      force ||
-      gatheredHelpers ||
-      gatheredPartials ||
-      projectConfigOverrides
-    )
-  ) {
-    return undefined;
+  const helperEntries =
+    helpers && Object.keys(helpers).length > 0 ? helpers : undefined;
+  const partialsObject =
+    partials.size > 0 ? Object.fromEntries(partials) : undefined;
+
+  const hasHandlebarsOptions = force || helperEntries || partialsObject;
+  const hasOverrides = Boolean(projectConfigOverrides);
+
+  if (!(hasHandlebarsOptions || hasOverrides)) {
+    return;
   }
 
   return {
-    handlebars:
-      force || gatheredHelpers || gatheredPartials
-        ? {
-            force: force || undefined,
-            helpers: gatheredHelpers,
-            partials: gatheredPartials,
-          }
-        : undefined,
+    handlebars: hasHandlebarsOptions
+      ? {
+          force: force || undefined,
+          helpers: helperEntries,
+          partials: partialsObject,
+        }
+      : undefined,
     projectConfigOverrides,
   };
 }

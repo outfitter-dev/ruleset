@@ -31,7 +31,7 @@ export class AgentsMdProvider implements DestinationProvider {
     };
   }
 
-  async prepareCompilation({
+  prepareCompilation({
     parsed,
     projectConfig: _projectConfig,
     logger,
