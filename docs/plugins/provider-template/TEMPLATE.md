@@ -197,7 +197,7 @@ flowchart TD
 | Primary docs | [Provider Name] documentation website |
 | Front-matter specification | Updated in vX.Y (Month YYYY) |
 
-## Mixdown Integration
+## Rulesets Integration
 
 > [!NOTE]
-> 🚧 Pending Mixdown integration
+> 🚧 Pending Rulesets integration

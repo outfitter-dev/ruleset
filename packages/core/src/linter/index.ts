@@ -370,7 +370,7 @@ function validateRecommendedFields(
  * @param config - Optional linter configuration
  * @returns An array of lint results
  */
-// TODO: Add validation for stem properties
+// TODO: Add validation for section properties
 // TODO: Add validation for variables and imports
 export function lint(
   parsedDoc: ParsedDoc,

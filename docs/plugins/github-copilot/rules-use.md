@@ -50,11 +50,13 @@ Reference Jira issue keys (e.g., JIRA-123) in commit messages.
 GitHub Copilot uses a straightforward activation process:
 
 1. **Automatic Loading**: Rules are loaded when you open a repository containing the file
+
    - Personal rules are fetched from GitHub
    - Repository rules are read from `.github/copilot-instructions.md`
    - Both are automatically included in every prompt
 
 2. **Prompt Files**: Only activated when explicitly referenced
+
    - Use `/prompt <filename>` in VS Code Chat to include
    - Perfect for task-specific instructions
 
@@ -77,12 +79,12 @@ flowchart TD
 
 GitHub Copilot rules can include various types of guidance:
 
-| Type | Purpose | Example |
-|------|---------|---------|
-| **Project Context** | Tooling, frameworks, directory conventions | "Use pnpm for all Node package management" |
-| **Coding Standards** | Style guides, formatting, banned APIs | "Always format JavaScript with double quotes" |
-| **Workflow Guidelines** | Branch naming, PR processes | "Reference Jira issue keys in commit messages" |
-| **Tooling Notes** | CLI preferences, configurations | "Run `pnpm test` before every commit" |
+| Type                    | Purpose                                    | Example                                        |
+| ----------------------- | ------------------------------------------ | ---------------------------------------------- |
+| **Project Context**     | Tooling, frameworks, directory conventions | "Use pnpm for all Node package management"     |
+| **Coding Standards**    | Style guides, formatting, banned APIs      | "Always format JavaScript with double quotes"  |
+| **Workflow Guidelines** | Branch naming, PR processes                | "Reference Jira issue keys in commit messages" |
+| **Tooling Notes**       | CLI preferences, configurations            | "Run `pnpm test` before every commit"          |
 
 ## Character Limits
 
@@ -126,13 +128,8 @@ When working with Copilot, the rules are processed as follows:
 
 ## Version Information
 
-| Aspect | Details |
-|--------|---------|
-| Last-verified version | Copilot Docs build 6c3e9e6 (2025-05-19) |
+| Aspect                | Details                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------ |
+| Last-verified version | Copilot Docs build 6c3e9e6 (2025-05-19)                                              |
 | Documentation sources | GitHub Docs articles on repository instructions, personal instructions, prompt files |
-| Staleness warning | None – all sources ≤ 1 week old |
-
-## Mixdown Integration
-
-> [!NOTE]
-> 🚧 Pending Mixdown integration
+| Staleness warning     | None – all sources ≤ 1 week old                                                      |

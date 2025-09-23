@@ -41,15 +41,19 @@ Aider memory files use standard Markdown format with headings to organize conten
 
 ```markdown
 # Project Context
+
 This project is a React application with a Node.js backend.
 
 # Coding Standards
+
 - Use functional components for all new React code
 - Follow ESLint rules in .eslintrc
 - Test all components with React Testing Library
 
 # Database Schema
+
 Users:
+
 - id: UUID
 - email: String
 - passwordHash: String
@@ -80,15 +84,18 @@ Example:
 
 ```markdown
 # Project Context
+
 A microservice-based e-commerce platform with React frontend and Node.js microservices.
 
 # Architecture
+
 - Frontend: React SPA with Redux
 - API Gateway: Express.js
 - Services: Product, Order, User microservices
 - Database: MongoDB for each service
 
 # Coding Standards
+
 - Functional React components with hooks
 - Jest and React Testing Library for tests
 - ESLint with Airbnb config
@@ -111,13 +118,8 @@ A microservice-based e-commerce platform with React frontend and Node.js microse
 
 ## Version Information
 
-| Aspect | Details |
-|--------|---------|
-| Last-verified release | v1.0.0 (May 2025) |
-| Primary docs | Aider documentation website |
-| Memory specification | Updated in v1.0 (May 2025) |
-
-## Mixdown Integration
-
-> [!NOTE]
-> 🚧 Pending Mixdown integration
+| Aspect                | Details                     |
+| --------------------- | --------------------------- |
+| Last-verified release | v1.0.0 (May 2025)           |
+| Primary docs          | Aider documentation website |
+| Memory specification  | Updated in v1.0 (May 2025)  |

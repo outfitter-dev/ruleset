@@ -100,13 +100,8 @@ This is a CLI tool for processing markdown files.
 
 ## Version Information
 
-| Aspect | Details |
-|--------|---------|
-| Last-verified release | v0.9.0 (May 2025) |
-| Primary docs | Cline documentation website |
-| Rules specification | Updated in v0.9 (May 2025) |
-
-## Mixdown Integration
-
-> [!NOTE]
-> 🚧 Pending Mixdown integration
+| Aspect                | Details                     |
+| --------------------- | --------------------------- |
+| Last-verified release | v0.9.0 (May 2025)           |
+| Primary docs          | Cline documentation website |
+| Rules specification   | Updated in v0.9 (May 2025)  |

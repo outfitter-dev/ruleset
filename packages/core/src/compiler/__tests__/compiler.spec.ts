@@ -8,7 +8,7 @@ describe('compiler', () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content: `---
-mixdown: v0
+rulesets: v0
 title: Test Rules
 description: Test description
 destinations:
@@ -19,9 +19,9 @@ destinations:
 
 # Test Content
 
-This is the body with {{stems}} and {{$variables}}.`,
+This is the body with {{sections}} and {{$variables}}.`,
           frontmatter: {
-            mixdown: 'v0',
+            rulesets: 'v0',
             title: 'Test Rules',
             description: 'Test description',
             destinations: {
@@ -33,7 +33,7 @@ This is the body with {{stems}} and {{$variables}}.`,
           },
         },
         ast: {
-          stems: [],
+          sections: [],
           imports: [],
           variables: [],
           markers: [],
@@ -50,7 +50,7 @@ This is the body with {{stems}} and {{$variables}}.`,
 
       // Output should contain only the body
       expect(result.output.content).toBe(
-        '# Test Content\n\nThis is the body with {{stems}} and {{$variables}}.'
+        '# Test Content\n\nThis is the body with {{sections}} and {{$variables}}.'
       );
 
       // Metadata should include relevant fields
@@ -76,7 +76,7 @@ This is the body with {{stems}} and {{$variables}}.`,
           content: '# Just Content\n\nNo frontmatter here.',
         },
         ast: {
-          stems: [],
+          sections: [],
           imports: [],
           variables: [],
           markers: [],
@@ -100,7 +100,7 @@ This is the body with {{stems}} and {{$variables}}.`,
       const parsedDoc: ParsedDoc = {
         source: {
           content: `---
-mixdown: v0
+rulesets: v0
 destinations:
   cursor:
     outputPath: ".cursor/rules/test.mdc"
@@ -109,7 +109,7 @@ destinations:
 
 # Content`,
           frontmatter: {
-            mixdown: 'v0',
+            rulesets: 'v0',
             destinations: {
               cursor: {
                 outputPath: '.cursor/rules/test.mdc',
@@ -119,7 +119,7 @@ destinations:
           },
         },
         ast: {
-          stems: [],
+          sections: [],
           imports: [],
           variables: [],
           markers: [],
@@ -145,14 +145,14 @@ destinations:
       const parsedDoc: ParsedDoc = {
         source: {
           content: `---
-mixdown: v0
+rulesets: v0
 ---`,
           frontmatter: {
-            mixdown: 'v0',
+            rulesets: 'v0',
           },
         },
         ast: {
-          stems: [],
+          sections: [],
           imports: [],
           variables: [],
           markers: [],
@@ -168,7 +168,7 @@ mixdown: v0
       const parsedDoc: ParsedDoc = {
         source: {
           content: `---
-mixdown: v0
+rulesets: v0
 ---
 
 {{instructions}}
@@ -179,11 +179,11 @@ Do not modify these markers in v0.
 
 The value is {{$myVariable}}.`,
           frontmatter: {
-            mixdown: 'v0',
+            rulesets: 'v0',
           },
         },
         ast: {
-          stems: [],
+          sections: [],
           imports: [],
           variables: [],
           markers: [],
@@ -202,7 +202,7 @@ The value is {{$myVariable}}.`,
       const parsedDoc: ParsedDoc = {
         source: {
           content: `---
-mixdown: v0
+rulesets: v0
 destinations:
   cursor:
     path: "/test"
@@ -211,7 +211,7 @@ destinations:
 
 # Content`,
           frontmatter: {
-            mixdown: 'v0',
+            rulesets: 'v0',
             destinations: {
               cursor: { path: '/test' },
               windsurf: {},
@@ -219,7 +219,7 @@ destinations:
           },
         },
         ast: {
-          stems: [],
+          sections: [],
           imports: [],
           variables: [],
           markers: [],

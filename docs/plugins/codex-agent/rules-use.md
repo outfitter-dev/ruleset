@@ -41,16 +41,19 @@ AGENTS.md files use pure Markdown with section headings (## ...) as the primary 
 
 ```markdown
 ## Coding Standards
+
 - Use tabs for indentation
 - Follow PEP 8 for Python code
 - Maximum line length is 80 characters
 
 ## Error Handling
+
 - Use structured error objects
 - Log all errors with contextual information
 - Handle all Promise rejections
 
 ## Testing
+
 - Write unit tests for all new functionality
 - Use descriptive test names
 - Mock external dependencies
@@ -95,14 +98,17 @@ Effective AGENTS.md files use a clear heading structure with concise, actionable
 
 ```markdown
 ## Code Style
+
 - Follow Black (line-length = 88)
 - Prefer explicit variable names; no abbreviations
 
 ## Testing
+
 - Always run: `pytest -q tests/`
 - Reject any patch if coverage Δ < 0
 
 ## PR Template
+
 - Title: `[Feat] concise summary`
 - Body must include "Testing Done" and "Risk Assessment"
 ```
@@ -126,13 +132,8 @@ Effective AGENTS.md files use a clear heading structure with concise, actionable
 
 ## Version Information
 
-| Aspect | Details |
-|--------|---------|
-| Last-verified release | v2.0.0 (May 2025) |
-| Primary docs | OpenAI Codex documentation website |
-| AGENTS specification | Updated in v2.0 (May 2025) |
-
-## Mixdown Integration
-
-> [!NOTE]
-> 🚧 Pending Mixdown integration
+| Aspect                | Details                            |
+| --------------------- | ---------------------------------- |
+| Last-verified release | v2.0.0 (May 2025)                  |
+| Primary docs          | OpenAI Codex documentation website |
+| AGENTS specification  | Updated in v2.0 (May 2025)         |

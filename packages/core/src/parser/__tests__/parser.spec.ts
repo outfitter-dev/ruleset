@@ -5,7 +5,7 @@ describe('parser', () => {
   describe('parse', () => {
     it('should parse a document with frontmatter and body', () => {
       const content = `---
-mixdown: v0
+rulesets: v0
 title: Test Rule
 destinations:
   cursor:
@@ -20,7 +20,7 @@ This is the body content.`;
 
       expect(result.source.content).toBe(content);
       expect(result.source.frontmatter).toEqual({
-        mixdown: 'v0',
+        rulesets: 'v0',
         title: 'Test Rule',
         destinations: {
           cursor: {
@@ -28,7 +28,7 @@ This is the body content.`;
           },
         },
       });
-      expect(result.ast.stems).toEqual([]);
+      expect(result.ast.sections).toEqual([]);
       expect(result.ast.imports).toEqual([]);
       expect(result.ast.variables).toEqual([]);
       expect(result.ast.markers).toEqual([]);
@@ -111,12 +111,12 @@ title: Test
 
 # Test Content
 
-This has {{stems}} and {{$variables}} and {{>imports}} that should be preserved.`;
+This has {{sections}} and {{$variables}} and {{>imports}} that should be preserved.`;
 
       const result = parse(content);
 
       const expectedBody =
-        '\n# Test Content\n\nThis has {{stems}} and {{$variables}} and {{>imports}} that should be preserved.';
+        '\n# Test Content\n\nThis has {{sections}} and {{$variables}} and {{>imports}} that should be preserved.';
       expect(result.source.content).toContain(expectedBody);
     });
   });

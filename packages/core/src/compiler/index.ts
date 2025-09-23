@@ -20,7 +20,7 @@ function createEmptyCompiledDoc(
       frontmatter: source.frontmatter,
     },
     ast: {
-      stems: [],
+      sections: [],
       imports: [],
       variables: [],
       markers: [],
@@ -166,7 +166,7 @@ export function compile(
       frontmatter: source.frontmatter,
     },
     ast: {
-      stems: ast.stems, // Pass through from parser (empty for v0)
+      sections: ast.sections, // Pass through from parser (empty for v0)
       imports: ast.imports, // Pass through from parser (empty for v0)
       variables: ast.variables, // Pass through from parser (empty for v0)
       markers: ast.markers, // Pass through from parser (empty for v0)

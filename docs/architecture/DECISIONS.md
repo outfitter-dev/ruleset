@@ -1,7 +1,7 @@
-# Mixdown Project Decisions Log
+# Rulesets Project Decisions Log
 
 > [!NOTE]
-> This document tracks significant decisions (technical, product, governance) for **Mixdown**.  
+> This document tracks significant decisions (technical, product, governance) for **Rulesets**.  
 > Minor tweaks live in the changelog or commit messages.
 
 ---

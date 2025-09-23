@@ -1,10 +1,8 @@
-// TLDR: Minimal logger for CLI with optional JSON output (mixd-v0)
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-const LEVELS: LogLevel[] = ['debug', 'info', 'warn', 'error']; // mixd-v0
+const LEVELS: LogLevel[] = ['debug', 'info', 'warn', 'error'];
 
 function stripAnsi(input: string): string {
-  // Basic ANSI escape sequence stripper built from string to avoid control-char regex literal (mixd-v0)
   const ansiPattern = '\\u001B\\[[0-9;]*[A-Za-z]';
   const re = new RegExp(ansiPattern, 'g');
   return input.replace(re, '');
@@ -26,6 +24,11 @@ function write(stream: NodeJS.WritableStream, message: string): void {
   stream.write(message.endsWith('\n') ? message : `${message}\n`);
 }
 
+/**
+ * Lightweight logger that honours environment overrides and can emit either
+ * plain text or JSON logs, keeping the CLI suitable for both humans and
+ * automation.
+ */
 export const logger = {
   debug(message: string): void {
     if (shouldLog('debug')) {

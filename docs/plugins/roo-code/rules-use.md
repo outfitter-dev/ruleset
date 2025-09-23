@@ -43,21 +43,25 @@ project/
 Roo Code's distinctive feature is its mode-specific rules folders:
 
 1. **Common Rules** (`/rules/`): Applied regardless of which mode is active
+
    - Project overview and terminology
    - General coding standards
    - Team practices and workflows
 
 2. **Architect Mode Rules** (`/rules-architect/`): For high-level design tasks
+
    - System architecture principles
    - Design patterns
    - Component interaction guidelines
 
 3. **Debug Mode Rules** (`/rules-debug/`): For finding and fixing issues
+
    - Common bugs and solutions
    - Testing approaches
    - Debugging workflows
 
 4. **Documentation Mode Rules** (`/rules-docs-writer/`): For documentation tasks
+
    - Documentation standards
    - API description formats
    - Comment style guidelines
@@ -86,15 +90,18 @@ Roo Code rule files typically organize content with clear headings and structure
 # Debugging Guidelines
 
 ## Common Error Patterns
+
 - Description of error pattern 1 and how to fix
 - Description of error pattern 2 and how to fix
 
 ## Debugging Process
+
 1. Step 1 of the debugging process
 2. Step 2 of the debugging process
 3. Step 3 of the debugging process
 
 ## Testing Recommendations
+
 - Unit test guidelines
 - Integration test guidelines
 ```
@@ -111,13 +118,8 @@ Roo Code rule files typically organize content with clear headings and structure
 
 ## Version Information
 
-| Aspect | Details |
-|--------|---------|
-| Last-verified release | v1.0.0 (May 2025) |
-| Primary docs | Roo Code documentation website |
-| Rules specification | Updated in v1.0 (May 2025) |
-
-## Mixdown Integration
-
-> [!NOTE]
-> 🚧 Pending Mixdown integration
+| Aspect                | Details                        |
+| --------------------- | ------------------------------ |
+| Last-verified release | v1.0.0 (May 2025)              |
+| Primary docs          | Roo Code documentation website |
+| Rules specification   | Updated in v1.0 (May 2025)     |
