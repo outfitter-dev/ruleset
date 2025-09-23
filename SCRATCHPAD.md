@@ -94,6 +94,10 @@ Pay close attention to the @MIGRATION.md document.
 - Hardened CLI compile workflow: safer filename normalization (fallback to `index.md`) and richer error aggregation with per-file context.
 - Logged follow-up to re-run CLI tests (previously failing due to missing dist binaries) prior to Bun runtime alignment work.
 
+#### 2025-09-21 at 11:10
+
+- Finished documentation sweep for terminology: updated `AGENTS.md`, `docs/architecture/DECISIONS.md`, provider template, and changelog to remove Mixdown references and highlight `.agents/docs/` as the authoritative source.
+
 #### 2025-09-21 at 11:25
 
 - Updated CI workflows to run the full Bun toolchain (lint, typecheck, coverage) without allowing silent failures; documented Bun-first local development steps in the README.
