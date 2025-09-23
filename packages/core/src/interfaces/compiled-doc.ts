@@ -47,6 +47,7 @@ export type ParsedDoc = {
     path?: string; // Original source file path, if applicable
     content: string; // Raw source content
     frontmatter?: Record<string, unknown>; // Parsed frontmatter data
+    isRule?: boolean; // Indicates whether the parser detected rule metadata
   };
   ast: {
     // Abstract Syntax Tree - minimal for v0
@@ -68,6 +69,7 @@ export type CompiledDoc = {
     path?: string; // Original source file path, if applicable
     content: string; // Raw source content
     frontmatter?: Record<string, unknown>; // Parsed frontmatter data
+    isRule?: boolean; // Indicates whether the source document contains rule metadata
   };
 
   /**

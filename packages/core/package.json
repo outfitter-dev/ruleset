@@ -1,11 +1,31 @@
 {
   "name": "@rulesets/core",
-  "version": "0.1.0",
-  "private": false,
-  "description": "Core library for Rulesets: parser, compiler, linter, and plugins.",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "description": "Core library for Rulesets: parser, compiler, linter, and providers.",
+  "version": "0.2.0",
+  "dependencies": {
+    "@iarna/toml": "^2.2.5",
+    "handlebars": "^4.7.8",
+    "js-yaml": "^4.1.0",
+    "json5": "^2.2.3",
+    "pino": "^9.5.0",
+    "pino-pretty": "^13.0.0",
+    "semver": "^7.7.2",
+    "type-fest": "^4.29.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/json-schema": "^7.0.15",
+    "@types/node": "^24.5.2",
+    "@types/semver": "^7.7.1",
+    "@vitest/coverage-v8": "^3.2.4",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=18",
+    "bun": ">=1.1"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -16,36 +36,20 @@
   "files": [
     "dist"
   ],
-  "scripts": {
-    "build": "rm -rf dist && tsup && tsc -p tsconfig.json --emitDeclarationOnly",
-    "dev": "tsup --watch",
-    "test": "vitest run",
-    "test:watch": "vitest watch",
-    "lint": "bunx ultracite lint .",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "js-yaml": "^4.1.0",
-    "@iarna/toml": "^2.2.5",
-    "semver": "^7.6.0",
-    "handlebars": "^4.7.8"
-  },
-  "devDependencies": {
-    "@types/js-yaml": "^4.0.9",
-    "@types/json-schema": "^7.0.15",
-    "@types/node": "^18.19.31",
-    "@types/semver": "^7.5.8",
-    "@vitest/coverage-v8": "^3.2.4",
-    "tsup": "^8.0.2",
-    "typescript": "^5.4.5",
-    "vitest": "^1.6.0"
-  },
+  "license": "MIT",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "private": false,
   "publishConfig": {
     "access": "public"
   },
-  "engines": {
-    "node": ">=18",
-    "bun": ">=1.1"
+  "scripts": {
+    "build": "rm -rf dist && tsup && tsc -p tsconfig.json --emitDeclarationOnly",
+    "dev": "tsup --watch",
+    "lint": "bunx ultracite lint .",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "typecheck": "tsc --noEmit"
   },
-  "license": "MIT"
+  "types": "./dist/index.d.ts"
 }

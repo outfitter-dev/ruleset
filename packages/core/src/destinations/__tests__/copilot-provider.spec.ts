@@ -1,21 +1,21 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'bun:test';
-import type { Stats } from 'node:fs';
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-import type { CompiledDoc, Logger } from '../../interfaces';
-import { CopilotProvider } from '../copilot-provider';
+import type { Stats } from "node:fs";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { CompiledDoc, Logger } from "../../interfaces";
+import { CopilotProvider } from "../copilot-provider";
 
-const DESTINATION_ID = 'copilot';
-const OUTPUT_CONTENT = 'compiled content';
+const DESTINATION_ID = "copilot";
+const OUTPUT_CONTENT = "compiled content";
 const createEnoent = (): Error =>
-  Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+  Object.assign(new Error("ENOENT"), { code: "ENOENT" });
 
 const makeCompiled = (
-  filePath: string | null = path.join('rules', 'guide.md')
+  filePath: string | null = path.join("rules", "guide.md")
 ): CompiledDoc => ({
   source: {
     ...(filePath ? { path: filePath } : {}),
-    content: '# content',
+    content: "# content",
     frontmatter: {},
   },
   ast: { sections: [], imports: [], variables: [], markers: [] },
@@ -23,7 +23,7 @@ const makeCompiled = (
   context: { destinationId: DESTINATION_ID, config: {} },
 });
 
-describe('CopilotProvider', () => {
+describe("CopilotProvider", () => {
   const provider = new CopilotProvider();
   let mkdirSpy: ReturnType<typeof vi.spyOn>;
   let writeFileSpy: ReturnType<typeof vi.spyOn>;
@@ -31,9 +31,9 @@ describe('CopilotProvider', () => {
   let logger: Logger;
 
   beforeEach(() => {
-    mkdirSpy = vi.spyOn(fs, 'mkdir').mockResolvedValue(undefined);
-    writeFileSpy = vi.spyOn(fs, 'writeFile').mockResolvedValue(undefined);
-    statSpy = vi.spyOn(fs, 'stat').mockRejectedValue(createEnoent());
+    mkdirSpy = vi.spyOn(fs, "mkdir").mockResolvedValue(undefined);
+    writeFileSpy = vi.spyOn(fs, "writeFile").mockResolvedValue(undefined);
+    statSpy = vi.spyOn(fs, "stat").mockRejectedValue(createEnoent());
     logger = {
       debug: vi.fn(),
       info: vi.fn(),
@@ -46,8 +46,8 @@ describe('CopilotProvider', () => {
     vi.restoreAllMocks();
   });
 
-  it('writes directly to destination when destPath includes filename', async () => {
-    const destPath = path.join('.ruleset', 'dist', 'copilot.md');
+  it("writes directly to destination when destPath includes filename", async () => {
+    const destPath = path.join(".ruleset", "dist", "copilot.md");
     await provider.write({
       compiled: makeCompiled(),
       destPath,
@@ -60,31 +60,31 @@ describe('CopilotProvider', () => {
     expect(writeFileSpy).toHaveBeenCalledWith(
       expectedPath,
       OUTPUT_CONTENT,
-      'utf-8'
+      "utf-8"
     );
     expect(mkdirSpy).toHaveBeenCalledWith(path.dirname(expectedPath), {
       recursive: true,
     });
     expect(logger.info).toHaveBeenCalledWith(
-      'Writing copilot rules',
+      "Writing copilot rules",
       expect.objectContaining({
-        provider: 'copilot',
+        provider: "copilot",
         destinationId: DESTINATION_ID,
         outputPath: expectedPath,
       })
     );
     expect(logger.debug).toHaveBeenCalledWith(
-      'Copilot write complete',
+      "Copilot write complete",
       expect.objectContaining({
-        provider: 'copilot',
+        provider: "copilot",
         destinationId: DESTINATION_ID,
         outputPath: expectedPath,
       })
     );
   });
 
-  it('appends fallback filename when destPath points to a directory', async () => {
-    const destPath = path.join('.ruleset', 'dist', 'copilot');
+  it("appends fallback filename when destPath points to a directory", async () => {
+    const destPath = path.join(".ruleset", "dist", "copilot");
     await provider.write({
       compiled: makeCompiled(),
       destPath,
@@ -92,16 +92,16 @@ describe('CopilotProvider', () => {
       logger,
     });
 
-    const expectedPath = path.resolve(destPath, 'guide.md');
+    const expectedPath = path.resolve(destPath, "guide.md");
     expect(writeFileSpy).toHaveBeenCalledWith(
       expectedPath,
       OUTPUT_CONTENT,
-      'utf-8'
+      "utf-8"
     );
   });
 
-  it('treats destPath with trailing separator as a directory', async () => {
-    const destPath = path.join('.ruleset', 'dist', 'copilot') + path.sep;
+  it("treats destPath with trailing separator as a directory", async () => {
+    const destPath = path.join(".ruleset", "dist", "copilot") + path.sep;
     await provider.write({
       compiled: makeCompiled(),
       destPath,
@@ -109,75 +109,75 @@ describe('CopilotProvider', () => {
       logger,
     });
 
-    const expectedPath = path.resolve(destPath, 'guide.md');
+    const expectedPath = path.resolve(destPath, "guide.md");
     expect(writeFileSpy).toHaveBeenCalledWith(
       expectedPath,
       OUTPUT_CONTENT,
-      'utf-8'
+      "utf-8"
     );
   });
 
-  it('honours directory-like outputPath overrides', async () => {
+  it("honours directory-like outputPath overrides", async () => {
     statSpy.mockImplementation((candidate: string) => {
-      if (candidate.includes('custom-dir')) {
+      if (candidate.includes("custom-dir")) {
         return Promise.resolve({ isDirectory: () => true } as unknown as Stats);
       }
       return Promise.reject(createEnoent());
     });
 
-    const destPath = path.join('.ruleset', 'dist', 'copilot-output');
+    const destPath = path.join(".ruleset", "dist", "copilot-output");
     await provider.write({
       compiled: makeCompiled(),
       destPath,
-      config: { outputPath: path.join('custom-dir') },
+      config: { outputPath: path.join("custom-dir") },
       logger,
     });
 
-    const expectedPath = path.resolve(destPath, 'custom-dir', 'guide.md');
+    const expectedPath = path.resolve(destPath, "custom-dir", "guide.md");
     expect(writeFileSpy).toHaveBeenCalledWith(
       expectedPath,
       OUTPUT_CONTENT,
-      'utf-8'
+      "utf-8"
     );
   });
 
-  it('honours outputPath that ends with a path separator', async () => {
-    const destPath = path.join('.ruleset', 'dist', 'copilot-output');
+  it("honours outputPath that ends with a path separator", async () => {
+    const destPath = path.join(".ruleset", "dist", "copilot-output");
     await provider.write({
       compiled: makeCompiled(),
       destPath,
-      config: { outputPath: 'custom-dir/' },
+      config: { outputPath: "custom-dir/" },
       logger,
     });
 
-    const expectedPath = path.resolve(destPath, 'custom-dir', 'guide.md');
+    const expectedPath = path.resolve(destPath, "custom-dir", "guide.md");
     expect(writeFileSpy).toHaveBeenCalledWith(
       expectedPath,
       OUTPUT_CONTENT,
-      'utf-8'
+      "utf-8"
     );
   });
 
-  it('trims whitespace in outputPath before resolving', async () => {
-    const destPath = path.join('.ruleset', 'dist', 'copilot-output');
+  it("trims whitespace in outputPath before resolving", async () => {
+    const destPath = path.join(".ruleset", "dist", "copilot-output");
     await provider.write({
       compiled: makeCompiled(),
       destPath,
-      config: { outputPath: '  custom-dir/  ' },
+      config: { outputPath: "  custom-dir/  " },
       logger,
     });
 
-    const expectedPath = path.resolve(destPath, 'custom-dir', 'guide.md');
+    const expectedPath = path.resolve(destPath, "custom-dir", "guide.md");
     expect(writeFileSpy).toHaveBeenCalledWith(
       expectedPath,
       OUTPUT_CONTENT,
-      'utf-8'
+      "utf-8"
     );
   });
 
-  it('treats file-like outputPath overrides as files', async () => {
-    const destPath = path.join('.ruleset', 'dist', 'copilot-output');
-    const outputPath = path.join('custom-dir', 'copilot.md');
+  it("treats file-like outputPath overrides as files", async () => {
+    const destPath = path.join(".ruleset", "dist", "copilot-output");
+    const outputPath = path.join("custom-dir", "copilot.md");
     await provider.write({
       compiled: makeCompiled(),
       destPath,
@@ -189,29 +189,29 @@ describe('CopilotProvider', () => {
     expect(writeFileSpy).toHaveBeenCalledWith(
       expectedPath,
       OUTPUT_CONTENT,
-      'utf-8'
+      "utf-8"
     );
   });
 
   it('uses "<basename>.md" when source has no extension', async () => {
-    const destPath = path.join('.ruleset', 'dist', 'copilot');
+    const destPath = path.join(".ruleset", "dist", "copilot");
     await provider.write({
-      compiled: makeCompiled(path.join('rules', 'instructions')),
+      compiled: makeCompiled(path.join("rules", "instructions")),
       destPath,
       config: {},
       logger,
     });
 
-    const expectedPath = path.resolve(destPath, 'instructions.md');
+    const expectedPath = path.resolve(destPath, "instructions.md");
     expect(writeFileSpy).toHaveBeenCalledWith(
       expectedPath,
       OUTPUT_CONTENT,
-      'utf-8'
+      "utf-8"
     );
   });
 
   it('uses "instructions.md" when source path is absent', async () => {
-    const destPath = path.join('.ruleset', 'dist', 'copilot');
+    const destPath = path.join(".ruleset", "dist", "copilot");
     await provider.write({
       compiled: makeCompiled(null),
       destPath,
@@ -219,29 +219,29 @@ describe('CopilotProvider', () => {
       logger,
     });
 
-    const expectedPath = path.resolve(destPath, 'instructions.md');
+    const expectedPath = path.resolve(destPath, "instructions.md");
     expect(writeFileSpy).toHaveBeenCalledWith(
       expectedPath,
       OUTPUT_CONTENT,
-      'utf-8'
+      "utf-8"
     );
   });
 
-  it('propagates write errors and logs structured metadata', async () => {
-    const destPath = path.join('.ruleset', 'dist', 'copilot.md');
-    const error = new Error('boom');
+  it("propagates write errors and logs structured metadata", async () => {
+    const destPath = path.join(".ruleset", "dist", "copilot.md");
+    const error = new Error("boom");
     writeFileSpy.mockRejectedValueOnce(error);
 
     await expect(
       provider.write({ compiled: makeCompiled(), destPath, config: {}, logger })
-    ).rejects.toThrow('boom');
+    ).rejects.toThrow("boom");
 
     const expectedPath = path.resolve(destPath);
     expect(logger.error).toHaveBeenCalledWith(
       error,
       expect.objectContaining({
-        provider: 'copilot',
-        op: 'write',
+        provider: "copilot",
+        op: "write",
         path: expectedPath,
       })
     );

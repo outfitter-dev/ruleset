@@ -1,17 +1,17 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.2.2/schema.json",
-  "extends": ["ultracite"],
-  "overrides": [
-    {
-      "includes": [
-        "packages/core/src/index.ts",
-        "packages/core/src/interfaces/index.ts"
-      ],
-      "linter": {
-        "rules": {
-          "performance": { "noBarrelFile": "off" }
-        }
-      }
-    }
-  ]
+  "extends": ["ultracite"]
+  // "overrides": [
+  //   {
+  //     "includes": [
+  //       "packages/core/src/index.ts",
+  //       "packages/core/src/interfaces/index.ts"
+  //     ],
+  //     "linter": {
+  //       "rules": {
+  //         "performance": { "noBarrelFile": "off" }
+  //       }
+  //     }
+  //   }
+  // ]
 }

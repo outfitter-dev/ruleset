@@ -24,26 +24,69 @@ export function isPlainObject(value: unknown): value is UnknownRecord {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
+export type ProviderSettings = {
+  /** Whether the provider has an explicit enabled flag. */
+  enabled?: boolean;
+  /** Raw configuration object exposed to destination providers. */
+  config?: UnknownRecord;
+  /** Indicates where the configuration originated from. */
+  source: 'provider';
+};
+
+function readSettingsFromValue(
+  value: unknown,
+  source: ProviderSettings['source']
+): ProviderSettings | undefined {
+  if (typeof value === 'boolean') {
+    return { enabled: value, source };
+  }
+
+  if (isPlainObject(value)) {
+    const config = value as UnknownRecord;
+    const enabledValue = config.enabled;
+    const enabled = typeof enabledValue === 'boolean' ? enabledValue : undefined;
+    return {
+      enabled,
+      config,
+      source,
+    };
+  }
+
+  return undefined;
+}
+
+export function resolveProviderSettings(
+  frontmatter: UnknownRecord | undefined,
+  destinationId: string
+): ProviderSettings | undefined {
+  if (!isPlainObject(frontmatter)) {
+    return undefined;
+  }
+
+  const providerValue = frontmatter[destinationId];
+  const providerSettings = readSettingsFromValue(providerValue, 'provider');
+  if (providerSettings) {
+    return providerSettings;
+  }
+
+  return undefined;
+}
+
 export function readDestinationConfig(
   parsed: ParsedDoc,
   destinationId: string
 ): UnknownRecord | undefined {
   const frontmatter = parsed.source.frontmatter;
-  if (!isPlainObject(frontmatter)) {
-    return;
+  const settings = resolveProviderSettings(
+    isPlainObject(frontmatter) ? (frontmatter as UnknownRecord) : undefined,
+    destinationId
+  );
+
+  if (settings?.config && isPlainObject(settings.config)) {
+    return settings.config;
   }
 
-  const destinations = frontmatter.destinations;
-  if (!isPlainObject(destinations)) {
-    return;
-  }
-
-  const config = destinations[destinationId];
-  if (!isPlainObject(config)) {
-    return;
-  }
-
-  return config;
+  return undefined;
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Handlebars option parsing requires multiple validation branches.

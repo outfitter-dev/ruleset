@@ -86,6 +86,20 @@ export class GlobalConfig {
   }
 
   /**
+   * Get the path to the global rules directory
+   */
+  getRulesDirectory(): string {
+    return join(this.globalDir, 'rules');
+  }
+
+  /**
+   * Get the path to the global presets directory
+   */
+  getPresetsDirectory(): string {
+    return join(this.globalDir, 'presets');
+  }
+
+  /**
    * Get the path to the global config file
    */
   getConfigPath(): string {
@@ -108,6 +122,8 @@ export class GlobalConfig {
         await fs.mkdir(this.getSetsDirectory(), { recursive: true });
         await fs.mkdir(this.getPacksDirectory(), { recursive: true });
         await fs.mkdir(this.getCommandsDirectory(), { recursive: true });
+        await fs.mkdir(this.getRulesDirectory(), { recursive: true });
+        await fs.mkdir(this.getPresetsDirectory(), { recursive: true });
 
         const defaultConfig = `version = "0.1.0"\ninstalledRulesets = []\npacks = []\n`;
 

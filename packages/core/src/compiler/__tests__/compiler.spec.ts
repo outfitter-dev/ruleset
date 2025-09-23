@@ -8,27 +8,25 @@ describe('compiler', () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content: `---
-rulesets: v0
+rule:
+  version: '0.2.0'
 title: Test Rules
 description: Test description
-destinations:
-  cursor:
-    outputPath: ".cursor/rules/test.mdc"
-    priority: high
+cursor:
+  outputPath: ".cursor/rules/test.mdc"
+  priority: high
 ---
 
 # Test Content
 
 This is the body with {{sections}} and {{$variables}}.`,
           frontmatter: {
-            rulesets: 'v0',
+            rule: { version: '0.2.0' },
             title: 'Test Rules',
             description: 'Test description',
-            destinations: {
-              cursor: {
-                outputPath: '.cursor/rules/test.mdc',
-                priority: 'high',
-              },
+            cursor: {
+              outputPath: '.cursor/rules/test.mdc',
+              priority: 'high',
             },
           },
         },
@@ -54,13 +52,17 @@ This is the body with {{sections}} and {{$variables}}.`,
       );
 
       // Metadata should include relevant fields
-      expect(result.output.metadata).toEqual({
+      expect(result.output.metadata).toMatchObject({
         title: 'Test Rules',
         description: 'Test description',
-        version: undefined,
+        version: '0.2.0',
         outputPath: '.cursor/rules/test.mdc',
         priority: 'high',
       });
+
+      // Should also include pass-through fields
+      expect(result.output.metadata).toHaveProperty('rule');
+      expect(result.output.metadata).toHaveProperty('cursor');
 
       // Context should include destination and config
       expect(result.context.destinationId).toBe('cursor');
@@ -100,21 +102,19 @@ This is the body with {{sections}} and {{$variables}}.`,
       const parsedDoc: ParsedDoc = {
         source: {
           content: `---
-rulesets: v0
-destinations:
-  cursor:
-    outputPath: ".cursor/rules/test.mdc"
-    priority: high
+rule:
+  version: '0.2.0'
+cursor:
+  outputPath: ".cursor/rules/test.mdc"
+  priority: high
 ---
 
 # Content`,
           frontmatter: {
-            rulesets: 'v0',
-            destinations: {
-              cursor: {
-                outputPath: '.cursor/rules/test.mdc',
-                priority: 'high',
-              },
+            rule: { version: '0.2.0' },
+            cursor: {
+              outputPath: '.cursor/rules/test.mdc',
+              priority: 'high',
             },
           },
         },
@@ -145,10 +145,11 @@ destinations:
       const parsedDoc: ParsedDoc = {
         source: {
           content: `---
-rulesets: v0
+rule:
+  version: '0.2.0'
 ---`,
           frontmatter: {
-            rulesets: 'v0',
+            rule: { version: '0.2.0' },
           },
         },
         ast: {
@@ -168,7 +169,8 @@ rulesets: v0
       const parsedDoc: ParsedDoc = {
         source: {
           content: `---
-rulesets: v0
+rule:
+  version: '0.2.0'
 ---
 
 {{instructions}}
@@ -179,7 +181,7 @@ Do not modify these markers in v0.
 
 The value is {{$myVariable}}.`,
           frontmatter: {
-            rulesets: 'v0',
+            rule: { version: '0.2.0' },
           },
         },
         ast: {
@@ -260,11 +262,12 @@ The value is {{$myVariable}}.`,
     it('respects handlebars compiler preference in frontmatter', () => {
       const parsedDoc: ParsedDoc = {
         source: {
-          content: `---\nrulesets:
-  compiler: handlebars\n---\n
+          content: `---\nrule:
+  version: '0.2.0'
+  template: true\n---\n
 Hello {{uppercase 'world'}}`,
           frontmatter: {
-            rulesets: { compiler: 'handlebars' },
+            rule: { version: '0.2.0', template: true },
           },
         },
         ast: {
@@ -282,20 +285,18 @@ Hello {{uppercase 'world'}}`,
       const parsedDoc: ParsedDoc = {
         source: {
           content: `---
-rulesets: v0
-destinations:
-  cursor:
-    path: "/test"
-  windsurf: {}
+rule:
+  version: '0.2.0'
+cursor:
+  path: "/test"
+windsurf: {}
 ---
 
 # Content`,
           frontmatter: {
-            rulesets: 'v0',
-            destinations: {
-              cursor: { path: '/test' },
-              windsurf: {},
-            },
+            rule: { version: '0.2.0' },
+            cursor: { path: '/test' },
+            windsurf: {},
           },
         },
         ast: {
@@ -309,11 +310,15 @@ destinations:
       const result = compile(parsedDoc, 'windsurf');
 
       expect(result.context.config).toEqual({});
-      expect(result.output.metadata).toEqual({
+      expect(result.output.metadata).toMatchObject({
         title: undefined,
         description: undefined,
-        version: undefined,
+        version: '0.2.0',
       });
+
+      // Should include pass-through fields
+      expect(result.output.metadata).toHaveProperty('rule');
+      expect(result.output.metadata).toHaveProperty('windsurf');
     });
   });
 });

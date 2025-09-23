@@ -1,0 +1,15 @@
+name: onboarding
+version: 1.0.0
+description: Basic onboarding rules for new projects
+author: Rulesets Team
+homepage: https://github.com/outfitter-dev/rulesets
+rules:
+  - name: coding-standards
+    source: "data:text/plain,---\nrule:\n  version: 0.2.0\ndescription: Team coding standards\ncursor:\n  enabled: true\nwindsurf:\n  enabled: true\ncodex:\n  enabled: true\n---\n\n# Coding Standards\n\nFollow these coding standards for consistency across our projects:\n\n## TypeScript Guidelines\n\n- Use TypeScript for all new code\n- Enable strict mode in tsconfig.json\n- Use meaningful variable and function names\n- Prefer explicit types over 'any'\n\n## Testing Requirements\n\n- Write unit tests for all functions\n- Aim for 80%+ test coverage\n- Use descriptive test names\n- Group related tests in describe blocks\n\n## Code Style\n\n- Use Prettier for formatting\n- Follow ESLint recommendations\n- Use consistent import ordering\n- Add JSDoc comments for public APIs"
+    description: Team coding standards and best practices
+  - name: security-guidelines
+    source: "data:text/plain,---\nrule:\n  version: 0.2.0\ndescription: Security best practices\ncursor:\n  enabled: true\nwindsurf:\n  enabled: true\ncodex:\n  enabled: true\n---\n\n# Security Guidelines\n\nSecurity best practices to follow:\n\n## Input Validation\n\n- Always validate user inputs\n- Use parameterized queries for database operations\n- Sanitize data before rendering in UI\n- Implement proper error handling\n\n## Dependencies\n\n- Keep dependencies updated\n- Regularly run security audits (npm audit, yarn audit)\n- Use dependabot or similar tools for automated updates\n- Review security advisories for critical dependencies\n\n## Authentication & Authorization\n\n- Use strong authentication mechanisms\n- Implement proper session management\n- Apply principle of least privilege\n- Log security-relevant events"
+    description: Security best practices and guidelines
+  - name: git-workflow
+    source: "data:text/plain,---\nrule:\n  version: 0.2.0\ndescription: Git workflow and commit standards\ncursor:\n  enabled: true\nwindsurf:\n  enabled: true\ncodex:\n  enabled: true\n---\n\n# Git Workflow\n\nOur Git workflow and commit standards:\n\n## Branching Strategy\n\n- Use feature branches for all new work\n- Branch from main for new features\n- Use descriptive branch names (e.g., feature/add-user-auth)\n- Keep branches focused and small\n\n## Commit Messages\n\n- Use conventional commit format\n- Start with type: feat, fix, docs, style, refactor, test, chore\n- Keep first line under 50 characters\n- Use imperative mood (\"Add\" not \"Added\")\n- Include issue number if applicable\n\n## Pull Requests\n\n- Create PRs for all changes\n- Write clear PR descriptions\n- Request appropriate reviewers\n- Address review comments promptly\n- Squash commits when merging"
+    description: Git workflow and commit message standards

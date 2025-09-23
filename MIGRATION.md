@@ -8,6 +8,12 @@ NOTE: This is a **STUB** working document. Keep it updated and accurate as we pr
 
 All of this work is to be done under a single branch off main called `gt-v0.3/rulesets-release`. Once we have completed the migration, we will split the branch into as many feature branches as needed using `gt split -h` (by hunk). Each feature branch will use the prefix `gt-v0.3/` and each must be able to be green in CI, so consider how changes should be made and which branch to parent from.
 
+- ✅ Default project config now lives at `.ruleset/config.yaml` (JSON/JSONC/TOML still supported when explicitly provided).
+- ✅ `rulesets compile` now respects `sources` from project config when the CLI source argument is omitted.
+- ✅ Project-level `rule.globs` are honoured by the CLI so only matching files are compiled.
+- 🔄 Pending: README/CLI docs still reference legacy workflow; update once documentation rewrite lands.
+- 🔄 Pending: Provider packages beyond `provider-cursor` still live inside `@rulesets/core`; migrate them before GA.
+
 ## Legacy Repository Audit (2025-09-19)
 
 ### Branches inspected
@@ -56,4 +62,10 @@ All of this work is to be done under a single branch off main called `gt-v0.3/ru
 
 ## Migration Notes
 
-- ...
+- Replace legacy `{{section-name}}` blocks with Markdown headings before compiling.
+  - Promote the section name to a heading (e.g., `{{instructions}}` → `## Instructions`).
+  - Move any properties into frontmatter (`rule.*`) or provider overrides as needed.
+  - If reuse is required, extract content into partials under `.ruleset/partials/` and reference them via Handlebars.
+- Convert `destinations.include` usage to per-provider flags.
+  - For each destination ID in `destinations.include`, add `<provider>.enabled: true` and move overrides under that provider key.
+  - Remove the legacy `destinations` block once provider keys are in place.

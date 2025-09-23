@@ -2,9 +2,13 @@
 
 This file provides comprehensive guidance for AI assistants (Claude Code, Cursor, Cline, etc.) working with the Rulesets codebase.
 
+> **Note:** Content is being refreshed for the v0.4 rewrite. When in doubt, defer to @REFACTOR.md and @PLAN.md for the latest direction.
+
 ## IMPORTANT
 
 Always read @SCRATCHPAD.md first, and keep it updated with your work as you go. This is your "working memory" file and we will use it to collaborate.
+
+Before making changes, review the rewrite blueprint @REFACTOR.md and the execution checklist @PLAN.md. They define the canonical direction for the v0.4 rewrite.
 
 We are in the middle of a big @MIGRATION.md effort. Pay close attention to it.
 
@@ -12,7 +16,7 @@ As you complete major chunks of work, create a new log in `.agents/logs/` with `
 
 ## Overview
 
-Rulesets is a CommonMark-compliant rules compiler that lets you author a single source rules file in Markdown and compile it into destination-specific rules files (`.cursor/rules.mdc`, `.roo/rules.md`, and more). Think of it as Terraform for AI rules: write once, compile for many destinations, your agents, no matter the tool, on the (literal) same page.
+Rulesets is a CommonMark-compliant rules compiler that lets you author a single source rules file in Markdown and compile it into provider-specific rules files (`.cursor/rules.mdc`, `.roo/rules.md`, and more). Think of it as Terraform for AI rules: write once, compile for many providers, your agents, no matter the tool, on the (literal) same page.
 
 ## Critical Instructions
 
@@ -21,6 +25,7 @@ Rulesets is a CommonMark-compliant rules compiler that lets you author a single 
 - ✅ Always work from a feature branch off of `main` or a `fix/` branch off of a target feature branch
 - ✅ Commit regularly, group commits logically, and use conventional commit messages. When committing, always check to see if there are unstaged changes
 - ✅ When writing code, follow the SOLID principles, DRY principles, KISS principle, and include descriptive inline comments for future developers
+- ✅ Cross-check active changes against @PLAN.md to keep the rewrite sequence intact.
 - ❌ Never automatically create a PR for a feature branch without explicit user direction
 - ✅ When creating PRs follow the instructions in `.claude/commands/create-pr.md`
 
@@ -42,17 +47,17 @@ Rulesets is a CommonMark-compliant rules compiler that lets you author a single 
 - Source files defining rules, written in 100% previewable Markdown
 - Use `.rule.md` extension (preferred); `.ruleset.md` remains supported for backward compatibility.
 - Written in Rulesets notation and use `{{...}}` notation markers to direct the compiler
-- Compiled into destination-specific rules files (for example, `.ruleset/dist/cursor/my-rule.md`).
+- Compiled into provider-specific rules files (for example, `.ruleset/dist/cursor/my-rule.md`).
 
-### Destination
+### Provider
 
 - A supported tool, such as cursor, windsurf, or claude-code
 - Defines tool-specific criteria for compiling source rules to compiled rules files
-- Delivered through destination providers
+- Delivered through provider packages
 
 ### Compiled Rules
 
-- Destination-specific (tool) rules files, rendered from the source rules
+- Provider-specific (tool) rules files, rendered from the source rules
 - Examples for a source rules file called `project-conventions.md`:
   - Cursor → `.cursor/rules/project-conventions.mdc`
   - Claude Code → `./CLAUDE.md#project-conventions`
@@ -85,7 +90,7 @@ Rulesets is a CommonMark-compliant rules compiler that lets you author a single 
 
 - Syntax: `{{$key}}` or `$key` if used within a `{{...}}` marker
 - Dynamic values replaced inline at compile time
-- Examples: `{{$destination}}`, `{{$.front_matter.key}}`, `{{$alias}}`
+- Examples: `{{$provider}}`, `{{$.front_matter.key}}`, `{{$alias}}`
 
 ## Project Goals
 
@@ -96,7 +101,7 @@ Rulesets is a CommonMark-compliant rules compiler that lets you author a single 
 | 👀 **Previewability** | Render legibly in GitHub, VS Code, Obsidian, etc                   |
 | 🧩 **Extensibility**  | Advanced behaviors declared via attributes instead of new notation |
 
-## Supported Destination Providers
+## Supported Providers
 
 | ID            | Tool               | Type              |
 | ------------- | ------------------ | ----------------- |
@@ -134,11 +139,11 @@ Rulesets is a CommonMark-compliant rules compiler that lets you author a single 
 ```markdown
 Alias: {{$alias}}
 Source rules file version: {{$file.version}}
-Current destination: {{$destination}}
-Destination ID: {{$destination.id}}
+Current provider: {{$provider}}
+Provider ID: {{$provider.id}}
 ```
 
-### Destination Scoped Properties
+### Provider Scoped Properties
 
 ```markdown
 {{instructions cursor?name="cursor_instructions"}}
@@ -184,16 +189,16 @@ rulesets:
   version: 0.1.0 # version number for the Rulesets format used
   compiler: handlebars # optional: opt into Handlebars renderer
 description: 'Rules for this project' # useful for tools that use descriptions
-globs: ['**/*.{txt,md,mdc}'] # globs re-written based on destination-specific needs
-# Destination filter examples:
-destination:
+globs: ['**/*.{txt,md,mdc}'] # globs re-written based on provider-specific needs
+# Provider filter examples:
+provider:
   include: ['cursor', 'windsurf']
   exclude: ['claude-code']
   path: './custom/output/path'
-# Destination-specific front matter:
+# Provider-specific front matter:
 cursor:
   alwaysApply: false
-  destination:
+  provider:
     path: './custom/.cursor/rules'
 # Additional metadata:
 name: my-rule # defaults to filename

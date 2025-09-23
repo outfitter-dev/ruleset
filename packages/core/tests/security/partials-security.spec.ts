@@ -71,7 +71,7 @@ describe('Partials Security Tests', () => {
       // Create parsed doc
       const parsed: ParsedDoc = {
         source: {
-          path: join(projectDir, 'test.rule.md'),
+          path: join(projectDir, 'test.md'),
           content: 'test',
           frontmatter: {},
         },
@@ -115,7 +115,7 @@ describe('Partials Security Tests', () => {
       // Create parsed doc
       const parsed: ParsedDoc = {
         source: {
-          path: join(projectDir, 'test.rule.md'),
+          path: join(projectDir, 'test.md'),
           content: 'test',
           frontmatter: {},
         },
@@ -154,7 +154,7 @@ describe('Partials Security Tests', () => {
       // Create parsed doc with malicious frontmatter attempting path injection
       const parsed: ParsedDoc = {
         source: {
-          path: join(projectDir, 'test.rule.md'),
+          path: join(projectDir, 'test.md'),
           content: 'test',
           frontmatter: {
             handlebars: {
@@ -201,7 +201,7 @@ describe('Partials Security Tests', () => {
       // Create parsed doc
       const parsed: ParsedDoc = {
         source: {
-          path: join(projectDir, 'test.rule.md'),
+          path: join(projectDir, 'test.md'),
           content: 'test',
           frontmatter: {},
         },
@@ -244,7 +244,7 @@ describe('Partials Security Tests', () => {
       // Create parsed doc
       const parsed: ParsedDoc = {
         source: {
-          path: join(projectDir, 'test.rule.md'),
+          path: join(projectDir, 'test.md'),
           content: 'test',
           frontmatter: {},
         },
@@ -281,7 +281,7 @@ describe('Partials Security Tests', () => {
       // Create parsed doc
       const parsed: ParsedDoc = {
         source: {
-          path: join(projectDir, 'test.rule.md'),
+          path: join(projectDir, 'test.md'),
           content: 'test',
           frontmatter: {},
         },
@@ -321,7 +321,7 @@ describe('Partials Security Tests', () => {
       // Create parsed doc
       const parsed: ParsedDoc = {
         source: {
-          path: join(projectDir, 'test.rule.md'),
+          path: join(projectDir, 'test.md'),
           content: 'test',
           frontmatter: {},
         },

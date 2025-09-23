@@ -49,7 +49,7 @@ describe('Handlebars partial discovery', () => {
       'Config Body'
     );
     await writeFile(
-      path.join(projectRulesDir, '@footer.rule.md'),
+      path.join(projectRulesDir, '@footer.md'),
       'Inline Footer'
     );
 
@@ -59,9 +59,9 @@ describe('Handlebars partial discovery', () => {
       'cursor',
       'compiled.mdc'
     );
-    const sourcePath = path.join(projectRulesDir, 'my.rule.md');
+    const sourcePath = path.join(projectRulesDir, 'my.md');
     const outputSpecifier = outputPath.replace(/\\/g, '/');
-    const sourceContent = `---\nrulesets:\n  version: '0.1.0'\n  compiler: handlebars\ndestinations:\n  cursor:\n    outputPath: "${outputSpecifier}"\n---\n{{> header }}\n{{> body }}\n{{> footer }}\n`;
+    const sourceContent = `---\nrule:\n  version: '0.2.0'\n  template: true\ncursor:\n  outputPath: "${outputSpecifier}"\n---\n# Sample Rule\n\n{{> header }}\n{{> body }}\n{{> footer }}\n`;
     await writeFile(sourcePath, sourceContent);
 
     const logger = createLogger();

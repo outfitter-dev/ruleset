@@ -2,7 +2,12 @@ import { valid as semverValid } from 'semver';
 import type { ParsedDoc } from '../interfaces';
 
 export type LinterConfig = {
+  /** When false, missing rule.version is reported as a warning instead of an error. */
   requireRulesetsVersion?: boolean;
+  /**
+   * Legacy option retained for compatibility. The v0.2.0 linter no longer validates
+   * destination whitelists, but the field is accepted to avoid breaking callers.
+   */
   allowedDestinations?: string[];
 };
 
@@ -13,14 +18,12 @@ export type LintResult = {
   severity: 'error' | 'warning' | 'info';
 };
 
-// Human-readable field names for error messages
 const FIELD_NAMES: Record<string, string> = {
-  '/rulesets': 'Rulesets version declaration',
-  '/rulesets/version': 'Rulesets version number',
-  '/destinations': 'Destination configurations',
-  '/title': 'Document title',
-  '/description': 'Document description',
-  '/version': 'Document version',
+  '/rule': 'rule metadata block',
+  '/rule/version': 'rule version',
+  '/rule/template': 'rule.template flag',
+  '/rule/globs': 'rule.globs list',
+  '/description': 'description',
 };
 
 const objectConstructor: ObjectConstructor & {
@@ -32,327 +35,159 @@ const hasOwn = (value: object, key: PropertyKey): boolean =>
     ? objectConstructor.hasOwn(value, key)
     : Object.getOwnPropertyDescriptor(value, key) !== undefined;
 
-const normaliseDestinationId = (value: string): string =>
-  value.trim().toLowerCase();
-
-/**
- * Gets a human-readable field name for error messages.
- *
- * @param path - The field path
- * @returns Human-readable field name
- */
 function getFieldName(path: string): string {
   return FIELD_NAMES[path] || path;
 }
 
-/**
- * Converts parsing errors to lint results.
- *
- * @param parsedDoc - The parsed document containing errors
- * @returns Array of lint results for parsing errors
- */
 function collectParsingErrors(parsedDoc: ParsedDoc): LintResult[] {
   const results: LintResult[] = [];
 
-  if (parsedDoc.errors) {
-    for (const error of parsedDoc.errors) {
+  if (!parsedDoc.errors) {
+    return results;
+  }
+
+  for (const error of parsedDoc.errors) {
+    results.push({
+      message: error.message,
+      line: error.line,
+      column: error.column,
+      severity: 'error',
+    });
+  }
+
+  return results;
+}
+
+function validateFrontmatterPresence(
+  frontmatter: Record<string, unknown> | undefined,
+  config: LinterConfig
+): LintResult | null {
+  if (frontmatter) {
+    return null;
+  }
+
+  const severity = config.requireRulesetsVersion === false ? 'warning' : 'error';
+  return {
+    message:
+      'No frontmatter found. Add YAML frontmatter with a `rule` block (e.g., rule: { version: "0.2.0" }).',
+    line: 1,
+    column: 1,
+    severity,
+  };
+}
+
+function validateRuleMetadata(
+  frontmatter: Record<string, unknown>,
+  config: LinterConfig
+): LintResult[] {
+  const results: LintResult[] = [];
+  const severity = config.requireRulesetsVersion === false ? 'warning' : 'error';
+
+  if (!hasOwn(frontmatter, 'rule')) {
+    results.push({
+      message: `Missing required ${getFieldName('/rule')}. Include a \`rule\` object with at least \`version\`.`,
+      line: 1,
+      column: 1,
+      severity,
+    });
+    return results;
+  }
+
+  const rawRule = (frontmatter as Record<string, unknown>).rule;
+  if (
+    typeof rawRule !== 'object' ||
+    rawRule === null ||
+    Array.isArray(rawRule)
+  ) {
+    results.push({
+      message: `Invalid ${getFieldName('/rule')}. Expected an object (e.g., rule: { version: "0.2.0" }).`,
+      line: 1,
+      column: 1,
+      severity: 'error',
+    });
+    return results;
+  }
+
+  const rule = rawRule as Record<string, unknown>;
+
+  if (!hasOwn(rule, 'version')) {
+    results.push({
+      message: `Missing required ${getFieldName('/rule/version')}.`,
+      line: 1,
+      column: 1,
+      severity,
+    });
+  } else {
+    const rawVersion = rule.version;
+    if (typeof rawVersion !== 'string') {
       results.push({
-        message: error.message,
-        line: error.line,
-        column: error.column,
+        message: `Invalid ${getFieldName('/rule/version')}. Expected a string (e.g., "0.2.0").`,
+        line: 1,
+        column: 1,
+        severity: 'error',
+      });
+    } else {
+      const version = rawVersion.trim();
+      if (!semverValid(version)) {
+        results.push({
+          message: `Invalid ${getFieldName('/rule/version')}. Expected a semantic version (e.g., "0.2.0").`,
+          line: 1,
+          column: 1,
+          severity,
+        });
+      }
+    }
+  }
+
+  if (hasOwn(rule, 'template')) {
+    if (typeof rule.template !== 'boolean') {
+      results.push({
+        message: `Invalid ${getFieldName('/rule/template')}. Expected a boolean (true or false).`,
+        line: 1,
+        column: 1,
         severity: 'error',
       });
     }
   }
 
-  return results;
-}
-
-/**
- * Validates that frontmatter exists and returns early warning if not.
- *
- * @param frontmatter - The frontmatter to check
- * @param config - Linter configuration
- * @returns Lint result if no frontmatter found, null otherwise
- */
-function validateFrontmatterPresence(
-  frontmatter: Record<string, unknown> | undefined,
-  config: LinterConfig
-): LintResult | null {
-  if (!frontmatter) {
-    return {
-      message:
-        'No frontmatter found. Consider adding frontmatter with rulesets version and metadata.',
-      line: 1,
-      column: 1,
-      severity: config.requireRulesetsVersion === false ? 'warning' : 'error',
-    };
-  }
-  return null;
-}
-
-/**
- * Validates the rulesets version declaration in frontmatter.
- *
- * @param frontmatter - The frontmatter to validate
- * @param config - Linter configuration
- * @returns Array of lint results for rulesets version issues
- */
-function validateRulesetsVersion(
-  frontmatter: Record<string, unknown>,
-  config: LinterConfig
-): LintResult[] {
-  const results: LintResult[] = [];
-  if (config.requireRulesetsVersion === false) {
-    return results;
-  }
-
-  const rawRulesets = (frontmatter as Record<string, unknown>).rulesets;
-
-  if (rawRulesets === undefined) {
-    results.push({
-      message: `Missing required ${getFieldName('/rulesets')}. Specify the Rulesets version (e.g., rulesets: { version: "0.1.0" }).`,
-      line: 1,
-      column: 1,
-      severity: 'error',
-    });
-    return results;
-  }
-
-  if (
-    typeof rawRulesets !== 'object' ||
-    rawRulesets === null ||
-    Array.isArray(rawRulesets)
-  ) {
-    results.push({
-      message: `Invalid ${getFieldName('/rulesets')}. Expected object with "version" property.`,
-      line: 1,
-      column: 1,
-      severity: 'error',
-    });
-    return results;
-  }
-
-  const rulesets = rawRulesets as Record<string, unknown>;
-
-  if (!hasOwn(rulesets, 'version')) {
-    results.push({
-      message: `Missing required ${getFieldName('/rulesets/version')}.`,
-      line: 1,
-      column: 1,
-      severity: 'error',
-    });
-    return results;
-  }
-
-  const rawVersion = rulesets.version;
-  if (typeof rawVersion !== 'string') {
-    results.push({
-      message: `Invalid ${getFieldName('/rulesets/version')}. Expected a string (e.g., "0.1.0").`,
-      line: 1,
-      column: 1,
-      severity: 'error',
-    });
-    return results;
-  }
-
-  const version = rawVersion.trim();
-  if (!semverValid(version)) {
-    results.push({
-      message: `Invalid ${getFieldName('/rulesets/version')}. Expected a semantic version (e.g., "0.1.0").`,
-      line: 1,
-      column: 1,
-      severity: 'error',
-    });
-  }
-
-  return results;
-}
-
-/**
- * Validates destination configurations in frontmatter.
- *
- * @param frontmatter - The frontmatter to validate
- * @param config - Linter configuration
- * @returns Array of lint results for destination issues
- */
-function validateIncludeList(ids: string[], allowed?: string[]): LintResult[] {
-  const out: LintResult[] = [];
-  if (!allowed || allowed.length === 0) {
-    return out;
-  }
-  const allowedList = [...new Set(allowed)].sort();
-  const allowedSet = new Set(allowed.map(normaliseDestinationId));
-  for (const destId of new Set(ids)) {
-    if (!allowedSet.has(normaliseDestinationId(destId))) {
-      out.push({
-        message: `Unknown destination "${destId}". Allowed destinations: ${allowedList.join(', ')}.`,
-        line: 1,
-        column: 1,
-        severity: 'warning',
-      });
-    }
-  }
-  return out;
-}
-
-function validateIncludeConfig(
-  includeArr: unknown[],
-  obj: Record<string, unknown>,
-  allowedDestinations?: string[]
-): LintResult[] {
-  const results: LintResult[] = [];
-  const invalidIndices = includeArr
-    .map((entry, index) => (typeof entry === 'string' ? -1 : index))
-    .filter((index) => index !== -1);
-  if (invalidIndices.length > 0) {
-    results.push({
-      message: `Invalid ${getFieldName('/destinations')}. "include" must be an array of strings; non-string entries at indices [${invalidIndices.join(', ')}].`,
-      line: 1,
-      column: 1,
-      severity: 'error',
-    });
-  }
-
-  const extraKeys = Object.keys(obj).filter((key) => key !== 'include');
-  if (extraKeys.length > 0) {
-    results.push({
-      message: `Invalid ${getFieldName('/destinations')}. Do not mix { include: [...] } with per-destination mappings (${extraKeys.join(', ')}).`,
-      line: 1,
-      column: 1,
-      severity: 'error',
-    });
-  }
-
-  const ids = includeArr
-    .filter((entry): entry is string => typeof entry === 'string')
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
-
-  const seen = new Set<string>();
-  const duplicates = new Set<string>();
-  for (const id of ids) {
-    const key = normaliseDestinationId(id);
-    if (seen.has(key)) {
-      duplicates.add(id);
-    } else {
-      seen.add(key);
-    }
-  }
-
-  if (ids.length === 0) {
-    results.push({
-      message: `Empty ${getFieldName('/destinations')}. "include" is empty; nothing will be emitted for destinations.`,
-      line: 1,
-      column: 1,
-      severity: 'warning',
-    });
-  }
-  if (duplicates.size > 0) {
-    const duplicateList = Array.from(
-      new Set(Array.from(duplicates).map((value) => value.trim()))
-    );
-    results.push({
-      message: `Duplicate destination IDs in "include": ${duplicateList.join(', ')}.`,
-      line: 1,
-      column: 1,
-      severity: 'warning',
-    });
-  }
-  results.push(...validateIncludeList(ids, allowedDestinations));
-  return results;
-}
-
-function validateDestinationMappings(
-  obj: Record<string, unknown>,
-  allowedDestinations?: string[]
-): LintResult[] {
-  const results: LintResult[] = [];
-  if (!allowedDestinations || allowedDestinations.length === 0) {
-    return results;
-  }
-  const allowedList = [...new Set(allowedDestinations)].sort();
-  const allowedSet = new Set(allowedDestinations.map(normaliseDestinationId));
-  for (const destId of Object.keys(obj).filter((key) => key !== 'include')) {
-    if (!allowedSet.has(normaliseDestinationId(destId))) {
+  if (hasOwn(rule, 'globs')) {
+    const globs = rule.globs;
+    if (!Array.isArray(globs)) {
       results.push({
-        message: `Unknown destination "${destId}". Allowed destinations: ${allowedList.join(', ')}.`,
+        message: `Invalid ${getFieldName('/rule/globs')}. Expected an array of glob strings (e.g., ['**/*.md']).`,
         line: 1,
         column: 1,
-        severity: 'warning',
+        severity: 'error',
       });
+    } else {
+      const invalidEntries = globs
+        .map((entry, index) =>
+          typeof entry === 'string' && entry.trim().length > 0 ? -1 : index
+        )
+        .filter((index) => index !== -1);
+      if (invalidEntries.length > 0) {
+        results.push({
+          message: `Invalid entries in ${getFieldName('/rule/globs')} at indices [${invalidEntries.join(', ')}]. Provide non-empty strings.`,
+          line: 1,
+          column: 1,
+          severity: 'error',
+        });
+      }
     }
   }
-  return results;
-}
-
-function validateDestinations(
-  frontmatter: Record<string, unknown>,
-  config: LinterConfig
-): LintResult[] {
-  const results: LintResult[] = [];
-
-  const value = (frontmatter as Record<string, unknown>).destinations;
-  if (value === undefined) {
-    return results;
-  }
-
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    results.push({
-      message: `Invalid ${getFieldName('/destinations')}. Expected an object mapping destination IDs to configuration, or { include: string[] }.`,
-      line: 1,
-      column: 1,
-      severity: 'error',
-    });
-    return results;
-  }
-
-  const obj = value as Record<string, unknown> & { include?: unknown };
-  if (Array.isArray(obj.include)) {
-    results.push(
-      ...validateIncludeConfig(obj.include, obj, config.allowedDestinations)
-    );
-    return results;
-  }
-
-  if (hasOwn(obj, 'include') && !Array.isArray(obj.include)) {
-    results.push({
-      message: `Invalid ${getFieldName('/destinations')}. The "include" property must be an array of strings.`,
-      line: 1,
-      column: 1,
-      severity: 'error',
-    });
-    return results;
-  }
-
-  results.push(...validateDestinationMappings(obj, config.allowedDestinations));
 
   return results;
 }
 
-/**
- * Validates recommended documentation fields in frontmatter.
- *
- * @param frontmatter - The frontmatter to validate
- * @returns Array of lint results for missing recommended fields
- */
+
 function validateRecommendedFields(
   frontmatter: Record<string, unknown>
 ): LintResult[] {
   const results: LintResult[] = [];
 
-  if (!frontmatter.title) {
+  if (!hasOwn(frontmatter, 'description')) {
     results.push({
-      message: `Consider adding a ${getFieldName('/title')} to the frontmatter for better documentation.`,
-      line: 1,
-      column: 1,
-      severity: 'info',
-    });
-  }
-
-  if (!frontmatter.description) {
-    results.push({
-      message: `Consider adding a ${getFieldName('/description')} to the frontmatter for better documentation.`,
+      message: `Consider adding a ${getFieldName('/description')} to provide high-level context.`,
       line: 1,
       column: 1,
       severity: 'info',
@@ -362,16 +197,188 @@ function validateRecommendedFields(
   return results;
 }
 
-/**
- * Lints a parsed Rulesets document by validating its frontmatter.
- * For v0.1.0, this performs basic schema validation on the frontmatter.
- *
- * @param parsedDoc - The parsed document to lint
- * @param config - Optional linter configuration
- * @returns An array of lint results
- */
-// TODO: Add validation for section properties
-// TODO: Add validation for variables and imports
+function extractBodyLinesAndOffset(content: string): {
+  lines: string[];
+  offset: number;
+} {
+  const lines = content.split('\n');
+
+  if (lines.length === 0) {
+    return { lines: [], offset: 1 };
+  }
+
+  if (lines[0].trim() !== '---') {
+    return { lines, offset: 1 };
+  }
+
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === '---') {
+      return { lines: lines.slice(i + 1), offset: i + 2 };
+    }
+  }
+
+  // Unclosed frontmatter - treat as no body content
+  return { lines: [], offset: lines.length + 1 };
+}
+
+function detectLegacySectionMarkers(
+  lines: string[],
+  offset: number
+): LintResult[] {
+  const results: LintResult[] = [];
+  const closings = new Set<string>();
+  const closingRegex = /\{\{\s*\/\s*([a-zA-Z0-9_-]+)\b/g;
+
+  for (const line of lines) {
+    let match: RegExpExecArray | null;
+    while ((match = closingRegex.exec(line)) !== null) {
+      closings.add(match[1]);
+    }
+  }
+
+  if (closings.size === 0) {
+    return results;
+  }
+
+  const flaggedPositions = new Set<string>();
+
+  lines.forEach((line, index) => {
+    let searchIndex = 0;
+    while (searchIndex < line.length) {
+      const openIndex = line.indexOf('{{', searchIndex);
+      if (openIndex === -1) {
+        break;
+      }
+      searchIndex = openIndex + 2;
+      const after = line.slice(openIndex + 2).trimStart();
+      if (!after) {
+        continue;
+      }
+      const leadingChar = after[0];
+      if (leadingChar && '#/>!{'.includes(leadingChar)) {
+        continue;
+      }
+      const nameMatch = after.match(/^([a-zA-Z0-9_-]+)/);
+      if (!nameMatch) {
+        continue;
+      }
+      const sectionName = nameMatch[1];
+      if (!closings.has(sectionName)) {
+        continue;
+      }
+      const key = `${index}:${openIndex}`;
+      if (flaggedPositions.has(key)) {
+        continue;
+      }
+      flaggedPositions.add(key);
+      results.push({
+        message: `Legacy section marker "{{${sectionName}}}" detected. Replace bespoke markers with Markdown headings or partials.`,
+        line: offset + index,
+        column: openIndex + 1,
+        severity: 'error',
+      });
+    }
+  });
+
+  return results;
+}
+
+function findFirstHandlebarsExpression(
+  lines: string[],
+  offset: number
+): { line: number; column: number } | null {
+  let inFence = false;
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index];
+    const trimmed = line.trimStart();
+    if (trimmed.startsWith('```')) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) {
+      continue;
+    }
+    let searchIndex = line.indexOf('{{');
+    while (searchIndex !== -1) {
+      const prefix = line.slice(Math.max(0, searchIndex - 2), searchIndex);
+      if (prefix.endsWith('\\')) {
+        searchIndex = line.indexOf('{{', searchIndex + 2);
+        continue;
+      }
+      return { line: offset + index, column: searchIndex + 1 };
+    }
+  }
+  return null;
+}
+
+function validateHandlebarsUsage(
+  frontmatter: Record<string, unknown> | undefined,
+  parsedDoc: ParsedDoc
+): LintResult[] {
+  const results: LintResult[] = [];
+  const rule = frontmatter && typeof frontmatter === 'object' && frontmatter !== null
+    ? (frontmatter as Record<string, unknown>).rule
+    : undefined;
+  const templateEnabled =
+    typeof rule === 'object' && rule !== null && !Array.isArray(rule)
+      ? (rule as Record<string, unknown>).template === true
+      : false;
+  if (templateEnabled) {
+    return results;
+  }
+  const { lines, offset } = extractBodyLinesAndOffset(parsedDoc.source.content ?? '');
+  const location = findFirstHandlebarsExpression(lines, offset);
+  if (!location) {
+    return results;
+  }
+  results.push({
+    message:
+      'Handlebars-like braces detected but `rule.template` is not enabled. Set `rule.template: true` or escape the braces (for example, `\\{{`).',
+    line: location.line,
+    column: location.column,
+    severity: 'warning',
+  });
+  return results;
+}
+
+function validateBodyStructure(parsedDoc: ParsedDoc): LintResult[] {
+  const content = parsedDoc.source.content ?? '';
+  const { lines, offset } = extractBodyLinesAndOffset(content);
+  const results: LintResult[] = [];
+
+  let firstContentLineIndex = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (trimmed.length === 0) {
+      continue;
+    }
+    firstContentLineIndex = i;
+    if (!trimmed.startsWith('# ')) {
+      results.push({
+        message:
+          'The first content line should be a level-1 Markdown heading (e.g., "# Project Rules").',
+        line: offset + i,
+        column: 1,
+        severity: 'error',
+      });
+    }
+    break;
+  }
+
+  if (firstContentLineIndex === -1) {
+    results.push({
+      message: 'No Markdown content found after frontmatter. Add an H1 heading and body content.',
+      line: offset,
+      column: 1,
+      severity: 'error',
+    });
+  }
+
+  results.push(...detectLegacySectionMarkers(lines, offset));
+  return results;
+}
+
+// TODO: Extend linting to cover variables/imports when the parser exposes them.
 export function lint(
   parsedDoc: ParsedDoc,
   config: LinterConfig = {}
@@ -379,27 +386,22 @@ export function lint(
   const results: LintResult[] = [];
   const { frontmatter } = parsedDoc.source;
 
-  // Add any parsing errors as lint errors
   results.push(...collectParsingErrors(parsedDoc));
 
-  // Check if frontmatter exists
   const frontmatterCheck = validateFrontmatterPresence(frontmatter, config);
   if (frontmatterCheck) {
     results.push(frontmatterCheck);
-    return results; // Early return if no frontmatter
+    results.push(...validateBodyStructure(parsedDoc));
+    results.push(...validateHandlebarsUsage(undefined, parsedDoc));
+    return results;
   }
 
-  // At this point we know frontmatter exists
   const validFrontmatter = frontmatter as Record<string, unknown>;
 
-  // Validate rulesets version
-  results.push(...validateRulesetsVersion(validFrontmatter, config));
-
-  // Validate destinations
-  results.push(...validateDestinations(validFrontmatter, config));
-
-  // Validate recommended fields
+  results.push(...validateRuleMetadata(validFrontmatter, config));
   results.push(...validateRecommendedFields(validFrontmatter));
+  results.push(...validateBodyStructure(parsedDoc));
+  results.push(...validateHandlebarsUsage(validFrontmatter, parsedDoc));
 
   return results;
 }
