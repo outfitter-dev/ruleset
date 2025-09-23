@@ -198,6 +198,77 @@ The value is {{$myVariable}}.`,
       expect(result.output.content).toContain('{{$myVariable}}');
     });
 
+    it('should force Handlebars compilation when options request it', () => {
+      const parsedDoc: ParsedDoc = {
+        source: {
+          content: 'Hello {{uppercase provider.id}}!',
+        },
+        ast: {
+          sections: [],
+          imports: [],
+          variables: [],
+          markers: [],
+        },
+      };
+
+      const result = compile(parsedDoc, 'cursor', {}, {
+        handlebars: { force: true },
+      });
+
+      expect(result.output.content).toBe('Hello CURSOR!');
+    });
+
+    it('should register helpers and partials from compile options', () => {
+      const parsedDoc: ParsedDoc = {
+        source: {
+          content: '{{greet "Rulesets"}} {{> footer }}',
+        },
+        ast: {
+          sections: [],
+          imports: [],
+          variables: [],
+          markers: [],
+        },
+      };
+
+      const result = compile(parsedDoc, 'cursor', {}, {
+        handlebars: {
+          force: true,
+          helpers: {
+            greet: (value: unknown) =>
+              typeof value === 'string' ? `Hello ${value}` : 'Hello',
+          },
+          partials: {
+            footer: '::footer::',
+          },
+        },
+      });
+
+      expect(result.output.content).toBe('Hello Rulesets ::footer::');
+    });
+
+
+    it('respects handlebars compiler preference in frontmatter', () => {
+      const parsedDoc: ParsedDoc = {
+        source: {
+          content: `---\nrulesets:
+  compiler: handlebars\n---\n
+Hello {{uppercase 'world'}}`,
+          frontmatter: {
+            rulesets: { compiler: 'handlebars' },
+          },
+        },
+        ast: {
+          sections: [],
+          imports: [],
+          variables: [],
+          markers: [],
+        },
+      };
+
+      const result = compile(parsedDoc, 'cursor');
+      expect(result.output.content).toContain('Hello WORLD');
+    });
     it('should handle destination without config', () => {
       const parsedDoc: ParsedDoc = {
         source: {

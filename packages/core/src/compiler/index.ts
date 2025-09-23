@@ -1,4 +1,36 @@
+import type { HelperDelegate } from 'handlebars';
 import type { CompiledDoc, ParsedDoc } from '../interfaces';
+import type { Logger } from '../interfaces/logger';
+import { extractBodyFromContent } from '../utils/frontmatter';
+import { HandlebarsRulesetCompiler } from './handlebars-compiler';
+
+const handlebarsCompiler = new HandlebarsRulesetCompiler();
+
+function prefersHandlebars(
+  frontmatter: Record<string, unknown> | undefined,
+  projectConfig: Record<string, unknown>
+): boolean {
+  const rulesets = frontmatter?.rulesets as Record<string, unknown> | undefined;
+  const frontmatterPref =
+    typeof rulesets?.compiler === 'string' ? rulesets.compiler : undefined;
+  const projectPref =
+    typeof projectConfig?.compiler === 'string'
+      ? projectConfig.compiler
+      : undefined;
+  return frontmatterPref === 'handlebars' || projectPref === 'handlebars';
+}
+
+export type CompileOptions = {
+  projectConfig?: Record<string, unknown>;
+  logger?: Logger;
+  handlebars?: {
+    force?: boolean;
+    helpers?: Record<string, HelperDelegate>;
+    partials?: Record<string, string>;
+    strict?: boolean;
+    noEscape?: boolean;
+  };
+};
 
 /**
  * Creates a minimal compiled document for empty files.
@@ -35,43 +67,6 @@ function createEmptyCompiledDoc(
       source.frontmatter
     ),
   };
-}
-
-/**
- * Extracts body content by removing frontmatter from the source.
- *
- * @param sourceContent - Raw source content
- * @param hasFrontmatter - Whether frontmatter is present
- * @returns Body content with frontmatter removed
- */
-function extractBodyContent(
-  sourceContent: string,
-  hasFrontmatter: boolean
-): string {
-  if (!hasFrontmatter) {
-    return sourceContent;
-  }
-
-  const lines = sourceContent.split('\n');
-  let frontmatterEnd = -1;
-
-  if (lines[0] === '---') {
-    for (let i = 1; i < lines.length; i++) {
-      if (lines[i] === '---') {
-        frontmatterEnd = i;
-        break;
-      }
-    }
-
-    if (frontmatterEnd > 0) {
-      return lines
-        .slice(frontmatterEnd + 1)
-        .join('\n')
-        .trim();
-    }
-  }
-
-  return sourceContent;
 }
 
 /**
@@ -146,19 +141,45 @@ function createCompilationContext(
 export function compile(
   parsedDoc: ParsedDoc,
   destinationId: string,
-  projectConfig: Record<string, unknown> = {}
+  projectConfig: Record<string, unknown> = {},
+  options: CompileOptions = {}
 ): CompiledDoc {
   const { source, ast } = parsedDoc;
+  const { logger, handlebars } = options;
+  const effectiveProjectConfig = options.projectConfig ?? projectConfig;
 
   // Handle empty files consistently
   if (!source.content.trim()) {
-    return createEmptyCompiledDoc(source, destinationId, projectConfig);
+    return createEmptyCompiledDoc(
+      source,
+      destinationId,
+      effectiveProjectConfig
+    );
   }
 
   // Extract the body content (everything after frontmatter)
-  const bodyContent = extractBodyContent(source.content, !!source.frontmatter);
+  const bodyContent = extractBodyFromContent(source.content, {
+    hasFrontmatter: Boolean(source.frontmatter),
+    trim: true,
+  });
 
   // Build the compiled document
+  const shouldUseHandlebars =
+    prefersHandlebars(source.frontmatter, effectiveProjectConfig) ||
+    Boolean(handlebars?.force);
+
+  if (shouldUseHandlebars) {
+    const compiled = handlebarsCompiler.compile(parsedDoc, destinationId, {
+      logger,
+      projectConfig: effectiveProjectConfig,
+      helpers: handlebars?.helpers,
+      partials: handlebars?.partials,
+      strict: handlebars?.strict,
+      noEscape: handlebars?.noEscape,
+    });
+    return compiled;
+  }
+
   const compiledDoc: CompiledDoc = {
     source: {
       path: source.path,
@@ -177,10 +198,15 @@ export function compile(
     },
     context: createCompilationContext(
       destinationId,
-      projectConfig,
+      effectiveProjectConfig,
       source.frontmatter
     ),
   };
+
+  logger?.debug?.(
+    `Compiled ${source.path ?? 'inline document'} for ${destinationId}`,
+    { destination: destinationId, file: source.path }
+  );
 
   return compiledDoc;
 }

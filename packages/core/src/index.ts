@@ -1,12 +1,7 @@
 import { promises as fs } from 'node:fs';
-import { compile, type CompileOptions } from './compiler';
+import { type CompileOptions, compile } from './compiler';
 import { destinations } from './destinations';
-import type {
-  CompiledDoc,
-  DestinationCompilationOptions,
-  Logger,
-  ParsedDoc,
-} from './interfaces';
+import type { CompiledDoc, Logger, ParsedDoc } from './interfaces';
 import { ConsoleLogger } from './interfaces';
 import { type LinterConfig, type LintResult, lint } from './linter';
 import { parse } from './parser';
@@ -277,6 +272,7 @@ export type DestinationResult = {
  * @param logger - Logger instance for reporting
  * @returns Promise that resolves with results for each destination
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Legacy pipeline requires step-by-step refactor.
 async function processDestinations(
   parsedDoc: ParsedDoc,
   destinationIds: string[],
@@ -330,6 +326,8 @@ async function processDestinations(
             force: preparation.handlebars.force,
             helpers: preparation.handlebars.helpers,
             partials: preparation.handlebars.partials,
+            strict: preparation.handlebars.strict,
+            noEscape: preparation.handlebars.noEscape,
           };
         }
       }
