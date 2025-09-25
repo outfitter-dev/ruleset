@@ -1,7 +1,7 @@
 {
   "name": "rulesets",
   "description": "Rules compiler for AI tools",
-  "version": "0.2.0",
+  "version": "0.4.0-next.0",
   "author": "Outfitter <hello@outfitter.dev>",
   "dependencies": {},
   "devDependencies": {
@@ -22,7 +22,11 @@
   "packageManager": "bun@1.2.22",
   "private": true,
   "scripts": {
-    "build": "bun run --filter '*' build",
+    "build": "bun run build:libs",
+    "build:libs": "bun run --filter \"@rulesets/types\" build && bun run --filter \"@rulesets/parser\" build && bun run --filter \"@rulesets/validator\" build && bun run --filter \"@rulesets/transform\" build && bun run --filter \"@rulesets/renderer\" build && bun run --filter \"@rulesets/providers\" build && bun run --filter \"@rulesets/orchestrator\" build && bun run --filter \"@rulesets/core\" build && bun run --filter \"@rulesets/lib\" build",
+    "build:cli": "bun run --filter \"@rulesets/cli\" build:bundle",
+    "build:binary": "bun run --filter \"@rulesets/cli\" build:binary",
+    "build:release": "bun run build:libs && bun run build:cli",
     "changeset": "changeset",
     "deps:check": "syncpack list-mismatches",
     "deps:fix": "syncpack fix-mismatches && syncpack format",
@@ -30,16 +34,22 @@
     "deps:update": "bunx npm-check-updates -u && syncpack fix-mismatches && syncpack format",
     "dev": "bun run --filter '*' dev",
     "format": "bunx ultracite format .",
-    "lint": "bunx ultracite lint .",
+    "lint": "bunx ultracite check .",
     "release": "bun run build --filter=@rulesets/core && changeset publish",
     "test": "bun run --filter '*' test",
-    "typecheck": "bun run --filter '*' typecheck",
+    "typecheck": "bun run build:libs && bunx tsc --project tsconfig.json --noEmit",
     "version-packages": "changeset version"
   },
   "syncpack": {
-    "semverRange": "^"
+    "semverRange": "^",
+    "dependencyTypes": [
+      "prod",
+      "dev",
+      "peer"
+    ]
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ]
 }

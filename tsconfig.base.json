@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "target": "ES2021",
+    "target": "ES2022",
     "module": "ESNext",
-    "lib": ["ES2021", "DOM"],
+    "lib": ["ES2022", "DOM"],
     "moduleResolution": "node",
     "declaration": true,
     "strict": true,
@@ -12,7 +12,25 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "types": ["node", "vitest/globals"]
+    "types": ["node", "vitest/globals"],
+    "baseUrl": ".",
+    "paths": {
+      "@rulesets/types": ["packages/types/dist/index"],
+      "@rulesets/parser": ["packages/parser/dist/index"],
+      "@rulesets/validator": ["packages/validator/dist/index"],
+      "@rulesets/transform": ["packages/transform/dist/index"],
+      "@rulesets/renderer": ["packages/renderer/dist/index"],
+      "@rulesets/providers": ["packages/providers/dist/index"],
+      "@rulesets/orchestrator": ["packages/orchestrator/dist/index"],
+      "@rulesets/lib": ["packages/lib/dist/index"],
+      "@rulesets/core": ["packages/core/dist/index"],
+      "@rulesets/cli": ["apps/cli/src"],
+      "@rulesets/testing": ["packages/testing/src"],
+      "@rulesets/compiler": ["packages/compiler/src"],
+      "@rulesets/linter": ["packages/linter/src"],
+      "@rulesets/provider-cursor": ["packages/provider-cursor/src"]
+    },
+    "rootDirs": ["."]
   },
   "exclude": ["node_modules", "**/dist", "**/coverage"]
 }

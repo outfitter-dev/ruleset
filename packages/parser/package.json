@@ -1,0 +1,44 @@
+{
+  "name": "@rulesets/parser",
+  "description": "Markdown and front-matter parser that produces the Rulesets v0.4 AST.",
+  "version": "0.4.0-next.0",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "bun": ">=1.0.0",
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "rm -rf dist && bunx tsc --project tsconfig.json",
+    "clean": "rm -rf dist",
+    "dev": "bunx tsc --watch --project tsconfig.json",
+    "lint": "bunx biome lint src",
+    "test": "bun test",
+    "typecheck": "bunx tsc --project tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@rulesets/types": "workspace:*",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "vitest": "^3.2.4"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,18 +1,25 @@
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-import picomatch from 'picomatch';
-import { compile } from './compiler';
-import { loadProjectConfig } from './config/project-config';
-import { destinations } from './destinations';
-import { createDefaultLogger, type Logger } from './interfaces/logger';
-import { lint, type LinterConfig } from './linter';
-import { parse } from './parser';
-import { isPathWithinBoundary, isPathWithinBoundaryReal, sanitizePath } from './utils/security';
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import picomatch from "picomatch";
+import { compile } from "./compiler";
+import { loadProjectConfig } from "./config/project-config";
+import { destinations } from "./destinations";
+import { createDefaultLogger, type Logger } from "./interfaces/logger";
+import { type LinterConfig, lint } from "./linter";
+import { parse } from "./parser";
+import {
+  isPathWithinBoundary,
+  isPathWithinBoundaryReal,
+  sanitizePath,
+} from "./utils/security";
+
+const hasOwn = (value: object, key: PropertyKey): boolean =>
+  Object.hasOwn(value, key);
 
 /**
  * High-level options for compilation operations.
  */
-export interface CompilationOptions {
+export type CompilationOptions = {
   /** Source directory or file to compile */
   source?: string;
   /** Output directory for compiled files */
@@ -27,12 +34,12 @@ export interface CompilationOptions {
   lint?: boolean;
   /** Linter configuration */
   linterConfig?: Partial<LinterConfig>;
-}
+};
 
 /**
  * Result of a compilation operation.
  */
-export interface CompilationResult {
+export type CompilationResult = {
   /** Number of files successfully compiled */
   compiledCount: number;
   /** Total number of files processed */
@@ -47,24 +54,24 @@ export interface CompilationResult {
   projectConfig: Record<string, unknown>;
   /** Output directory used */
   outputPath: string;
-}
+};
 
 /**
  * Options for discovering rules files.
  */
-export interface FileDiscoveryOptions {
+export type FileDiscoveryOptions = {
   /** Base directory to search from */
   basePath: string;
   /** Glob patterns to filter files */
   globs?: string[];
   /** Logger instance */
   logger?: Logger;
-}
+};
 
 /**
  * Supported file extensions for rules files.
  */
-const SUPPORTED_EXTENSIONS = ['.md'] as const;
+const SUPPORTED_EXTENSIONS = [".md"] as const;
 
 /**
  * Check if a file has a supported extension.
@@ -86,18 +93,25 @@ function createGlobMatchers(patterns: string[]): picomatch.Matcher[] {
 /**
  * Discover rules files in a directory or validate a single file.
  */
-export async function discoverRulesFiles(options: FileDiscoveryOptions): Promise<string[]> {
+export async function discoverRulesFiles(
+  options: FileDiscoveryOptions
+): Promise<string[]> {
   const { basePath, globs, logger } = options;
   const resolvedPath = path.resolve(basePath);
 
-  if (!await fs.stat(resolvedPath).then(s => s.isDirectory()).catch(() => false)) {
+  if (
+    !(await fs
+      .stat(resolvedPath)
+      .then((s) => s.isDirectory())
+      .catch(() => false))
+  ) {
     // Single file
     if (!hasSupportedExtension(resolvedPath)) {
       return [];
     }
 
     const fileName = path.basename(resolvedPath);
-    if (fileName.startsWith('@')) {
+    if (fileName.startsWith("@")) {
       return []; // Skip partial files
     }
 
@@ -105,7 +119,7 @@ export async function discoverRulesFiles(options: FileDiscoveryOptions): Promise
     if (globs && globs.length > 0) {
       const matchers = createGlobMatchers(globs);
       const relativePath = path.basename(resolvedPath);
-      const matches = matchers.some(matcher => matcher(relativePath));
+      const matches = matchers.some((matcher) => matcher(relativePath));
       if (!matches) {
         return [];
       }
@@ -116,7 +130,8 @@ export async function discoverRulesFiles(options: FileDiscoveryOptions): Promise
 
   // Directory traversal
   const files: string[] = [];
-  const matchers = globs && globs.length > 0 ? createGlobMatchers(globs) : undefined;
+  const matchers =
+    globs && globs.length > 0 ? createGlobMatchers(globs) : undefined;
 
   async function walkDirectory(dir: string) {
     const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -127,14 +142,17 @@ export async function discoverRulesFiles(options: FileDiscoveryOptions): Promise
       if (entry.isDirectory()) {
         await walkDirectory(fullPath);
       } else if (entry.isFile() && hasSupportedExtension(fullPath)) {
-        if (entry.name.startsWith('@')) {
+        if (entry.name.startsWith("@")) {
           continue; // Skip partial files
         }
 
         // Apply glob filtering if provided
         if (matchers) {
-          const relativePath = path.relative(resolvedPath, fullPath).split(path.sep).join('/');
-          const matches = matchers.some(matcher => matcher(relativePath));
+          const relativePath = path
+            .relative(resolvedPath, fullPath)
+            .split(path.sep)
+            .join("/");
+          const matches = matchers.some((matcher) => matcher(relativePath));
           if (!matches) {
             continue;
           }
@@ -156,10 +174,12 @@ export async function discoverRulesFiles(options: FileDiscoveryOptions): Promise
  * This is the high-level API that CLI commands should use instead of
  * directly importing internal functions.
  */
-export async function compileRules(options: CompilationOptions = {}): Promise<CompilationResult> {
+export async function compileRules(
+  options: CompilationOptions = {}
+): Promise<CompilationResult> {
   const {
-    source = './.ruleset/rules',
-    output = './.ruleset/dist',
+    source = "./.ruleset/rules",
+    output = "./.ruleset/dist",
     destination,
     configPath,
     logger = createDefaultLogger(),
@@ -187,10 +207,14 @@ export async function compileRules(options: CompilationOptions = {}): Promise<Co
   ]);
 
   if (!sourceWithinReal) {
-    throw new Error(`Source path '${source}' resolves outside project directory`);
+    throw new Error(
+      `Source path '${source}' resolves outside project directory`
+    );
   }
   if (!outputWithinReal) {
-    throw new Error(`Output path '${output}' resolves outside project directory`);
+    throw new Error(
+      `Output path '${output}' resolves outside project directory`
+    );
   }
 
   // Load project configuration
@@ -204,24 +228,27 @@ export async function compileRules(options: CompilationOptions = {}): Promise<Co
   // Determine source directories to process
   const configSources = Array.isArray(projectConfig.sources)
     ? projectConfig.sources
-        .map(s => typeof s === 'string' ? s.trim() : null)
+        .map((s) => (typeof s === "string" ? s.trim() : null))
         .filter((s): s is string => Boolean(s && s.length > 0))
     : undefined;
 
   // Use config sources if using default source and config has sources
-  const sourcesToProcess = source === './.ruleset/rules' && configSources && configSources.length > 0
-    ? configSources
-    : [source];
+  const sourcesToProcess =
+    source === "./.ruleset/rules" && configSources && configSources.length > 0
+      ? configSources
+      : [source];
 
   // Extract rule-level globs from project config
   const ruleSection = projectConfig.rule;
-  const ruleGlobs = ruleSection &&
-                    typeof ruleSection === 'object' &&
-                    !Array.isArray(ruleSection) &&
-                    Array.isArray((ruleSection as Record<string, unknown>).globs)
-    ? ((ruleSection as Record<string, unknown>).globs as unknown[])
-        .filter((g): g is string => typeof g === 'string' && g.trim().length > 0)
-    : undefined;
+  const ruleGlobs =
+    ruleSection &&
+    typeof ruleSection === "object" &&
+    !Array.isArray(ruleSection) &&
+    Array.isArray((ruleSection as Record<string, unknown>).globs)
+      ? ((ruleSection as Record<string, unknown>).globs as unknown[]).filter(
+          (g): g is string => typeof g === "string" && g.trim().length > 0
+        )
+      : undefined;
 
   // Discover files from all sources
   const allFiles: string[] = [];
@@ -239,7 +266,7 @@ export async function compileRules(options: CompilationOptions = {}): Promise<Co
   const uniqueFiles = Array.from(new Set(allFiles));
 
   if (uniqueFiles.length === 0) {
-    logger.info('No rules files found to compile');
+    logger.info("No rules files found to compile");
     return {
       compiledCount: 0,
       totalFiles: 0,
@@ -254,25 +281,27 @@ export async function compileRules(options: CompilationOptions = {}): Promise<Co
     ? [destination]
     : Array.from(destinations.keys());
 
-  const errors: CompilationResult['errors'] = [];
+  const errors: CompilationResult["errors"] = [];
   let compiledCount = 0;
 
   for (const filePath of uniqueFiles) {
     try {
       // Read and parse file
-      const content = await fs.readFile(filePath, 'utf-8');
+      const content = await fs.readFile(filePath, "utf-8");
       const parsed = parse(content);
 
       // Check if file has required frontmatter
       const frontmatter = parsed.source.frontmatter;
       const hasRuleFrontmatter =
         frontmatter &&
-        typeof frontmatter === 'object' &&
+        typeof frontmatter === "object" &&
         !Array.isArray(frontmatter) &&
-        Object.prototype.hasOwnProperty.call(frontmatter, 'rule');
+        hasOwn(frontmatter, "rule");
 
       if (!hasRuleFrontmatter) {
-        logger.debug(`Skipping ${path.basename(filePath)} (missing rule frontmatter)`);
+        logger.debug(
+          `Skipping ${path.basename(filePath)} (missing rule frontmatter)`
+        );
         continue;
       }
 
@@ -285,9 +314,9 @@ export async function compileRules(options: CompilationOptions = {}): Promise<Co
         });
 
         for (const result of lintResults) {
-          if (result.severity === 'error') {
+          if (result.severity === "error") {
             logger.error(`${filePath}: ${result.message}`);
-          } else if (result.severity === 'warning') {
+          } else if (result.severity === "warning") {
             logger.warn(`${filePath}: ${result.message}`);
           }
         }
@@ -304,18 +333,17 @@ export async function compileRules(options: CompilationOptions = {}): Promise<Co
 
         // Determine output file path
         const relativePath = path.relative(cwd, filePath);
-        const outputName = path.basename(relativePath, path.extname(relativePath)) + '.md';
+        const outputName = `${path.basename(relativePath, path.extname(relativePath))}.md`;
         const destOutputPath = path.join(outputPath, destId, outputName);
 
         // Ensure output directory exists
         await fs.mkdir(path.dirname(destOutputPath), { recursive: true });
 
         // Write compiled content
-        await fs.writeFile(destOutputPath, compiled.output.content, 'utf8');
+        await fs.writeFile(destOutputPath, compiled.output.content, "utf8");
 
         compiledCount++;
       }
-
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       errors.push({
@@ -327,7 +355,9 @@ export async function compileRules(options: CompilationOptions = {}): Promise<Co
     }
   }
 
-  logger.info(`Compiled ${compiledCount} file(s) from ${uniqueFiles.length} source file(s)`);
+  logger.info(
+    `Compiled ${compiledCount} file(s) from ${uniqueFiles.length} source file(s)`
+  );
 
   return {
     compiledCount,
@@ -341,26 +371,28 @@ export async function compileRules(options: CompilationOptions = {}): Promise<Co
 /**
  * Initialize a new rulesets project structure.
  */
-export interface InitializationOptions {
+export type InitializationOptions = {
   /** Base directory to initialize in */
   baseDir?: string;
   /** Whether to create example files */
   createExamples?: boolean;
   /** Logger instance */
   logger?: Logger;
-}
+};
 
-export async function initializeProject(options: InitializationOptions = {}): Promise<void> {
+export async function initializeProject(
+  options: InitializationOptions = {}
+): Promise<void> {
   const {
     baseDir = process.cwd(),
     createExamples = true,
     logger = createDefaultLogger(),
   } = options;
 
-  const rulesetDir = path.join(baseDir, '.ruleset');
-  const rulesDir = path.join(rulesetDir, 'rules');
-  const distDir = path.join(rulesetDir, 'dist');
-  const partialsDir = path.join(rulesetDir, 'partials');
+  const rulesetDir = path.join(baseDir, ".ruleset");
+  const rulesDir = path.join(rulesetDir, "rules");
+  const distDir = path.join(rulesetDir, "dist");
+  const partialsDir = path.join(rulesetDir, "partials");
 
   // Create directory structure
   await fs.mkdir(rulesDir, { recursive: true });
@@ -368,7 +400,7 @@ export async function initializeProject(options: InitializationOptions = {}): Pr
   await fs.mkdir(partialsDir, { recursive: true });
 
   // Create default config
-  const configPath = path.join(rulesetDir, 'config.yaml');
+  const configPath = path.join(rulesetDir, "config.yaml");
   const defaultConfig = `# Rulesets configuration (YAML)
 sources:
   - .ruleset/rules
@@ -388,12 +420,14 @@ claude-code:
   enabled: true
 `;
 
-  await fs.writeFile(configPath, defaultConfig, 'utf8');
-  logger.info(`Created configuration file: ${path.relative(baseDir, configPath)}`);
+  await fs.writeFile(configPath, defaultConfig, "utf8");
+  logger.info(
+    `Created configuration file: ${path.relative(baseDir, configPath)}`
+  );
 
   if (createExamples) {
     // Create example rule file
-    const exampleRulePath = path.join(rulesDir, 'example.rule.md');
+    const exampleRulePath = path.join(rulesDir, "example.rule.md");
     const exampleContent = `---
 rule:
   version: "0.2.0"
@@ -421,19 +455,23 @@ This is an example rules file. You can write your project-specific rules here us
 - Add comments for complex logic
 `;
 
-    await fs.writeFile(exampleRulePath, exampleContent, 'utf8');
-    logger.info(`Created example rule: ${path.relative(baseDir, exampleRulePath)}`);
+    await fs.writeFile(exampleRulePath, exampleContent, "utf8");
+    logger.info(
+      `Created example rule: ${path.relative(baseDir, exampleRulePath)}`
+    );
 
     // Create example partial
-    const examplePartialPath = path.join(partialsDir, 'legal.md');
+    const examplePartialPath = path.join(partialsDir, "legal.md");
     const partialContent = `## Legal Notice
 
 This project is for demonstration purposes. Please review and update legal requirements for your specific use case.
 `;
 
-    await fs.writeFile(examplePartialPath, partialContent, 'utf8');
-    logger.info(`Created example partial: ${path.relative(baseDir, examplePartialPath)}`);
+    await fs.writeFile(examplePartialPath, partialContent, "utf8");
+    logger.info(
+      `Created example partial: ${path.relative(baseDir, examplePartialPath)}`
+    );
   }
 
-  logger.info('Project initialization complete!');
+  logger.info("Project initialization complete!");
 }

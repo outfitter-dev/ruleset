@@ -1,7 +1,7 @@
-export interface ExtractBodyOptions {
+export type ExtractBodyOptions = {
   hasFrontmatter: boolean;
   trim?: boolean;
-}
+};
 
 /**
  * Removes YAML frontmatter from a Markdown document and returns the remaining body.
@@ -17,14 +17,14 @@ export function extractBodyFromContent(
     return applyTrim(content);
   }
 
-  const lines = content.split('\n');
-  if (lines[0]?.trim() !== '---') {
+  const lines = content.split("\n");
+  if (lines[0]?.trim() !== "---") {
     return applyTrim(content);
   }
 
   for (let i = 1; i < lines.length; i++) {
-    if (lines[i]?.trim() === '---') {
-      const body = lines.slice(i + 1).join('\n');
+    if (lines[i]?.trim() === "---") {
+      const body = lines.slice(i + 1).join("\n");
       return applyTrim(body);
     }
   }

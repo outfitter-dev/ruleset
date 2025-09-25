@@ -1,17 +1,72 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.2.2/schema.json",
-  "extends": ["ultracite"]
-  // "overrides": [
-  //   {
-  //     "includes": [
-  //       "packages/core/src/index.ts",
-  //       "packages/core/src/interfaces/index.ts"
-  //     ],
-  //     "linter": {
-  //       "rules": {
-  //         "performance": { "noBarrelFile": "off" }
-  //       }
-  //     }
-  //   }
-  // ]
+  "$schema": "https://biomejs.dev/schemas/2.2.4/schema.json",
+  "extends": ["ultracite"],
+  "files": {
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/coverage",
+      "!tmp",
+      "!.conductor",
+      "!.ruleset/cache",
+      "!.ruleset/dist",
+      "!packages/core",
+      "!packages/compiler"
+    ]
+  },
+  "overrides": [
+    {
+      "includes": [
+        "packages/core/src/index.ts",
+        "packages/core/src/interfaces/index.ts"
+      ],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noBarrelFile": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/cli/src/commands/**"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveCognitiveComplexity": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/providers/src/**"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveCognitiveComplexity": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/types/src/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useNamingConvention": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/orchestrator/src/**"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveCognitiveComplexity": "off"
+          }
+        }
+      }
+    }
+  ]
 }

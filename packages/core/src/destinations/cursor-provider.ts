@@ -1,31 +1,35 @@
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import {
+  buildHandlebarsOptions,
+  resolveProviderSettings,
+} from "@rulesets/providers";
 import type {
   CompiledDoc,
   DestinationProvider,
   JSONSchema7,
   Logger,
   ParsedDoc,
-} from '../interfaces';
-import { buildHandlebarsOptions, readDestinationConfig } from './utils';
+} from "../interfaces";
+import { extractFrontmatter } from "./frontmatter";
 
 export class CursorProvider implements DestinationProvider {
   get name(): string {
-    return 'cursor';
+    return "cursor";
   }
 
   configSchema(): JSONSchema7 {
     return {
-      type: 'object',
+      type: "object",
       properties: {
         outputPath: {
-          type: 'string',
-          description: 'Path where the compiled rules file should be written',
+          type: "string",
+          description: "Path where the compiled rules file should be written",
         },
         priority: {
-          type: 'string',
-          enum: ['low', 'medium', 'high'],
-          description: 'Priority level for the rules',
+          type: "string",
+          enum: ["low", "medium", "high"],
+          description: "Priority level for the rules",
         },
       },
       additionalProperties: true,
@@ -42,15 +46,18 @@ export class CursorProvider implements DestinationProvider {
     logger: Logger;
   }) {
     try {
-      const destinationConfig = readDestinationConfig(parsed, 'cursor');
+      const frontmatter = extractFrontmatter(parsed);
+      const settings = frontmatter
+        ? resolveProviderSettings(frontmatter, "cursor")
+        : undefined;
       return buildHandlebarsOptions({
-        destinationId: 'cursor',
-        destinationConfig,
+        providerId: "cursor",
+        config: settings?.config,
         logger,
       });
     } catch (error) {
       const failure = error instanceof Error ? error : new Error(String(error));
-      logger.error('Failed to prepare Cursor provider compilation options', {
+      logger.error("Failed to prepare Cursor provider compilation options", {
         destination: this.name,
         error: failure.message,
       });
@@ -72,7 +79,7 @@ export class CursorProvider implements DestinationProvider {
     // Determine the output path with runtime type-narrowing
     const rawOutputPath = (config as { outputPath?: unknown })?.outputPath;
     const outputPath =
-      typeof rawOutputPath === 'string' && rawOutputPath.trim().length > 0
+      typeof rawOutputPath === "string" && rawOutputPath.trim().length > 0
         ? rawOutputPath
         : destPath;
     const resolvedPath = path.isAbsolute(outputPath)
@@ -85,7 +92,7 @@ export class CursorProvider implements DestinationProvider {
       await fs.mkdir(dir, { recursive: true });
     } catch (error) {
       const failure = error instanceof Error ? error : new Error(String(error));
-      logger.error('Failed to create directory for Cursor provider', {
+      logger.error("Failed to create directory for Cursor provider", {
         destination: this.name,
         path: dir,
         error: failure.message,
@@ -96,7 +103,7 @@ export class CursorProvider implements DestinationProvider {
     // For v0, write the raw content
     try {
       await fs.writeFile(resolvedPath, compiled.output.content, {
-        encoding: 'utf8',
+        encoding: "utf8",
       });
       logger.info(`Successfully wrote Cursor rules to: ${resolvedPath}`);
 
@@ -108,7 +115,7 @@ export class CursorProvider implements DestinationProvider {
       }
     } catch (error) {
       const failure = error instanceof Error ? error : new Error(String(error));
-      logger.error('Failed to write Cursor rules', {
+      logger.error("Failed to write Cursor rules", {
         destination: this.name,
         path: resolvedPath,
         error: failure.message,

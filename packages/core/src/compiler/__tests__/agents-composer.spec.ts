@@ -281,6 +281,5 @@ description: "Not a rule file"
       expect(result.content).not.toContain("Invalid Rule");
       expect(result.content).not.toContain("No Frontmatter Rule");
     });
-
   });
 });

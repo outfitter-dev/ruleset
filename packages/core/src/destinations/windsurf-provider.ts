@@ -1,16 +1,20 @@
-import type { Stats } from 'node:fs';
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
+import type { Stats } from "node:fs";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import {
+  buildHandlebarsOptions,
+  resolveProviderSettings,
+} from "@rulesets/providers";
 import type {
   CompiledDoc,
   DestinationProvider,
   JSONSchema7,
   Logger,
   ParsedDoc,
-} from '../interfaces';
-import { buildHandlebarsOptions, readDestinationConfig } from './utils';
+} from "../interfaces";
+import { extractFrontmatter } from "./frontmatter";
 
-type WindsurfFormat = 'markdown' | 'xml';
+type WindsurfFormat = "markdown" | "xml";
 
 type WindsurfConfig = {
   outputPath?: string;
@@ -19,22 +23,22 @@ type WindsurfConfig = {
 
 export class WindsurfProvider implements DestinationProvider {
   get name(): string {
-    return 'windsurf';
+    return "windsurf";
   }
 
   configSchema(): JSONSchema7 {
     return {
-      type: 'object',
+      type: "object",
       properties: {
         outputPath: {
-          type: 'string',
-          description: 'Path where the compiled rules file should be written',
+          type: "string",
+          description: "Path where the compiled rules file should be written",
         },
         format: {
-          type: 'string',
-          enum: ['markdown', 'xml'],
-          default: 'markdown',
-          description: 'Output format for Windsurf rules',
+          type: "string",
+          enum: ["markdown", "xml"],
+          default: "markdown",
+          description: "Output format for Windsurf rules",
         },
       },
       additionalProperties: true,
@@ -50,27 +54,30 @@ export class WindsurfProvider implements DestinationProvider {
     projectConfig: Record<string, unknown>;
     logger: Logger;
   }) {
-    const destinationConfig = readDestinationConfig(parsed, 'windsurf');
+    const frontmatter = extractFrontmatter(parsed);
+    const settings = frontmatter
+      ? resolveProviderSettings(frontmatter, "windsurf")
+      : undefined;
     return buildHandlebarsOptions({
-      destinationId: 'windsurf',
-      destinationConfig,
+      providerId: "windsurf",
+      config: settings?.config,
       logger,
     });
   }
 
   private static normaliseFormat(format: unknown): WindsurfFormat {
-    return typeof format === 'string' && format.toLowerCase() === 'xml'
-      ? 'xml'
-      : 'markdown';
+    return typeof format === "string" && format.toLowerCase() === "xml"
+      ? "xml"
+      : "markdown";
   }
 
   private static defaultFilename(format: WindsurfFormat): string {
-    return format === 'xml' ? 'rules.xml' : 'rules.md';
+    return format === "xml" ? "rules.xml" : "rules.md";
   }
 
   private looksLikeDirectory(pathStr: string): boolean {
     const p = pathStr.trim();
-    return p.endsWith('/') || p.endsWith(path.sep);
+    return p.endsWith("/") || p.endsWith(path.sep);
   }
 
   private async resolveOutputPath(
@@ -84,7 +91,7 @@ export class WindsurfProvider implements DestinationProvider {
     try {
       stats = await fs.stat(resolvedPath);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
         throw error;
       }
     }
@@ -124,7 +131,7 @@ export class WindsurfProvider implements DestinationProvider {
           : new Error(
               `Failed to create directory: ${dirPath}. ${String(error)}`
             );
-      logger.error(err, { op: 'mkdir', path: dirPath, provider: 'windsurf' });
+      logger.error(err, { op: "mkdir", path: dirPath, provider: "windsurf" });
       throw err;
     }
   }
@@ -137,7 +144,7 @@ export class WindsurfProvider implements DestinationProvider {
     let tmpPath: string | undefined;
     try {
       tmpPath = `${filePath}.tmp-${process.pid}-${Date.now()}`;
-      await fs.writeFile(tmpPath, content, { encoding: 'utf8' });
+      await fs.writeFile(tmpPath, content, { encoding: "utf8" });
       await fs.rename(tmpPath, filePath);
       logger.info(`Successfully wrote Windsurf rules to: ${filePath}`);
     } catch (error) {
@@ -145,7 +152,7 @@ export class WindsurfProvider implements DestinationProvider {
         error instanceof Error
           ? error
           : new Error(`Failed to write file: ${filePath}. ${String(error)}`);
-      logger.error(err, { op: 'write', path: filePath, provider: 'windsurf' });
+      logger.error(err, { op: "write", path: filePath, provider: "windsurf" });
       if (tmpPath) {
         try {
           await fs.rm(tmpPath, { force: true });
@@ -170,7 +177,7 @@ export class WindsurfProvider implements DestinationProvider {
 
     // Determine the output path
     const outputPath =
-      typeof cfg.outputPath === 'string' && cfg.outputPath.trim() !== ''
+      typeof cfg.outputPath === "string" && cfg.outputPath.trim() !== ""
         ? cfg.outputPath
         : destPath;
 
@@ -189,10 +196,10 @@ export class WindsurfProvider implements DestinationProvider {
     await this.writeFile(resolvedPath, compiled.output.content, logger);
 
     // Log additional context for debugging
-    logger.debug('Destination resolved', {
+    logger.debug("Destination resolved", {
       destinationId: compiled.context.destinationId,
     });
-    logger.debug('Config:', {
+    logger.debug("Config:", {
       outputPath: cfg.outputPath,
       format,
     });

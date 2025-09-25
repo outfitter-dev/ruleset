@@ -1,13 +1,16 @@
-import Handlebars from 'handlebars';
-import type { HelperDelegate } from 'handlebars';
-import type { CompiledDoc, ParsedDoc } from '../interfaces';
-import type { Logger } from '../interfaces/logger';
-import { extractBodyFromContent } from '../utils/frontmatter';
+import type { JsonValue } from "@rulesets/types";
+import type { HelperDelegate } from "handlebars";
+import Handlebars from "handlebars";
+import type { CompiledDoc, ParsedDoc } from "../interfaces";
+import type { Logger } from "../interfaces/logger";
+import { extractBodyFromContent } from "../utils/frontmatter";
+
+type ErrorWithCause = Error & { cause?: unknown };
 
 /**
  * Optional configuration when compiling with the Handlebars compiler.
  */
-export interface HandlebarsCompileOptions {
+export type HandlebarsCompileOptions = {
   logger?: Logger;
   projectConfig?: Record<string, unknown>;
   helpers?: Record<string, HelperDelegate>;
@@ -21,12 +24,16 @@ export interface HandlebarsCompileOptions {
   registryInfo?: {
     destinations: string[];
   };
-}
+};
+
+const toJsonRecord = (
+  value: Record<string, unknown>
+): Record<string, JsonValue> => value as Record<string, JsonValue>;
 
 /**
  * Runtime context passed to templates while rendering.
  */
-export interface HandlebarsContext {
+export type HandlebarsContext = {
   provider: {
     id: string;
     name?: string;
@@ -50,7 +57,7 @@ export interface HandlebarsContext {
     destinations: string[];
   };
   timestamp: string;
-}
+};
 
 function buildContext(
   parsedDoc: ParsedDoc,
@@ -59,23 +66,29 @@ function buildContext(
 ): HandlebarsContext {
   const frontmatter = parsedDoc.source.frontmatter ?? {};
   const project = options.projectConfig;
-  const name = typeof frontmatter.name === 'string' ? frontmatter.name : undefined;
+  const name =
+    typeof frontmatter.name === "string" ? frontmatter.name : undefined;
   const provider = options.providerInfo ?? { id: destinationId };
 
   // Extract structured rule fields for easier template access
   const ruleValue = frontmatter.rule;
-  const rule = ruleValue && typeof ruleValue === 'object' && !Array.isArray(ruleValue)
-    ? ruleValue as Record<string, unknown>
-    : {};
+  const rule =
+    ruleValue && typeof ruleValue === "object" && !Array.isArray(ruleValue)
+      ? (ruleValue as Record<string, unknown>)
+      : {};
 
   const extractedMetadata = {
     title: frontmatter.title,
     description: frontmatter.description,
-    version: (typeof rule.version === 'string' ? rule.version : frontmatter.version) as string | undefined,
+    version: (typeof rule.version === "string"
+      ? rule.version
+      : frontmatter.version) as string | undefined,
     created: frontmatter.created,
     updated: frontmatter.updated,
     labels: frontmatter.labels,
-    globs: Array.isArray(rule.globs) ? rule.globs.filter((g): g is string => typeof g === 'string') : undefined,
+    globs: Array.isArray(rule.globs)
+      ? rule.globs.filter((g): g is string => typeof g === "string")
+      : undefined,
   };
 
   return {
@@ -105,8 +118,6 @@ export class HandlebarsRulesetCompiler {
   private readonly helpers = new Map<string, HelperDelegate>();
   private readonly partials = new Map<string, string>();
 
-  constructor() {}
-
   /**
    * Compiles a parsed Rulesets document using Handlebars templates.
    */
@@ -131,13 +142,14 @@ export class HandlebarsRulesetCompiler {
       });
       compiledBody = template(context);
     } catch (error) {
-      const sourcePath = parsedDoc.source.path ?? '<inline>'; // fallback for inline docs
-      const originalError = error instanceof Error ? error : new Error(String(error));
+      const sourcePath = parsedDoc.source.path ?? "<inline>"; // fallback for inline docs
+      const originalError =
+        error instanceof Error ? error : new Error(String(error));
       const contextualError = new Error(
         `Handlebars compilation failed for ${sourcePath}: ${originalError.message}`
       );
       // Add cause property for debugging
-      (contextualError as any).cause = originalError;
+      (contextualError as ErrorWithCause).cause = originalError;
       logger?.error(contextualError, {
         sourcePath,
         destination: destinationId,
@@ -150,11 +162,11 @@ export class HandlebarsRulesetCompiler {
       ast: parsedDoc.ast,
       output: {
         content: compiledBody,
-        metadata: parsedDoc.source.frontmatter,
+        metadata: parsedDoc.source.frontmatter ?? toJsonRecord({}),
       },
       context: {
         destinationId,
-        config: options.projectConfig ?? {},
+        config: toJsonRecord(options.projectConfig ?? {}),
       },
     };
   }
@@ -197,18 +209,18 @@ export class HandlebarsRulesetCompiler {
   }
 
   private registerCoreHelpers(runtime: typeof Handlebars): void {
-    runtime.registerHelper('uppercase', function (value: unknown) {
-      return typeof value === 'string' ? value.toUpperCase() : value ?? '';
-    });
+    runtime.registerHelper("uppercase", (value: unknown) =>
+      typeof value === "string" ? value.toUpperCase() : (value ?? "")
+    );
 
     runtime.registerHelper(
-      'if-provider',
+      "if-provider",
       function (this: HandlebarsContext, ids: string, options) {
-        const match = ids.split(',').map((id) => id.trim());
+        const match = ids.split(",").map((id) => id.trim());
         if (match.includes(this.provider.id)) {
           return options.fn(this);
         }
-        return options.inverse ? options.inverse(this) : '';
+        return options.inverse ? options.inverse(this) : "";
       }
     );
   }

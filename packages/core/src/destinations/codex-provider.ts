@@ -1,5 +1,9 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import {
+  buildHandlebarsOptions,
+  resolveProviderSettings,
+} from "@rulesets/providers";
 import type {
   CompiledDoc,
   DestinationProvider,
@@ -7,7 +11,7 @@ import type {
   Logger,
   ParsedDoc,
 } from "../interfaces";
-import { buildHandlebarsOptions, readDestinationConfig } from "./utils";
+import { extractFrontmatter } from "./frontmatter";
 
 type CodexConfig = {
   outputPath?: string;
@@ -51,10 +55,13 @@ export class CodexProvider implements DestinationProvider {
     projectConfig: Record<string, unknown>;
     logger: Logger;
   }) {
-    const destinationConfig = readDestinationConfig(parsed, "codex");
+    const frontmatter = extractFrontmatter(parsed);
+    const settings = frontmatter
+      ? resolveProviderSettings(frontmatter, "codex")
+      : undefined;
     return buildHandlebarsOptions({
-      destinationId: "codex",
-      destinationConfig,
+      providerId: "codex",
+      config: settings?.config,
       logger,
     });
   }

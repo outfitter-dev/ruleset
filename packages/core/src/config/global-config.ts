@@ -1,7 +1,7 @@
-import { promises as fs } from 'node:fs';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
-import { withFileLock } from '../utils/file-lock';
+import { promises as fs } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { withFileLock } from "../utils/file-lock";
 
 /**
  * Manages global configuration for rulesets
@@ -21,23 +21,23 @@ export class GlobalConfig {
       return envHome;
     }
 
-    if (process.platform === 'win32') {
+    if (process.platform === "win32") {
       const appData =
-        process.env.APPDATA || join(homedir(), 'AppData', 'Roaming');
-      return join(appData, 'ruleset');
+        process.env.APPDATA || join(homedir(), "AppData", "Roaming");
+      return join(appData, "ruleset");
     }
 
-    if (process.platform === 'darwin') {
-      return join(homedir(), 'Library', 'Application Support', 'ruleset');
+    if (process.platform === "darwin") {
+      return join(homedir(), "Library", "Application Support", "ruleset");
     }
 
-    const xdgHome = process.env.XDG_CONFIG_HOME || join(homedir(), '.config');
-    return join(xdgHome, 'ruleset');
+    const xdgHome = process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
+    return join(xdgHome, "ruleset");
   }
 
   private constructor() {
     this.globalDir = GlobalConfig.resolveDefaultGlobalDir();
-    this.configFile = join(this.globalDir, 'config.toml');
+    this.configFile = join(this.globalDir, "config.toml");
   }
 
   /**
@@ -68,35 +68,35 @@ export class GlobalConfig {
    * Get the path to the sets directory
    */
   getSetsDirectory(): string {
-    return join(this.globalDir, 'sets');
+    return join(this.globalDir, "sets");
   }
 
   /**
    * Get the path to the packs directory
    */
   getPacksDirectory(): string {
-    return join(this.globalDir, 'packs');
+    return join(this.globalDir, "packs");
   }
 
   /**
    * Get the path to the commands directory
    */
   getCommandsDirectory(): string {
-    return join(this.globalDir, 'commands');
+    return join(this.globalDir, "commands");
   }
 
   /**
    * Get the path to the global rules directory
    */
   getRulesDirectory(): string {
-    return join(this.globalDir, 'rules');
+    return join(this.globalDir, "rules");
   }
 
   /**
    * Get the path to the global presets directory
    */
   getPresetsDirectory(): string {
-    return join(this.globalDir, 'presets');
+    return join(this.globalDir, "presets");
   }
 
   /**

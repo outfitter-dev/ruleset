@@ -1,42 +1,44 @@
-import { promises as fs } from 'node:fs';
-import { type CompileOptions, compile } from './compiler';
-import { destinations } from './destinations';
-import { resolveProviderSettings } from './destinations/utils';
-import type { CompiledDoc, Logger, ParsedDoc } from './interfaces';
-import { ConsoleLogger, createDefaultLogger } from './interfaces';
-import { type LinterConfig, type LintResult, lint } from './linter';
-import { parse } from './parser';
-import { loadHandlebarsPartials } from './utils/partials';
+import { promises as fs } from "node:fs";
+import { resolveProviderSettings } from "@rulesets/providers";
+import type { JsonValue } from "@rulesets/types";
+import { type CompileOptions, compile } from "./compiler";
+import { destinations } from "./destinations";
+import type { CompiledDoc, Logger, ParsedDoc } from "./interfaces";
+import { createDefaultLogger } from "./interfaces";
+import { type LinterConfig, type LintResult, lint } from "./linter";
+import { parse } from "./parser";
+import { loadHandlebarsPartials } from "./utils/partials";
 
 // High-level API exports
-export * from './api';
+export * from "./api";
 
-export { compile, compile as Compiler } from './compiler';
-export { AgentsComposer } from './compiler/agents-composer';
-export { GlobalConfig } from './config/global-config';
-export { loadProjectConfig } from './config/project-config';
+export { compile, compile as Compiler } from "./compiler";
+export { AgentsComposer } from "./compiler/agents-composer";
+export { GlobalConfig } from "./config/global-config";
 export {
   DESTINATION_IDS,
   FILE_EXTENSIONS,
   RESOURCE_LIMITS,
-} from './config/limits';
+} from "./config/limits";
+export { loadProjectConfig } from "./config/project-config";
 export {
   destinations,
   destinations as DestinationProviderRegistry,
-} from './destinations';
-export { ClaudeCodeProvider } from './destinations/claude-code-provider';
-export { CodexProvider } from './destinations/codex-provider';
-export { CursorProvider } from './destinations/cursor-provider';
-export { WindsurfProvider } from './destinations/windsurf-provider';
-export { InstallationManager } from './installation/installation-manager';
+} from "./destinations";
+export { ClaudeCodeProvider } from "./destinations/claude-code-provider";
+export { CodexProvider } from "./destinations/codex-provider";
+export { CursorProvider } from "./destinations/cursor-provider";
+export { WindsurfProvider } from "./destinations/windsurf-provider";
+export { InstallationManager } from "./installation/installation-manager";
 // Export all public APIs
-export * from './interfaces';
-export { type LinterConfig, type LintResult, lint } from './linter';
-export { parse, parse as Parser, RulesetParser } from './parser';
-export { PresetManager } from './presets/preset-manager';
-export { RulesetManager } from './rulesets/ruleset-manager';
-export * from './utils/security';
-export * from './utils/types';
+export * from "./interfaces";
+export { type LinterConfig, type LintResult, lint } from "./linter";
+export type { ParserOptions, ParserOutput, RulesetParserFn } from "./parser";
+export { parse, parse as Parser, RulesetParser } from "./parser";
+export { PresetManager } from "./presets/preset-manager";
+export { RulesetManager } from "./rulesets/ruleset-manager";
+export * from "./utils/security";
+export * from "./utils/types";
 
 /**
  * Reads a source file from disk.
@@ -51,7 +53,7 @@ async function readSourceFile(
   logger: Logger
 ): Promise<string> {
   try {
-    const content = await fs.readFile(sourceFilePath, 'utf-8');
+    const content = await fs.readFile(sourceFilePath, "utf-8");
     logger.debug(`Read ${content.length} characters from ${sourceFilePath}`);
     return content;
   } catch (error) {
@@ -74,7 +76,7 @@ function parseSourceContent(
   sourceFilePath: string,
   logger: Logger
 ): ParsedDoc {
-  logger.info('Parsing source file...');
+  logger.info("Parsing source file...");
 
   try {
     const parsedDoc = parse(content);
@@ -86,7 +88,7 @@ function parseSourceContent(
 
     return parsedDoc;
   } catch (error) {
-    logger.error('Failed to parse source file');
+    logger.error("Failed to parse source file");
     throw error;
   }
 }
@@ -107,7 +109,7 @@ function lintParsedDocument(
   linterConfig: Partial<LinterConfig> = {},
   failOnError = true
 ): LintResult[] {
-  logger.info('Linting document...');
+  logger.info("Linting document...");
 
   try {
     const baseConfig: LinterConfig = {
@@ -122,15 +124,15 @@ function lintParsedDocument(
     if (hasErrors) {
       if (failOnError) {
         throw new Error(
-          'Linting failed with errors. Please fix the issues and try again.'
+          "Linting failed with errors. Please fix the issues and try again."
         );
       }
-      logger.warn('Linting found errors; continuing (failOnError=false).');
+      logger.warn("Linting found errors; continuing (failOnError=false).");
     }
 
     return lintResults;
   } catch (error) {
-    logger.error('Failed during linting');
+    logger.error("Failed during linting");
     throw error;
   }
 }
@@ -149,18 +151,18 @@ function processLintResults(
   let hasErrors = false;
 
   for (const result of lintResults) {
-    const location = result.line ? ` (line ${result.line})` : '';
+    const location = result.line ? ` (line ${result.line})` : "";
     const message = `${result.message}${location}`;
 
     switch (result.severity) {
-      case 'error':
+      case "error":
         logger.error(message);
         hasErrors = true;
         break;
-      case 'warning':
+      case "warning":
         logger.warn(message);
         break;
-      case 'info':
+      case "info":
         logger.info(message);
         break;
       default:
@@ -188,15 +190,19 @@ function determineDestinations(parsedDoc: ParsedDoc): string[] {
   const enabled = new Set(registryIds);
   const frontmatter = (parsedDoc.source.frontmatter ?? {}) as Record<
     string,
-    unknown
+    JsonValue
   >;
 
   const legacyBlock = frontmatter.destinations as
     | Record<string, unknown>
     | undefined;
-  if (legacyBlock && typeof legacyBlock === 'object' && !Array.isArray(legacyBlock)) {
+  if (
+    legacyBlock &&
+    typeof legacyBlock === "object" &&
+    !Array.isArray(legacyBlock)
+  ) {
     const include = legacyBlock.include;
-    if (Array.isArray(include) && include.every((v) => typeof v === 'string')) {
+    if (Array.isArray(include) && include.every((v) => typeof v === "string")) {
       return include.filter((destinationId) => destinations.has(destinationId));
     }
 
@@ -224,13 +230,13 @@ function determineDestinations(parsedDoc: ParsedDoc): string[] {
       continue;
     }
 
-    if (settings.source === 'provider') {
+    if (settings.source === "provider") {
       // Presence of a provider block implies opt-in unless explicitly disabled.
       enabled.add(destinationId);
       continue;
     }
 
-    if (settings.source === 'legacy' && settings.config) {
+    if (settings.source === "legacy" && settings.config) {
       enabled.add(destinationId);
     }
   }
@@ -249,24 +255,26 @@ function shouldEnableHandlebars(
 
   const ruleValue = frontmatter?.rule;
   const rule =
-    ruleValue && typeof ruleValue === 'object' && !Array.isArray(ruleValue)
+    ruleValue && typeof ruleValue === "object" && !Array.isArray(ruleValue)
       ? (ruleValue as Record<string, unknown>)
       : undefined;
   const frontmatterTemplate =
-    typeof rule?.template === 'boolean' ? (rule.template as boolean) : undefined;
+    typeof rule?.template === "boolean"
+      ? (rule.template as boolean)
+      : undefined;
   if (frontmatterTemplate !== undefined) {
     return frontmatterTemplate;
   }
 
-  const projectRuleValue = projectConfig['rule'];
+  const projectRuleValue = projectConfig.rule;
   const projectRule =
     projectRuleValue &&
-    typeof projectRuleValue === 'object' &&
+    typeof projectRuleValue === "object" &&
     !Array.isArray(projectRuleValue)
       ? (projectRuleValue as Record<string, unknown>)
       : undefined;
   const projectTemplate =
-    typeof projectRule?.template === 'boolean'
+    typeof projectRule?.template === "boolean"
       ? (projectRule.template as boolean)
       : undefined;
   if (projectTemplate !== undefined) {
@@ -274,12 +282,15 @@ function shouldEnableHandlebars(
   }
 
   const rulesets = frontmatter?.rulesets as Record<string, unknown> | undefined;
-  if (typeof rulesets?.compiler === 'string' && rulesets.compiler === 'handlebars') {
+  if (
+    typeof rulesets?.compiler === "string" &&
+    rulesets.compiler === "handlebars"
+  ) {
     return true;
   }
 
-  const projectCompiler = projectConfig['compiler'];
-  if (typeof projectCompiler === 'string' && projectCompiler === 'handlebars') {
+  const projectCompiler = projectConfig.compiler;
+  if (typeof projectCompiler === "string" && projectCompiler === "handlebars") {
     return true;
   }
 
@@ -318,7 +329,7 @@ function compileForDestination(
 async function writeToDestination(
   compiledDoc: CompiledDoc,
   destinationId: string,
-  frontmatter: Record<string, unknown>,
+  frontmatter: Record<string, JsonValue>,
   logger: Logger
 ): Promise<void> {
   const provider = destinations.get(destinationId);
@@ -329,12 +340,16 @@ async function writeToDestination(
 
   // Determine output path
   const destSettings = resolveProviderSettings(frontmatter, destinationId);
-  const destConfig = (destSettings?.config as Record<string, unknown> | undefined) || {};
+  const destConfig = destSettings?.config ?? {};
   const defaultPath = `.ruleset/dist/${destinationId}/my-rules.md`;
+  const outputPathValue = destConfig.outputPath;
+  const legacyPathValue = destConfig.path;
   const destPath =
-    (destConfig.outputPath as string) ||
-    (destConfig.path as string) ||
-    defaultPath;
+    typeof outputPathValue === "string" && outputPathValue.trim().length > 0
+      ? outputPathValue
+      : typeof legacyPathValue === "string" && legacyPathValue.trim().length > 0
+        ? legacyPathValue
+        : defaultPath;
 
   // Write using the provider
   await provider.write({
@@ -370,9 +385,12 @@ async function processDestinations(
   projectConfig: Record<string, unknown>,
   logger: Logger
 ): Promise<DestinationResult[]> {
-  logger.info(`Compiling for destinations: ${destinationIds.join(', ')}`);
+  logger.info(`Compiling for destinations: ${destinationIds.join(", ")}`);
 
-  const frontmatter = parsedDoc.source.frontmatter || {};
+  const frontmatter = (parsedDoc.source.frontmatter ?? {}) as Record<
+    string,
+    JsonValue
+  >;
   const results: DestinationResult[] = [];
   let cachedPartials: Record<string, string> | undefined;
   const registryDestinations = Array.from(destinations.keys());
@@ -571,11 +589,11 @@ export async function runRulesetsV0(
   if (failedDestinations.length > 0) {
     const partialSuccess = results.some((r) => r.success);
     if (partialSuccess) {
-      logger.warn('Rulesets v0.1.0 processing completed with partial success');
+      logger.warn("Rulesets v0.1.0 processing completed with partial success");
     } else {
-      throw new Error('Rulesets v0.1.0 processing failed for all destinations');
+      throw new Error("Rulesets v0.1.0 processing failed for all destinations");
     }
   } else {
-    logger.info('Rulesets v0.1.0 processing completed successfully!');
+    logger.info("Rulesets v0.1.0 processing completed successfully!");
   }
 }

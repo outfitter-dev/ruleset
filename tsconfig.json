@@ -3,5 +3,16 @@
     "strict": true
   },
   "files": [],
-  "references": [{ "path": "packages/core" }]
+  "references": [
+    { "path": "packages/types" },
+    { "path": "packages/parser" },
+    { "path": "packages/validator" },
+    { "path": "packages/transform" },
+    { "path": "packages/renderer" },
+    { "path": "packages/providers" },
+    { "path": "packages/orchestrator" },
+    { "path": "packages/lib" },
+    { "path": "packages/core" },
+    { "path": "apps/cli" }
+  ]
 }

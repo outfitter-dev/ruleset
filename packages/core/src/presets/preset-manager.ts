@@ -1,10 +1,10 @@
-import { promises as fs } from 'node:fs';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
-import { load } from 'js-yaml';
-import type { GlobalConfig } from '../config/global-config';
-import type { Logger } from '../interfaces';
-import { sanitizePath } from '../utils/security';
-import { withFileLock } from '../utils/file-lock';
+import { promises as fs } from "node:fs";
+import { dirname, isAbsolute, join, resolve } from "node:path";
+import { load } from "js-yaml";
+import type { GlobalConfig } from "../config/global-config";
+import type { Logger } from "../interfaces";
+import { withFileLock } from "../utils/file-lock";
+import { sanitizePath } from "../utils/security";
 
 export type PresetRule = {
   name: string;
@@ -22,8 +22,10 @@ export type PresetDefinition = {
   rules: PresetRule[];
 };
 
-const presetFilePathSymbol = Symbol('presetFilePath');
-type PresetWithMetadata = PresetDefinition & { [presetFilePathSymbol]?: string };
+const presetFilePathSymbol = Symbol("presetFilePath");
+type PresetWithMetadata = PresetDefinition & {
+  [presetFilePathSymbol]?: string;
+};
 
 export type PresetInstallRecord = {
   presetName: string;
@@ -49,7 +51,7 @@ export class PresetManager {
   constructor(globalConfig: GlobalConfig, projectDir: string = process.cwd()) {
     this.globalConfig = globalConfig;
     this.projectDir = projectDir;
-    this.trackingFile = join(projectDir, '.ruleset', 'preset-tracking.json');
+    this.trackingFile = join(projectDir, ".ruleset", "preset-tracking.json");
   }
 
   /**
@@ -67,7 +69,7 @@ export class PresetManager {
     }
 
     // Project presets
-    const projectPresetsDir = join(this.projectDir, '.ruleset', 'presets');
+    const projectPresetsDir = join(this.projectDir, ".ruleset", "presets");
     try {
       await this.discoverPresets(projectPresetsDir, presets);
     } catch {
@@ -88,13 +90,21 @@ export class PresetManager {
       logger?: Logger;
     } = {}
   ): Promise<PresetInstallRecord> {
-    const { targetDir = join(this.projectDir, '.ruleset', 'rules'), overwrite = false, logger } = options;
+    const {
+      targetDir = join(this.projectDir, ".ruleset", "rules"),
+      overwrite = false,
+      logger,
+    } = options;
 
     // Find the preset
     const presets = await this.listAvailablePresets();
-    const preset = presets.find(p => p.name === presetName) as PresetWithMetadata | undefined;
+    const preset = presets.find((p) => p.name === presetName) as
+      | PresetWithMetadata
+      | undefined;
     if (!preset) {
-      throw new Error(`Preset '${presetName}' not found. Available presets: ${presets.map(p => p.name).join(', ')}`);
+      throw new Error(
+        `Preset '${presetName}' not found. Available presets: ${presets.map((p) => p.name).join(", ")}`
+      );
     }
 
     logger?.info(`Installing preset '${preset.name}' (${preset.version})`);
@@ -102,9 +112,11 @@ export class PresetManager {
     // Ensure target directory exists
     await fs.mkdir(targetDir, { recursive: true });
 
-    const installedRules: PresetInstallRecord['installedRules'] = [];
+    const installedRules: PresetInstallRecord["installedRules"] = [];
 
-    const presetBaseDir = preset[presetFilePathSymbol] ? dirname(preset[presetFilePathSymbol] as string) : undefined;
+    const presetBaseDir = preset[presetFilePathSymbol]
+      ? dirname(preset[presetFilePathSymbol] as string)
+      : undefined;
 
     for (const rule of preset.rules) {
       logger?.info(`Installing rule: ${rule.name}`);
@@ -115,7 +127,9 @@ export class PresetManager {
       if (!overwrite) {
         try {
           await fs.access(targetPath);
-          logger?.warn(`Rule '${rule.name}' already exists, skipping (use --overwrite to replace)`);
+          logger?.warn(
+            `Rule '${rule.name}' already exists, skipping (use --overwrite to replace)`
+          );
           continue;
         } catch {
           // File doesn't exist, we can proceed
@@ -123,10 +137,13 @@ export class PresetManager {
       }
 
       // Download or copy the rule content
-      const content = await this.fetchRuleContent(rule.source, { logger, relativeTo: presetBaseDir });
+      const content = await this.fetchRuleContent(rule.source, {
+        logger,
+        relativeTo: presetBaseDir,
+      });
 
       // Write the rule file
-      await fs.writeFile(targetPath, content, 'utf-8');
+      await fs.writeFile(targetPath, content, "utf-8");
 
       installedRules.push({
         name: rule.name,
@@ -146,7 +163,9 @@ export class PresetManager {
 
     await this.updateTrackingRecord(presetName, installRecord);
 
-    logger?.info(`Successfully installed ${installedRules.length} rules from preset '${preset.name}'`);
+    logger?.info(
+      `Successfully installed ${installedRules.length} rules from preset '${preset.name}'`
+    );
     return installRecord;
   }
 
@@ -171,12 +190,12 @@ export class PresetManager {
     const skipped: string[] = [];
     const errors: Array<{ preset: string; error: string }> = [];
 
-    const targetsToUpdate = presetNames ?
-      presetNames.filter(name => name in tracking) :
-      Object.keys(tracking);
+    const targetsToUpdate = presetNames
+      ? presetNames.filter((name) => name in tracking)
+      : Object.keys(tracking);
 
     if (targetsToUpdate.length === 0) {
-      logger?.info('No presets to update');
+      logger?.info("No presets to update");
       return { updated, skipped, errors };
     }
 
@@ -186,7 +205,9 @@ export class PresetManager {
     for (const presetName of targetsToUpdate) {
       try {
         const currentRecord = tracking[presetName];
-        const currentPreset = availablePresets.find(p => p.name === presetName);
+        const currentPreset = availablePresets.find(
+          (p) => p.name === presetName
+        );
 
         if (!currentPreset) {
           logger?.warn(`Preset '${presetName}' no longer available, skipping`);
@@ -195,13 +216,20 @@ export class PresetManager {
         }
 
         // Check if update is needed
-        if (currentPreset.version === currentRecord.presetVersion && !writeBack) {
-          logger?.info(`Preset '${presetName}' is already up to date (${currentPreset.version})`);
+        if (
+          currentPreset.version === currentRecord.presetVersion &&
+          !writeBack
+        ) {
+          logger?.info(
+            `Preset '${presetName}' is already up to date (${currentPreset.version})`
+          );
           skipped.push(presetName);
           continue;
         }
 
-        logger?.info(`Updating preset '${presetName}' from ${currentRecord.presetVersion} to ${currentPreset.version}`);
+        logger?.info(
+          `Updating preset '${presetName}' from ${currentRecord.presetVersion} to ${currentPreset.version}`
+        );
 
         // Re-install the preset with overwrite enabled
         const newRecord = await this.installPreset(presetName, {
@@ -227,14 +255,20 @@ export class PresetManager {
     return await this.loadTracking();
   }
 
-  private async discoverPresets(dir: string, presets: PresetDefinition[]): Promise<void> {
+  private async discoverPresets(
+    dir: string,
+    presets: PresetDefinition[]
+  ): Promise<void> {
     const entries = await fs.readdir(dir, { withFileTypes: true });
 
     for (const entry of entries) {
-      if (entry.isFile() && (entry.name.endsWith('.yaml') || entry.name.endsWith('.yml'))) {
+      if (
+        entry.isFile() &&
+        (entry.name.endsWith(".yaml") || entry.name.endsWith(".yml"))
+      ) {
         try {
           const presetPath = join(dir, entry.name);
-          const content = await fs.readFile(presetPath, 'utf-8');
+          const content = await fs.readFile(presetPath, "utf-8");
           const preset = load(content) as PresetDefinition;
 
           // Validate preset structure
@@ -246,7 +280,7 @@ export class PresetManager {
             });
             presets.push(presetWithMeta);
           }
-        } catch (error) {
+        } catch (_error) {
           // Skip invalid preset files
         }
       }
@@ -254,18 +288,21 @@ export class PresetManager {
   }
 
   private isValidPreset(obj: unknown): obj is PresetDefinition {
-    if (!obj || typeof obj !== 'object') return false;
+    if (!obj || typeof obj !== "object") {
+      return false;
+    }
 
     const preset = obj as Record<string, unknown>;
     return (
-      typeof preset.name === 'string' &&
-      typeof preset.version === 'string' &&
+      typeof preset.name === "string" &&
+      typeof preset.version === "string" &&
       Array.isArray(preset.rules) &&
-      preset.rules.every((rule: unknown) =>
-        rule &&
-        typeof rule === 'object' &&
-        typeof (rule as Record<string, unknown>).name === 'string' &&
-        typeof (rule as Record<string, unknown>).source === 'string'
+      preset.rules.every(
+        (rule: unknown) =>
+          rule &&
+          typeof rule === "object" &&
+          typeof (rule as Record<string, unknown>).name === "string" &&
+          typeof (rule as Record<string, unknown>).source === "string"
       )
     );
   }
@@ -277,10 +314,14 @@ export class PresetManager {
     const { logger, relativeTo } = options;
     const trimmedSource = source.trim();
 
-    if (trimmedSource.startsWith('data:text/plain,')) {
+    if (trimmedSource.startsWith("data:text/plain,")) {
       // Handle data URLs for testing
       return decodeURIComponent(trimmedSource.slice(16));
-    } else if (trimmedSource.startsWith('http://') || trimmedSource.startsWith('https://')) {
+    }
+    if (
+      trimmedSource.startsWith("http://") ||
+      trimmedSource.startsWith("https://")
+    ) {
       // Fetch from URL
       try {
         const response = await fetch(trimmedSource);
@@ -290,13 +331,15 @@ export class PresetManager {
         return await response.text();
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`Failed to fetch rule from ${trimmedSource}: ${message}`);
+        throw new Error(
+          `Failed to fetch rule from ${trimmedSource}: ${message}`
+        );
       }
-    } else if (trimmedSource.startsWith('file://')) {
+    } else if (trimmedSource.startsWith("file://")) {
       // Local file URL
       const sanitizedFileUrl = sanitizePath(trimmedSource);
       const filePath = sanitizePath(sanitizedFileUrl.slice(7)); // Remove 'file://'
-      return await fs.readFile(filePath, 'utf-8');
+      return await fs.readFile(filePath, "utf-8");
     } else {
       // Assume it's a local path relative to the preset file location
       const sanitizedRelative = sanitizePath(trimmedSource);
@@ -306,10 +349,12 @@ export class PresetManager {
         : resolve(baseDir, sanitizedRelative);
 
       try {
-        return await fs.readFile(resolvedPath, 'utf-8');
+        return await fs.readFile(resolvedPath, "utf-8");
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        const prefix = relativeTo ? `preset-relative path '${sanitizedRelative}'` : `path '${sanitizedRelative}'`;
+        const prefix = relativeTo
+          ? `preset-relative path '${sanitizedRelative}'`
+          : `path '${sanitizedRelative}'`;
         throw new Error(`Failed to read rule from ${prefix}: ${message}`);
       }
     }
@@ -317,7 +362,7 @@ export class PresetManager {
 
   private async loadTracking(): Promise<Record<string, PresetInstallRecord>> {
     try {
-      const content = await fs.readFile(this.trackingFile, 'utf-8');
+      const content = await fs.readFile(this.trackingFile, "utf-8");
       const data = JSON.parse(content);
       return data.presets || {};
     } catch {
@@ -325,7 +370,10 @@ export class PresetManager {
     }
   }
 
-  private async updateTrackingRecord(presetName: string, record: PresetInstallRecord): Promise<void> {
+  private async updateTrackingRecord(
+    presetName: string,
+    record: PresetInstallRecord
+  ): Promise<void> {
     await withFileLock(this.trackingFile, async () => {
       const tracking = await this.loadTracking();
       tracking[presetName] = record;
@@ -333,14 +381,14 @@ export class PresetManager {
       await fs.mkdir(dirname(this.trackingFile), { recursive: true });
       const content = JSON.stringify(
         {
-          _comment: 'Auto-generated by rulesets CLI - do not edit manually',
+          _comment: "Auto-generated by rulesets CLI - do not edit manually",
           presets: tracking,
         },
         null,
         2
       );
 
-      await fs.writeFile(this.trackingFile, content, 'utf-8');
+      await fs.writeFile(this.trackingFile, content, "utf-8");
     });
   }
 }

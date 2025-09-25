@@ -4,14 +4,14 @@
  */
 
 import type {
-  PartialDeep,
-  RequiredDeep,
-  ReadonlyDeep,
+  ConditionalExcept,
+  ConditionalPick,
   LiteralUnion,
   Opaque,
-  ConditionalPick,
-  ConditionalExcept,
-} from 'type-fest';
+  PartialDeep,
+  ReadonlyDeep,
+  RequiredDeep,
+} from "type-fest";
 
 /**
  * Configuration objects that may have partial values during construction
@@ -30,24 +30,31 @@ export type ImmutableConfig<T> = ReadonlyDeep<T>;
  * for known providers.
  */
 export type ProviderName = LiteralUnion<
-  'cursor' | 'windsurf' | 'claude-code' | 'roo-code' | 'cline' | 'codex-cli' | 'codex-agent' | 'agents',
+  | "cursor"
+  | "windsurf"
+  | "claude-code"
+  | "roo-code"
+  | "cline"
+  | "codex-cli"
+  | "codex-agent"
+  | "agents",
   string
 >;
 
 /**
  * File paths that are guaranteed to be absolute paths.
  */
-export type AbsolutePath = Opaque<string, 'AbsolutePath'>;
+export type AbsolutePath = Opaque<string, "AbsolutePath">;
 
 /**
  * Relative file paths for internal operations.
  */
-export type RelativePath = Opaque<string, 'RelativePath'>;
+export type RelativePath = Opaque<string, "RelativePath">;
 
 /**
  * Semantic version strings.
  */
-export type SemVer = Opaque<string, 'SemVer'>;
+export type SemVer = Opaque<string, "SemVer">;
 
 /**
  * Pick properties that have string values.
@@ -93,13 +100,17 @@ export function failure<E>(error: E): Result<never, E> {
 /**
  * Type guard to check if a result is successful.
  */
-export function isSuccess<T, E>(result: Result<T, E>): result is { success: true; data: T } {
+export function isSuccess<T, E>(
+  result: Result<T, E>
+): result is { success: true; data: T } {
   return result.success;
 }
 
 /**
  * Type guard to check if a result is an error.
  */
-export function isFailure<T, E>(result: Result<T, E>): result is { success: false; error: E } {
+export function isFailure<T, E>(
+  result: Result<T, E>
+): result is { success: false; error: E } {
   return !result.success;
 }

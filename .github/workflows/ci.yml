@@ -2,50 +2,81 @@ name: CI
 
 on:
   push:
-    branches: [main, next]
+    branches:
+      - main
+      - gt-v0.4/rewrite
   pull_request:
-    branches: [main, next]
-    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - main
+      - gt-v0.4/rewrite
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  BUN_VERSION: 1.2.22
+  CI: true
+
 jobs:
-  build_and_test:
-    name: Build and Test
-    runs-on: ubuntu-latest
+  quality:
+    name: Quality Checks (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Bun, Install, and Run Suite
+        uses: ./.github/actions/setup-bun-and-deps
         with:
-          bun-version: latest
+          bun-version: ${{ env.BUN_VERSION }}
+          run-lint: 'true'
+          run-typecheck: 'true'
+          run-test: 'true'
+          run-build: 'true'
 
-      - name: Install Dependencies
-        run: bun install --frozen-lockfile
+  windows-smoke:
+    name: Windows Smoke (staging)
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Lint
-        run: bun run lint
-
-      - name: Typecheck
-        run: bun run typecheck
-
-      - name: Test
-        run: bun run test --coverage
-
-      - name: Build
-        run: bun run build
+      - name: Setup Bun and Install Dependencies
+        uses: ./.github/actions/setup-bun-and-deps
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          run-lint: 'false'
+          run-typecheck: 'true'
+          run-test: 'false'
+          run-build: 'false'
 
   release:
     name: Release
     runs-on: ubuntu-latest
-    needs: build_and_test
+    needs:
+      - quality
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -53,24 +84,13 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+        uses: ./.github/actions/setup-bun-and-deps
         with:
-          bun-version: latest
-
-      - name: Install Dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Lint
-        run: bun run lint
-      
-      - name: Typecheck
-        run: bun run typecheck
-      
-      - name: Test
-        run: bun run test --coverage
-      
-      - name: Build
-        run: bun run build
+          bun-version: ${{ env.BUN_VERSION }}
+          run-lint: 'false'
+          run-typecheck: 'false'
+          run-test: 'false'
+          run-build: 'false'
 
       - name: Create Release Pull Request or Publish
         id: changesets

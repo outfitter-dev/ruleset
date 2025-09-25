@@ -1,12 +1,19 @@
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-import { load as yamlLoad } from 'js-yaml';
-import TOML from '@iarna/toml';
-import JSON5 from 'json5';
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import TOML from "@iarna/toml";
+import { load as yamlLoad } from "js-yaml";
+import JSON5 from "json5";
+import {
+  RULESET_SCHEMA_IDS,
+  rulesetProjectConfigSchema,
+  type RulesetProjectConfig,
+} from "@rulesets/types";
 
-export type ProjectConfigFormat = 'yaml' | 'json' | 'jsonc' | 'toml';
+export type ProjectConfigFormat = "yaml" | "json" | "jsonc" | "toml";
 
-export type ProjectConfig = Record<string, unknown>;
+type RawProjectConfig = Record<string, unknown>;
+
+export type ProjectConfig = RulesetProjectConfig;
 
 export type ProjectConfigResult = {
   /** Absolute path to the resolved configuration file (if found). */
@@ -30,11 +37,11 @@ type Candidate = {
 };
 
 const DEFAULT_CANDIDATES: readonly Candidate[] = [
-  { filename: 'config.yaml', format: 'yaml' },
-  { filename: 'config.yml', format: 'yaml' },
-  { filename: 'config.json', format: 'json' },
-  { filename: 'config.jsonc', format: 'jsonc' },
-  { filename: 'config.toml', format: 'toml' },
+  { filename: "config.yaml", format: "yaml" },
+  { filename: "config.yml", format: "yaml" },
+  { filename: "config.json", format: "json" },
+  { filename: "config.jsonc", format: "jsonc" },
+  { filename: "config.toml", format: "toml" },
 ];
 
 async function pathExists(candidate: string): Promise<boolean> {
@@ -48,17 +55,15 @@ async function pathExists(candidate: string): Promise<boolean> {
 
 async function findRulesetRoot(startPath: string): Promise<string | undefined> {
   let current = path.resolve(startPath);
-  const stats = await fs
-    .stat(current)
-    .catch(() => undefined);
-  if (stats && stats.isFile()) {
+  const stats = await fs.stat(current).catch(() => undefined);
+  if (stats?.isFile()) {
     current = path.dirname(current);
   }
 
   const root = path.parse(current).root;
 
   while (true) {
-    const candidate = path.join(current, '.ruleset');
+    const candidate = path.join(current, ".ruleset");
     const exists = await fs
       .stat(candidate)
       .then((stat) => stat.isDirectory())
@@ -67,15 +72,15 @@ async function findRulesetRoot(startPath: string): Promise<string | undefined> {
       return current;
     }
     if (current === root) {
-      return undefined;
+      return;
     }
     current = path.dirname(current);
   }
 }
 
-function ensurePlainObject(value: unknown): ProjectConfig {
-  if (value && typeof value === 'object' && !Array.isArray(value)) {
-    return value as ProjectConfig;
+function ensurePlainObject(value: unknown): RawProjectConfig {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as RawProjectConfig;
   }
   return {};
 }
@@ -83,15 +88,15 @@ function ensurePlainObject(value: unknown): ProjectConfig {
 function parseConfigContents(
   contents: string,
   format: ProjectConfigFormat
-): ProjectConfig {
+): RawProjectConfig {
   switch (format) {
-    case 'yaml':
+    case "yaml":
       return ensurePlainObject(yamlLoad(contents));
-    case 'json':
+    case "json":
       return ensurePlainObject(JSON.parse(contents));
-    case 'jsonc':
+    case "jsonc":
       return ensurePlainObject(JSON5.parse(contents));
-    case 'toml':
+    case "toml":
       return ensurePlainObject(TOML.parse(contents));
     default: {
       const exhaustive: never = format;
@@ -100,6 +105,7 @@ function parseConfigContents(
   }
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: pending refactor for config resolution
 async function resolveConfigPath(
   options: LoadProjectConfigOptions
 ): Promise<{ path: string; format: ProjectConfigFormat } | undefined> {
@@ -112,16 +118,16 @@ async function resolveConfigPath(
       );
     }
     const ext = path.extname(explicit).toLowerCase();
-    const format =
-      ext === '.yaml' || ext === '.yml'
-        ? 'yaml'
-        : ext === '.json'
-          ? 'json'
-          : ext === '.jsonc'
-            ? 'jsonc'
-            : ext === '.toml'
-              ? 'toml'
-              : undefined;
+    let format: ProjectConfigFormat | undefined;
+    if (ext === ".yaml" || ext === ".yml") {
+      format = "yaml";
+    } else if (ext === ".json") {
+      format = "json";
+    } else if (ext === ".jsonc") {
+      format = "jsonc";
+    } else if (ext === ".toml") {
+      format = "toml";
+    }
     if (!format) {
       throw new Error(
         `Unsupported project config extension: ${path.basename(explicit)}`
@@ -137,15 +143,15 @@ async function resolveConfigPath(
 
   const baseDir = rulesetRoot ?? start;
   const rulesetDir = rulesetRoot
-    ? path.join(rulesetRoot, '.ruleset')
-    : path.join(baseDir, '.ruleset');
+    ? path.join(rulesetRoot, ".ruleset")
+    : path.join(baseDir, ".ruleset");
 
   const dirExists = await fs
     .stat(rulesetDir)
     .then((stat) => stat.isDirectory())
     .catch(() => false);
   if (!dirExists) {
-    return undefined;
+    return;
   }
 
   for (const candidate of DEFAULT_CANDIDATES) {
@@ -155,7 +161,7 @@ async function resolveConfigPath(
     }
   }
 
-  return undefined;
+  return;
 }
 
 /**
@@ -170,20 +176,52 @@ export async function loadProjectConfig(
   const resolved = await resolveConfigPath(options);
   if (!resolved) {
     // Return default config with default sources when no config file is found
-    return { config: { sources: ['.ruleset/rules', '.agents/rules'] } };
+    const defaultConfig: RulesetProjectConfig = {
+      sources: [".ruleset/rules", ".agents/rules"],
+    };
+    return { config: defaultConfig };
   }
 
-  const contents = await fs.readFile(resolved.path, 'utf8');
-  const config = parseConfigContents(contents, resolved.format);
+  const contents = await fs.readFile(resolved.path, "utf8");
+  const rawConfig = parseConfigContents(contents, resolved.format);
 
-  // Add default sources if none are configured
-  if (!config.sources || !Array.isArray(config.sources) || config.sources.length === 0) {
-    config.sources = ['.ruleset/rules', '.agents/rules'];
+  const schemaResult = rulesetProjectConfigSchema.safeParse(rawConfig);
+  if (!schemaResult.success) {
+    const formattedIssues = schemaResult.error.issues
+      .map((issue) => {
+        const pathSegments = issue.path.length > 0 ? issue.path : ["projectConfig"];
+        const pathLabel = pathSegments
+          .map((segment, index) =>
+            typeof segment === "number"
+              ? `[${segment}]`
+              : index === 0
+                ? segment
+                : `.${segment}`
+          )
+          .join("");
+        return `${pathLabel || "projectConfig"} ${issue.message}`;
+      })
+      .join("\n  • ");
+
+    const locationHint = resolved.path ? ` (${resolved.path})` : "";
+    throw new Error(
+      `Invalid project config${locationHint}:\n  • ${formattedIssues}\nSee ${RULESET_SCHEMA_IDS.projectConfig} for the schema reference.`
+    );
   }
+
+  const typedConfig = schemaResult.data;
+
+  const finalConfig: RulesetProjectConfig =
+    typedConfig.sources && typedConfig.sources.length > 0
+      ? typedConfig
+      : {
+          ...typedConfig,
+          sources: [".ruleset/rules", ".agents/rules"],
+        };
 
   return {
     path: resolved.path,
     format: resolved.format,
-    config,
+    config: finalConfig,
   };
 }

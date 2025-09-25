@@ -1,0 +1,47 @@
+{
+  "name": "@rulesets/cli",
+  "description": "CLI for Rulesets - AI rules compiler",
+  "version": "0.4.0-next.0",
+  "bin": {
+    "rulesets": "./dist/index.js"
+  },
+  "dependencies": {
+    "@rulesets/core": "0.4.0-next.0",
+    "chalk": "^5.6.2",
+    "commander": "^14.0.1",
+    "js-yaml": "^4.1.0",
+    "picomatch": "^4.0.2",
+    "ora": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "rm -rf dist tsconfig.tsbuildinfo && bunx tsc --project tsconfig.json",
+    "build:bundle": "rm -rf dist tsconfig.tsbuildinfo && bun build ./src/index.ts --outdir dist --target bun --format esm --sourcemap --entry-naming index.js --external @rulesets/* --external chalk --external commander --external js-yaml --external picomatch --external ora && bunx tsc --emitDeclarationOnly --project tsconfig.json",
+    "build:binary": "rm -rf dist tsconfig.tsbuildinfo && bun build ./src/index.ts --compile --target bun --outfile dist/rulesets --external @rulesets/* --external chalk --external commander --external js-yaml --external picomatch --external ora",
+    "clean": "rm -rf dist",
+    "dev": "bun run src/index.ts",
+    "test": "bun test",
+    "typecheck": "bunx tsc --noEmit"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts"
+}

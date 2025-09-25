@@ -40,7 +40,7 @@ All of this work is to be done under a single branch off main called `gt-v0.3/ru
 
 - `rg "Mixdown" ../rulesets-old` returns >150 hits (e.g., `docs/project/ARCHITECTURE.md`, `docs/project/LANGUAGE.md`, `packages/core/tests/integration/e2e.spec.ts`).
 - `.mixdown` path references remain standard in documentation (`AGENTS.md`, `docs/project/ARCHITECTURE.md`); `.ruleset` directories do not exist in inspected history.
-- CLI still warns "No plugin found for destination" (`packages/cli/src/commands/compile.ts`); provider naming not yet backported.
+- CLI still warns "No plugin found for destination" (`apps/cli/src/commands/compile.ts`); provider naming not yet backported.
 - Music metaphors ("stem", "track") were present in legacy docs; the active codebase now uses "section" everywhere.
 
 ### Migration implications

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "declarationDir": "dist",
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "stripInternal": false
+  },
+  "include": ["src/**/*"],
+  "exclude": ["dist", "tests", "__tests__", "node_modules"]
+}
