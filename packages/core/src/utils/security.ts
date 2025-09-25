@@ -1,5 +1,5 @@
-import { promises as fs } from 'node:fs';
-import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { promises as fs } from "node:fs";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
 
 /** Maximum safe length for package names (mirrors npm constraints). */
 const MAX_PACKAGE_NAME_LENGTH = 214;
@@ -29,7 +29,7 @@ export function isPathWithinBoundary(
 
   // If the relative path starts with "..", it's outside the boundary
   // Also reject if it's an absolute path (shouldn't happen after relative())
-  return !(relativePath.startsWith('..') || isAbsolute(relativePath));
+  return !(relativePath.startsWith("..") || isAbsolute(relativePath));
 }
 
 async function resolveRealPathAllowingNonexistent(
@@ -40,7 +40,7 @@ async function resolveRealPathAllowingNonexistent(
     return await fs.realpath(target);
   } catch (error) {
     const err = error as NodeJS.ErrnoException;
-    if (err.code !== 'ENOENT') {
+    if (err.code !== "ENOENT") {
       throw err;
     }
   }
@@ -61,7 +61,7 @@ async function resolveRealPathAllowingNonexistent(
       return resolve(realParent, remainder);
     } catch (parentError) {
       const code = (parentError as NodeJS.ErrnoException).code;
-      if (code && code !== 'ENOENT') {
+      if (code && code !== "ENOENT") {
         throw parentError;
       }
     }
@@ -88,7 +88,7 @@ export async function isPathWithinBoundaryReal(
       fs.realpath(resolve(boundaryPath)),
     ]);
     const relativePath = relative(realBoundary, realTarget);
-    return !(relativePath.startsWith('..') || isAbsolute(relativePath));
+    return !(relativePath.startsWith("..") || isAbsolute(relativePath));
   } catch {
     return false;
   }
@@ -106,7 +106,7 @@ export function isValidPackageName(packageName: string): boolean {
   }
 
   // Reject if it contains path traversal patterns
-  if (packageName.includes('..') || packageName.includes('//')) {
+  if (packageName.includes("..") || packageName.includes("//")) {
     return false;
   }
 
@@ -127,8 +127,8 @@ export function isValidPackageName(packageName: string): boolean {
 export function sanitizePath(filePath: string): string {
   // Remove null bytes and other dangerous characters
   return filePath
-    .replace(/\0/g, '') // Remove null bytes
-    .replace(/[\r\n]/g, '') // Remove line breaks
+    .replace(/\0/g, "") // Remove null bytes
+    .replace(/[\r\n]/g, "") // Remove line breaks
     .trim();
 }
 
@@ -153,7 +153,7 @@ export function validateObjectDepth(
     return true;
   }
 
-  if (typeof obj !== 'object') {
+  if (typeof obj !== "object") {
     return true;
   }
 

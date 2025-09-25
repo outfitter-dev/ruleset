@@ -1,5 +1,10 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import {
+  buildHandlebarsOptions,
+  resolveProviderSettings,
+} from "@rulesets/providers";
+import type { JsonValue } from "@rulesets/types";
 import { AgentsComposer } from "../compiler/agents-composer";
 import type {
   CompiledDoc,
@@ -9,7 +14,7 @@ import type {
   ParsedDoc,
 } from "../interfaces";
 import { RulesetParser } from "../parser";
-import { buildHandlebarsOptions, readDestinationConfig } from "./utils";
+import { extractFrontmatter } from "./frontmatter";
 
 type AgentsMdConfig = {
   outputPath?: string;
@@ -73,10 +78,13 @@ export class AgentsMdProvider implements DestinationProvider {
     projectConfig: Record<string, unknown>;
     logger: Logger;
   }) {
-    const destinationConfig = readDestinationConfig(parsed, "agents-md");
+    const frontmatter = extractFrontmatter(parsed);
+    const settings = frontmatter
+      ? resolveProviderSettings(frontmatter, "agents-md")
+      : undefined;
     return buildHandlebarsOptions({
-      destinationId: "agents-md",
-      destinationConfig,
+      providerId: "agents-md",
+      config: settings?.config,
       logger,
     });
   }
@@ -112,7 +120,8 @@ export class AgentsMdProvider implements DestinationProvider {
 
     // Determine content to write
     let contentToWrite = compiled.output.content;
-    let metadata = compiled.output.metadata;
+    let metadata =
+      compiled.output.metadata ?? ({} as Record<string, JsonValue>);
 
     // Use composer if enabled
     if (cfg.useComposer) {
@@ -129,7 +138,10 @@ export class AgentsMdProvider implements DestinationProvider {
       });
 
       contentToWrite = composedOutput.content;
-      metadata = { ...metadata, ...composedOutput.metadata };
+      metadata = {
+        ...metadata,
+        ...composedOutput.metadata,
+      };
 
       logger.info(
         `Composed content from ${composedOutput.sources.length} source files`,

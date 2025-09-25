@@ -1,5 +1,5 @@
-import pino from 'pino';
-import type { Logger as PinoLogger } from 'pino';
+import type { Logger as PinoLogger } from "pino";
+import pino from "pino";
 
 export type LogMetadata = {
   file?: string;
@@ -20,7 +20,7 @@ export type Logger = {
  */
 export type LoggerConfig = {
   /** Minimum log level to output */
-  level?: 'debug' | 'info' | 'warn' | 'error';
+  level?: "debug" | "info" | "warn" | "error";
   /** Whether to format logs for human reading */
   prettyPrint?: boolean;
   /** Additional context to include in all log messages */
@@ -32,28 +32,28 @@ export type LoggerConfig = {
  * Provides consistent, structured logging across the Rulesets codebase.
  */
 export class StructuredLogger implements Logger {
-  private logger: PinoLogger;
+  private readonly logger: PinoLogger;
 
   constructor(config: LoggerConfig = {}) {
     const {
-      level = process.env.RULESETS_LOG_LEVEL || 'info',
-      prettyPrint = process.env.NODE_ENV !== 'production',
+      level = process.env.RULESETS_LOG_LEVEL || "info",
+      prettyPrint = process.env.NODE_ENV !== "production",
       baseContext = {},
     } = config;
 
     this.logger = pino({
       level,
       base: {
-        name: 'rulesets',
+        name: "rulesets",
         ...baseContext,
       },
       transport: prettyPrint
         ? {
-            target: 'pino-pretty',
+            target: "pino-pretty",
             options: {
               colorize: true,
-              translateTime: 'SYS:standard',
-              ignore: 'pid,hostname,name',
+              translateTime: "SYS:standard",
+              ignore: "pid,hostname,name",
             },
           }
         : undefined,
@@ -88,22 +88,22 @@ export class StructuredLogger implements Logger {
 export class ConsoleLogger implements Logger {
   private formatMetadata(metadata?: LogMetadata): string {
     if (!metadata || Object.keys(metadata).length === 0) {
-      return '';
+      return "";
     }
     const pairs = Object.entries(metadata)
       .filter(([_, value]) => value !== undefined && value !== null)
       .map(([key, value]) => `${key}=${JSON.stringify(value)}`);
-    return pairs.length > 0 ? ` [${pairs.join(' ')}]` : '';
+    return pairs.length > 0 ? ` [${pairs.join(" ")}]` : "";
   }
 
   private writeOut(line: string): void {
-    process.stdout.write(line.endsWith('\n') ? line : `${line}\n`);
+    process.stdout.write(line.endsWith("\n") ? line : `${line}\n`);
   }
   private writeErr(line: string): void {
-    process.stderr.write(line.endsWith('\n') ? line : `${line}\n`);
+    process.stderr.write(line.endsWith("\n") ? line : `${line}\n`);
   }
   debug(message: string, metadata?: LogMetadata): void {
-    if (process.env.RULESETS_LOG_LEVEL === 'debug') {
+    if (process.env.RULESETS_LOG_LEVEL === "debug") {
       this.writeOut(`[DEBUG] ${message}${this.formatMetadata(metadata)}`);
     }
   }
@@ -116,7 +116,7 @@ export class ConsoleLogger implements Logger {
   error(message: string | Error, metadata?: LogMetadata): void {
     if (message instanceof Error) {
       this.writeErr(
-        `[ERROR] ${message.message}${this.formatMetadata(metadata)}\n${message.stack ?? ''}`
+        `[ERROR] ${message.message}${this.formatMetadata(metadata)}\n${message.stack ?? ""}`
       );
     } else {
       this.writeErr(`[ERROR] ${message}${this.formatMetadata(metadata)}`);

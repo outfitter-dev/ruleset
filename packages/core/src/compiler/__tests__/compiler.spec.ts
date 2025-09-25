@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import type { ParsedDoc } from '../../interfaces';
-import { compile } from '../index';
+import { describe, expect, it } from "vitest";
+import type { ParsedDoc } from "../../interfaces";
+import { compile } from "../index";
 
-describe('compiler', () => {
-  describe('compile', () => {
-    it('should compile a document with frontmatter and body', () => {
+describe("compiler", () => {
+  describe("compile", () => {
+    it("should compile a document with frontmatter and body", () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content: `---
@@ -21,12 +21,12 @@ cursor:
 
 This is the body with {{sections}} and {{$variables}}.`,
           frontmatter: {
-            rule: { version: '0.2.0' },
-            title: 'Test Rules',
-            description: 'Test description',
+            rule: { version: "0.2.0" },
+            title: "Test Rules",
+            description: "Test description",
             cursor: {
-              outputPath: '.cursor/rules/test.mdc',
-              priority: 'high',
+              outputPath: ".cursor/rules/test.mdc",
+              priority: "high",
             },
           },
         },
@@ -38,7 +38,7 @@ This is the body with {{sections}} and {{$variables}}.`,
         },
       };
 
-      const result = compile(parsedDoc, 'cursor');
+      const result = compile(parsedDoc, "cursor");
 
       // Source should be preserved
       expect(result.source).toEqual(parsedDoc.source);
@@ -48,34 +48,34 @@ This is the body with {{sections}} and {{$variables}}.`,
 
       // Output should contain only the body
       expect(result.output.content).toBe(
-        '# Test Content\n\nThis is the body with {{sections}} and {{$variables}}.'
+        "# Test Content\n\nThis is the body with {{sections}} and {{$variables}}."
       );
 
       // Metadata should include relevant fields
       expect(result.output.metadata).toMatchObject({
-        title: 'Test Rules',
-        description: 'Test description',
-        version: '0.2.0',
-        outputPath: '.cursor/rules/test.mdc',
-        priority: 'high',
+        title: "Test Rules",
+        description: "Test description",
+        version: "0.2.0",
+        outputPath: ".cursor/rules/test.mdc",
+        priority: "high",
       });
 
       // Should also include pass-through fields
-      expect(result.output.metadata).toHaveProperty('rule');
-      expect(result.output.metadata).toHaveProperty('cursor');
+      expect(result.output.metadata).toHaveProperty("rule");
+      expect(result.output.metadata).toHaveProperty("cursor");
 
       // Context should include destination and config
-      expect(result.context.destinationId).toBe('cursor');
+      expect(result.context.destinationId).toBe("cursor");
       expect(result.context.config).toEqual({
-        outputPath: '.cursor/rules/test.mdc',
-        priority: 'high',
+        outputPath: ".cursor/rules/test.mdc",
+        priority: "high",
       });
     });
 
-    it('should handle document without frontmatter', () => {
+    it("should handle document without frontmatter", () => {
       const parsedDoc: ParsedDoc = {
         source: {
-          content: '# Just Content\n\nNo frontmatter here.',
+          content: "# Just Content\n\nNo frontmatter here.",
         },
         ast: {
           sections: [],
@@ -85,20 +85,20 @@ This is the body with {{sections}} and {{$variables}}.`,
         },
       };
 
-      const result = compile(parsedDoc, 'windsurf');
+      const result = compile(parsedDoc, "windsurf");
 
       expect(result.output.content).toBe(
-        '# Just Content\n\nNo frontmatter here.'
+        "# Just Content\n\nNo frontmatter here."
       );
       expect(result.output.metadata).toEqual({
         title: undefined,
         description: undefined,
         version: undefined,
       });
-      expect(result.context.destinationId).toBe('windsurf');
+      expect(result.context.destinationId).toBe("windsurf");
     });
 
-    it('should merge project config with destination config', () => {
+    it("should merge project config with destination config", () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content: `---
@@ -111,10 +111,10 @@ cursor:
 
 # Content`,
           frontmatter: {
-            rule: { version: '0.2.0' },
+            rule: { version: "0.2.0" },
             cursor: {
-              outputPath: '.cursor/rules/test.mdc',
-              priority: 'high',
+              outputPath: ".cursor/rules/test.mdc",
+              priority: "high",
             },
           },
         },
@@ -127,21 +127,21 @@ cursor:
       };
 
       const projectConfig = {
-        baseUrl: 'https://example.com',
+        baseUrl: "https://example.com",
         debug: true,
       };
 
-      const result = compile(parsedDoc, 'cursor', projectConfig);
+      const result = compile(parsedDoc, "cursor", projectConfig);
 
       expect(result.context.config).toEqual({
-        baseUrl: 'https://example.com',
+        baseUrl: "https://example.com",
         debug: true,
-        outputPath: '.cursor/rules/test.mdc',
-        priority: 'high',
+        outputPath: ".cursor/rules/test.mdc",
+        priority: "high",
       });
     });
 
-    it('should handle empty body after frontmatter', () => {
+    it("should handle empty body after frontmatter", () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content: `---
@@ -149,7 +149,7 @@ rule:
   version: '0.2.0'
 ---`,
           frontmatter: {
-            rule: { version: '0.2.0' },
+            rule: { version: "0.2.0" },
           },
         },
         ast: {
@@ -160,12 +160,12 @@ rule:
         },
       };
 
-      const result = compile(parsedDoc, 'cursor');
+      const result = compile(parsedDoc, "cursor");
 
-      expect(result.output.content).toBe('');
+      expect(result.output.content).toBe("");
     });
 
-    it('should preserve markers in output for v0', () => {
+    it("should preserve markers in output for v0", () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content: `---
@@ -181,7 +181,7 @@ Do not modify these markers in v0.
 
 The value is {{$myVariable}}.`,
           frontmatter: {
-            rule: { version: '0.2.0' },
+            rule: { version: "0.2.0" },
           },
         },
         ast: {
@@ -192,18 +192,18 @@ The value is {{$myVariable}}.`,
         },
       };
 
-      const result = compile(parsedDoc, 'cursor');
+      const result = compile(parsedDoc, "cursor");
 
-      expect(result.output.content).toContain('{{instructions}}');
-      expect(result.output.content).toContain('{{/instructions}}');
-      expect(result.output.content).toContain('{{> common-rules}}');
-      expect(result.output.content).toContain('{{$myVariable}}');
+      expect(result.output.content).toContain("{{instructions}}");
+      expect(result.output.content).toContain("{{/instructions}}");
+      expect(result.output.content).toContain("{{> common-rules}}");
+      expect(result.output.content).toContain("{{$myVariable}}");
     });
 
-    it('should force Handlebars compilation when options request it', () => {
+    it("should force Handlebars compilation when options request it", () => {
       const parsedDoc: ParsedDoc = {
         source: {
-          content: 'Hello {{uppercase provider.id}}!',
+          content: "Hello {{uppercase provider.id}}!",
         },
         ast: {
           sections: [],
@@ -215,17 +215,17 @@ The value is {{$myVariable}}.`,
 
       const result = compile(
         parsedDoc,
-        'cursor',
+        "cursor",
         {},
         {
           handlebars: { force: true },
         }
       );
 
-      expect(result.output.content).toBe('Hello CURSOR!');
+      expect(result.output.content).toBe("Hello CURSOR!");
     });
 
-    it('should register helpers and partials from compile options', () => {
+    it("should register helpers and partials from compile options", () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content: '{{greet "Rulesets"}} {{> footer }}',
@@ -240,26 +240,26 @@ The value is {{$myVariable}}.`,
 
       const result = compile(
         parsedDoc,
-        'cursor',
+        "cursor",
         {},
         {
           handlebars: {
             force: true,
             helpers: {
               greet: (value: unknown) =>
-                typeof value === 'string' ? `Hello ${value}` : 'Hello',
+                typeof value === "string" ? `Hello ${value}` : "Hello",
             },
             partials: {
-              footer: '::footer::',
+              footer: "::footer::",
             },
           },
         }
       );
 
-      expect(result.output.content).toBe('Hello Rulesets ::footer::');
+      expect(result.output.content).toBe("Hello Rulesets ::footer::");
     });
 
-    it('respects handlebars compiler preference in frontmatter', () => {
+    it("respects handlebars compiler preference in frontmatter", () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content: `---\nrule:
@@ -267,7 +267,7 @@ The value is {{$myVariable}}.`,
   template: true\n---\n
 Hello {{uppercase 'world'}}`,
           frontmatter: {
-            rule: { version: '0.2.0', template: true },
+            rule: { version: "0.2.0", template: true },
           },
         },
         ast: {
@@ -278,10 +278,10 @@ Hello {{uppercase 'world'}}`,
         },
       };
 
-      const result = compile(parsedDoc, 'cursor');
-      expect(result.output.content).toContain('Hello WORLD');
+      const result = compile(parsedDoc, "cursor");
+      expect(result.output.content).toContain("Hello WORLD");
     });
-    it('should handle destination without config', () => {
+    it("should handle destination without config", () => {
       const parsedDoc: ParsedDoc = {
         source: {
           content: `---
@@ -294,8 +294,8 @@ windsurf: {}
 
 # Content`,
           frontmatter: {
-            rule: { version: '0.2.0' },
-            cursor: { path: '/test' },
+            rule: { version: "0.2.0" },
+            cursor: { path: "/test" },
             windsurf: {},
           },
         },
@@ -307,18 +307,18 @@ windsurf: {}
         },
       };
 
-      const result = compile(parsedDoc, 'windsurf');
+      const result = compile(parsedDoc, "windsurf");
 
       expect(result.context.config).toEqual({});
       expect(result.output.metadata).toMatchObject({
         title: undefined,
         description: undefined,
-        version: '0.2.0',
+        version: "0.2.0",
       });
 
       // Should include pass-through fields
-      expect(result.output.metadata).toHaveProperty('rule');
-      expect(result.output.metadata).toHaveProperty('windsurf');
+      expect(result.output.metadata).toHaveProperty("rule");
+      expect(result.output.metadata).toHaveProperty("windsurf");
     });
   });
 });

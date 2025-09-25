@@ -3,20 +3,20 @@
 > This plan tracks the sequential work required to deliver the full rewrite described in `REFACTOR.md`. Each section should complete before moving to the next unless explicitly noted.
 
 ## 1. Establish Rewrite Foundations
-- [ ] Create the `gt-v0.4/rewrite` base branch from the latest `main`, restack outstanding work, and document branch hygiene.
-- [ ] Align repository metadata (package.json versions, Changesets config) on the 0.4.0 pre-release series.
-- [ ] Stand up updated GitHub Actions scaffolding for multi-platform builds (macOS/Linux initially, Windows staging).
+- [x] Create the `gt-v0.4/rewrite` base branch from the latest `main`, restack outstanding work, and document branch hygiene.
+- [x] Align repository metadata (package.json versions, Changesets config) on the 0.4.0 pre-release series.
+- [x] Stand up updated GitHub Actions scaffolding for multi-platform builds (macOS/Linux initially, Windows staging).
 
 ## 2. Monorepo Structure & Tooling
-- [ ] Carve out new package layout (`packages/types`, `packages/parser`, `packages/renderer`, `packages/orchestrator`, `packages/lib`, etc.) and migrate existing code into placeholders.
-- [ ] Move CLI implementation into `apps/cli` (command `rules`, alias `rulesets`).
-- [ ] Switch build scripts to Bun-native tooling; remove legacy tsup/rollup configs that are no longer needed.
-- [ ] Configure strict TS/Biome/format hooks for pre-commit and pre-push via Lefthook.
+- [x] Carve out new package layout (`packages/types`, `packages/parser`, `packages/renderer`, `packages/orchestrator`, `packages/lib`, etc.) and migrate existing code into placeholders.
+- [x] Move CLI implementation into `apps/cli` (command `rules`, alias `rulesets`).
+- [x] Switch build scripts to Bun-native tooling; remove legacy tsup/rollup configs that are no longer needed.
+- [x] Configure strict TS/Biome/format hooks for pre-commit and pre-push via Lefthook.
 
 ## 3. Typing, Schemas, and Shared Contracts
-- [ ] Define central AST, config, and result types in `@rulesets/types` with exhaustive TS strictness (mirroring ultracite defaults).
-- [ ] Implement Zod schemas that produce JSON Schema artifacts for configs, rules front matter, and provider descriptors.
-- [ ] Publish versioned capability registry and error/result primitives (using `type-fest` helpers where possible).
+- [x] Define central AST, config, and result types in `@rulesets/types` with exhaustive TS strictness (mirroring ultracite defaults).
+- [x] Implement Zod schemas that produce JSON Schema artifacts for configs, rules front matter, and provider descriptors.
+- [x] Publish versioned capability registry and error/result primitives (using `type-fest` helpers where possible).
 
 ## 4. Orchestrator Pipeline
 - [ ] Build the Source → Parse → Validate → Transform → Render → Write pipeline in `@rulesets/orchestrator` with streaming AsyncIterable events.

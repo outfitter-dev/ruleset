@@ -18,6 +18,10 @@ inputs:
     description: 'Whether to run build'
     required: false
     default: 'true'
+  run-typecheck:
+    description: 'Whether to run typecheck'
+    required: false
+    default: 'true'
 
 runs:
   using: 'composite'
@@ -29,6 +33,11 @@ runs:
 
     - name: Install Dependencies
       run: bun install --frozen-lockfile
+      shell: bash
+
+    - name: Typecheck
+      if: inputs.run-typecheck == 'true'
+      run: bun run typecheck
       shell: bash
 
     - name: Debug - Check CLI files

@@ -1,20 +1,20 @@
-import { promises as fs } from 'node:fs';
-import { basename } from 'node:path';
-import type { JsonMap } from '@iarna/toml';
-import { parse as tomlParse, stringify as tomlStringify } from '@iarna/toml';
-import { GlobalConfig } from '../config/global-config';
-import { RESOURCE_LIMITS } from '../config/limits';
-import type { ComposedRuleset } from '../rulesets/ruleset-manager';
-import { RulesetManager } from '../rulesets/ruleset-manager';
+import { promises as fs } from "node:fs";
+import { basename } from "node:path";
+import type { JsonMap } from "@iarna/toml";
+import { parse as tomlParse, stringify as tomlStringify } from "@iarna/toml";
+import { GlobalConfig } from "../config/global-config";
+import { RESOURCE_LIMITS } from "../config/limits";
+import type { ComposedRuleset } from "../rulesets/ruleset-manager";
+import { RulesetManager } from "../rulesets/ruleset-manager";
 
 // JSON-compatible types for TOML serialization
-export type JSONValue =
+export type JsonValue =
   | string
   | number
   | boolean
   | null
-  | JSONValue[]
-  | { [key: string]: JSONValue };
+  | JsonValue[]
+  | { [key: string]: JsonValue };
 
 export type PackMetadata = {
   name: string;
@@ -30,7 +30,7 @@ export type PackIncludes = {
   packs?: string[]; // Allow packs to include other packs
 };
 
-export type PackConfiguration = Record<string, JSONValue>;
+export type PackConfiguration = Record<string, JsonValue>;
 
 export type PackDefinition = {
   pack: PackMetadata;
@@ -42,21 +42,20 @@ export class Pack {
   name: string;
   path: string;
   metadata: PackMetadata = {
-    name: '',
-    version: '1.0.0',
+    name: "",
+    version: "1.0.0",
   };
   includes: PackIncludes = {
     sets: [],
   };
   configuration: PackConfiguration = {};
 
-  // biome-ignore lint/style/useReadonlyClassProperties: set to true after load()
   private _loaded: boolean;
   private _rulesetManager?: RulesetManager;
 
   constructor(packPath: string) {
     this.path = packPath;
-    this.name = basename(packPath, '.toml');
+    this.name = basename(packPath, ".toml");
     this._loaded = false;
   }
 
@@ -76,7 +75,7 @@ export class Pack {
         );
       }
 
-      const content = await fs.readFile(this.path, 'utf-8');
+      const content = await fs.readFile(this.path, "utf-8");
       const parsed = tomlParse(content) as unknown as PackDefinition;
 
       // Load metadata
@@ -127,21 +126,21 @@ export class Pack {
     // Validate metadata - check both undefined and empty string cases
     const nameIsEmpty =
       !this.metadata.name ||
-      this.metadata.name === '' ||
-      (typeof this.metadata.name === 'string' &&
-        this.metadata.name.trim() === '');
+      this.metadata.name === "" ||
+      (typeof this.metadata.name === "string" &&
+        this.metadata.name.trim() === "");
 
     if (nameIsEmpty) {
-      errors.push('Pack name is required');
+      errors.push("Pack name is required");
     }
 
     if (!this.isValidVersion(this.metadata.version)) {
-      errors.push('Invalid version format');
+      errors.push("Invalid version format");
     }
 
     // Validate includes
     if (!this.includes.sets || this.includes.sets.length === 0) {
-      errors.push('Pack must include at least one ruleset');
+      errors.push("Pack must include at least one ruleset");
     }
 
     // Check if included rulesets exist
@@ -228,11 +227,11 @@ export class Pack {
    */
   private flattenConfiguration(
     config: unknown,
-    prefix = ''
+    prefix = ""
   ): PackConfiguration {
     const result: PackConfiguration = {};
 
-    if (!config || typeof config !== 'object' || Array.isArray(config)) {
+    if (!config || typeof config !== "object" || Array.isArray(config)) {
       return result;
     }
 
@@ -241,11 +240,11 @@ export class Pack {
     )) {
       const fullKey = prefix ? `${prefix}.${key}` : key;
 
-      if (value && typeof value === 'object' && !Array.isArray(value)) {
+      if (value && typeof value === "object" && !Array.isArray(value)) {
         // Recursively flatten nested objects
         Object.assign(result, this.flattenConfiguration(value, fullKey));
       } else {
-        result[fullKey] = value as JSONValue;
+        result[fullKey] = value as JsonValue;
       }
     }
 

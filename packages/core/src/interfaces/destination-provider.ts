@@ -1,7 +1,7 @@
-import type { HelperDelegate } from 'handlebars';
-import type { JSONSchema7 } from 'json-schema';
-import type { CompiledDoc, ParsedDoc } from './compiled-doc';
-import type { Logger } from './logger';
+import type { CompiledDoc, ParsedDoc } from "@rulesets/types";
+import type { HelperDelegate } from "handlebars";
+import type { JSONSchema7 } from "json-schema";
+import type { Logger } from "./logger";
 
 export type DestinationHandlebarsOptions = {
   /** Force Handlebars compilation even if the project/frontmatter does not opt in. */
@@ -23,7 +23,7 @@ export type DestinationCompilationOptions = {
   projectConfigOverrides?: Record<string, unknown>;
 };
 
-export type { JSONSchema7 } from 'json-schema';
+export type { JSONSchema7 } from "json-schema";
 
 export type DestinationProvider = {
   /**

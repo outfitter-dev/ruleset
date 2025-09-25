@@ -10,7 +10,7 @@ Always read @SCRATCHPAD.md first, and keep it updated with your work as you go. 
 
 Before making changes, review the rewrite blueprint @REFACTOR.md and the execution checklist @PLAN.md. They define the canonical direction for the v0.4 rewrite.
 
-We are in the middle of a big @MIGRATION.md effort. Pay close attention to it.
+Always read the @CODE-REVIEW.md instructions for performing code reviews prior to pushing code.
 
 As you complete major chunks of work, create a new log in `.agents/logs/` with `YYYYMMDDhhmm` as the filename prefix (use the date command) and then `-<brief description of work>.md` as the filename suffix.
 
@@ -36,8 +36,11 @@ Rulesets is a CommonMark-compliant rules compiler that lets you author a single 
   - `.agents/docs/overview.md`: Project overview and guidance
   - `.agents/docs/architecture.md`: Technical architecture details
   - `.agents/docs/notes/README.md`: Curated Rulesets research notes
+- `/apps`: Runtime surfaces powered by the library stack
+  - `apps/cli`: Bun-based CLI exposing the `rules` / `rulesets` command (builds with `bun build`)
 - `/packages`: Monorepo packages where AI agents will implement code
-  - `/core`: Core Rulesets library that AI agents should enhance iteratively
+  - `types`, `parser`, `validator`, `transform`, `renderer`, `providers`, `orchestrator`, `lib`: layered v0.4 modules (TypeScript strict + Bun builds)
+  - `core`: Legacy façade being decomposed into the dedicated packages above; treat as integration layer until fully migrated
 - `.ruleset/`: Project-local ruleset directory (contains `rules/`, `dist/`, and config files)
 
 ## Key Concepts
@@ -245,6 +248,9 @@ bun run test --coverage
 
 # Lint all packages
 bun run lint
+
+# Ensure packages build for type references
+bun run build:libs
 
 # Type check all packages
 bun run typecheck

@@ -1,16 +1,16 @@
-import { promises as fs } from 'node:fs';
-import { dirname, join } from 'node:path';
-import type { JsonMap } from '@iarna/toml';
-import { stringify as tomlStringify } from '@iarna/toml';
-import { GlobalConfig } from '../config/global-config';
-import { InstallationManager } from '../installation/installation-manager';
+import { promises as fs } from "node:fs";
+import { dirname, join } from "node:path";
+import type { JsonMap } from "@iarna/toml";
+import { stringify as tomlStringify } from "@iarna/toml";
+import { GlobalConfig } from "../config/global-config";
+import { InstallationManager } from "../installation/installation-manager";
 import {
   Pack,
   type PackConfiguration,
   type PackDefinition,
   type PackIncludes,
   type PackMetadata,
-} from './pack';
+} from "./pack";
 
 export type PackManagerOptions = {
   globalDir?: string;
@@ -27,7 +27,7 @@ export type PackInstallResult = {
 
 export type PackInstallOptions = {
   force?: boolean;
-  resolveConflicts?: 'override' | 'skip' | 'merge';
+  resolveConflicts?: "override" | "skip" | "merge";
   preserveLocal?: boolean;
 };
 
@@ -57,7 +57,7 @@ export class PackManager {
     this.globalDir =
       options.globalDir || GlobalConfig.getInstance().getGlobalDirectory();
     this.projectDir = options.projectDir || process.cwd();
-    this.packsDir = join(this.globalDir, 'packs');
+    this.packsDir = join(this.globalDir, "packs");
   }
 
   private async getInstallationManager(): Promise<InstallationManager> {
@@ -82,7 +82,7 @@ export class PackManager {
       await fs.mkdir(this.packsDir, { recursive: true });
 
       const files = await fs.readdir(this.packsDir);
-      const packFiles = files.filter((f) => f.endsWith('.toml'));
+      const packFiles = files.filter((f) => f.endsWith(".toml"));
 
       for (const file of packFiles) {
         const packPath = join(this.packsDir, file);
@@ -162,7 +162,7 @@ export class PackManager {
           success: false,
           conflicts,
           errors: [
-            `Conflicts detected with existing rulesets: ${conflicts.join(', ')}`,
+            `Conflicts detected with existing rulesets: ${conflicts.join(", ")}`,
           ],
         };
       }
@@ -197,10 +197,10 @@ export class PackManager {
   private async detectConflicts(
     pack: Pack,
     installManager: InstallationManager,
-    resolveBehavior: PackInstallOptions['resolveConflicts']
+    resolveBehavior: PackInstallOptions["resolveConflicts"]
   ): Promise<string[]> {
     const conflicts: string[] = [];
-    if (resolveBehavior !== 'skip') {
+    if (resolveBehavior !== "skip") {
       return conflicts;
     }
 
@@ -264,7 +264,7 @@ export class PackManager {
       Record<string, unknown>;
     const packMetadata: PackMetadata = {
       name: (inputDef.name as string) || name,
-      version: (inputDef.version as string) || '1.0.0',
+      version: (inputDef.version as string) || "1.0.0",
       description: inputDef.description as string | undefined,
       author: inputDef.author as string | undefined,
       tags: inputDef.tags as string[] | undefined,
@@ -299,7 +299,7 @@ export class PackManager {
 
     // Write to file
     const content = tomlStringify(fullDefinition as JsonMap);
-    await fs.writeFile(packPath, content, 'utf-8');
+    await fs.writeFile(packPath, content, "utf-8");
 
     // Clear cache to force reload
     this.packCache.delete(name);
@@ -342,7 +342,7 @@ export class PackManager {
     // Save updated pack
     const packPath = join(this.packsDir, `${name}.toml`);
     const content = pack.export();
-    await fs.writeFile(packPath, content, 'utf-8');
+    await fs.writeFile(packPath, content, "utf-8");
 
     // Clear cache
     this.packCache.delete(name);
@@ -373,10 +373,10 @@ export class PackManager {
    * Get installed packs
    */
   async getInstalledPacks(): Promise<Record<string, PackTrackingEntry>> {
-    const trackingFile = join(this.projectDir, '.ruleset', 'packs.json');
+    const trackingFile = join(this.projectDir, ".ruleset", "packs.json");
 
     try {
-      const content = await fs.readFile(trackingFile, 'utf-8');
+      const content = await fs.readFile(trackingFile, "utf-8");
       return JSON.parse(content) as Record<string, PackTrackingEntry>;
     } catch {
       return {} as Record<string, PackTrackingEntry>;
@@ -401,11 +401,11 @@ export class PackManager {
     configuration: PackConfiguration
   ): Promise<void> {
     // Store pack configuration for future reference
-    const configFile = join(this.projectDir, '.ruleset', 'pack-config.json');
+    const configFile = join(this.projectDir, ".ruleset", "pack-config.json");
 
     let existingConfig: Record<string, PackConfiguration> = {};
     try {
-      const content = await fs.readFile(configFile, 'utf-8');
+      const content = await fs.readFile(configFile, "utf-8");
       existingConfig = JSON.parse(content);
     } catch {
       // File doesn't exist yet
@@ -417,7 +417,7 @@ export class PackManager {
     await fs.writeFile(
       configFile,
       JSON.stringify(existingConfig, null, 2),
-      'utf-8'
+      "utf-8"
     );
   }
 
@@ -427,11 +427,11 @@ export class PackManager {
     installedSets: string[],
     destinations: string[]
   ): Promise<void> {
-    const trackingFile = join(this.projectDir, '.ruleset', 'packs.json');
+    const trackingFile = join(this.projectDir, ".ruleset", "packs.json");
 
     let tracking: Record<string, PackTrackingEntry> = {};
     try {
-      const content = await fs.readFile(trackingFile, 'utf-8');
+      const content = await fs.readFile(trackingFile, "utf-8");
       tracking = JSON.parse(content) as Record<string, PackTrackingEntry>;
     } catch {
       // File doesn't exist yet
@@ -448,21 +448,21 @@ export class PackManager {
     await fs.writeFile(
       trackingFile,
       JSON.stringify(tracking, null, 2),
-      'utf-8'
+      "utf-8"
     );
   }
 
   private async removePackTracking(packName: string): Promise<void> {
-    const trackingFile = join(this.projectDir, '.ruleset', 'packs.json');
+    const trackingFile = join(this.projectDir, ".ruleset", "packs.json");
 
     try {
-      const content = await fs.readFile(trackingFile, 'utf-8');
+      const content = await fs.readFile(trackingFile, "utf-8");
       const tracking = JSON.parse(content);
       delete tracking[packName];
       await fs.writeFile(
         trackingFile,
         JSON.stringify(tracking, null, 2),
-        'utf-8'
+        "utf-8"
       );
     } catch {
       // File doesn't exist or other error
@@ -476,4 +476,4 @@ export type {
   PackConfiguration,
   PackDefinition,
   PackMetadata,
-} from './pack';
+} from "./pack";

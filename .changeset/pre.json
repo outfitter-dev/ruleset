@@ -1,0 +1,9 @@
+{
+  "mode": "pre",
+  "tag": "next",
+  "initialVersions": {
+    "@rulesets/cli": "0.4.0-next.0",
+    "@rulesets/core": "0.4.0-next.0"
+  },
+  "changesets": []
+}

@@ -1,11 +1,12 @@
-import type { HelperDelegate } from 'handlebars';
-import { HandlebarsRulesetCompiler } from './handlebars-compiler';
-import type { CompiledDoc, ParsedDoc } from '../interfaces';
-import type { Logger } from '../interfaces/logger';
-import { resolveProviderSettings, isPlainObject } from '../destinations/utils';
-import { extractBodyFromContent } from '../utils/frontmatter';
+import { isPlainObject, resolveProviderSettings } from "@rulesets/providers";
+import type { JsonValue } from "@rulesets/types";
+import type { HelperDelegate } from "handlebars";
+import type { CompiledDoc, ParsedDoc } from "../interfaces";
+import type { Logger } from "../interfaces/logger";
+import { extractBodyFromContent } from "../utils/frontmatter";
+import { HandlebarsRulesetCompiler } from "./handlebars-compiler";
 
-export { HandlebarsRulesetCompiler } from './handlebars-compiler';
+export { HandlebarsRulesetCompiler };
 
 const handlebarsCompiler = new HandlebarsRulesetCompiler();
 
@@ -15,24 +16,26 @@ function prefersHandlebars(
 ): boolean {
   const ruleValue = frontmatter?.rule;
   const rule =
-    ruleValue && typeof ruleValue === 'object' && !Array.isArray(ruleValue)
+    ruleValue && typeof ruleValue === "object" && !Array.isArray(ruleValue)
       ? (ruleValue as Record<string, unknown>)
       : undefined;
   const frontmatterTemplate =
-    typeof rule?.template === 'boolean' ? (rule.template as boolean) : undefined;
+    typeof rule?.template === "boolean"
+      ? (rule.template as boolean)
+      : undefined;
   if (frontmatterTemplate !== undefined) {
     return frontmatterTemplate;
   }
 
-  const projectRuleValue = projectConfig['rule'];
+  const projectRuleValue = projectConfig.rule;
   const projectRule =
     projectRuleValue &&
-    typeof projectRuleValue === 'object' &&
+    typeof projectRuleValue === "object" &&
     !Array.isArray(projectRuleValue)
       ? (projectRuleValue as Record<string, unknown>)
       : undefined;
   const projectTemplate =
-    typeof projectRule?.template === 'boolean'
+    typeof projectRule?.template === "boolean"
       ? (projectRule.template as boolean)
       : undefined;
   if (projectTemplate !== undefined) {
@@ -40,19 +43,22 @@ function prefersHandlebars(
   }
 
   const rulesets = frontmatter?.rulesets as Record<string, unknown> | undefined;
-  if (typeof rulesets?.compiler === 'string' && rulesets.compiler === 'handlebars') {
+  if (
+    typeof rulesets?.compiler === "string" &&
+    rulesets.compiler === "handlebars"
+  ) {
     return true;
   }
 
-  const projectCompiler = projectConfig['compiler'];
-  if (typeof projectCompiler === 'string' && projectCompiler === 'handlebars') {
+  const projectCompiler = projectConfig.compiler;
+  if (typeof projectCompiler === "string" && projectCompiler === "handlebars") {
     return true;
   }
 
   return false;
 }
 
-export interface CompileOptions {
+export type CompileOptions = {
   projectConfig?: Record<string, unknown>;
   logger?: Logger;
   handlebars?: {
@@ -69,7 +75,7 @@ export interface CompileOptions {
   registryInfo?: {
     destinations: string[];
   };
-}
+};
 
 /**
  * Creates a minimal compiled document for empty files.
@@ -79,8 +85,14 @@ export interface CompileOptions {
  * @param projectConfig - Project configuration
  * @returns Minimal CompiledDoc structure for empty content
  */
+function toJsonRecord(
+  record: Record<string, unknown>
+): Record<string, JsonValue> {
+  return record as Record<string, JsonValue>;
+}
+
 function createEmptyCompiledDoc(
-  source: ParsedDoc['source'],
+  source: ParsedDoc["source"],
   destinationId: string,
   projectConfig: Record<string, unknown>
 ): CompiledDoc {
@@ -97,8 +109,8 @@ function createEmptyCompiledDoc(
       markers: [],
     },
     output: {
-      content: '',
-      metadata: {},
+      content: "",
+      metadata: toJsonRecord({}),
     },
     context: createCompilationContext(
       destinationId,
@@ -115,34 +127,38 @@ function createEmptyCompiledDoc(
  * @param destinationId - Target destination ID
  * @returns Compiled metadata object with all pass-through fields
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: legacy metadata mapping scheduled for refactor
 function createOutputMetadata(
   frontmatter: Record<string, unknown> | undefined,
   destinationId: string
-): Record<string, unknown> {
-  // Start with all frontmatter as base metadata (pass-through approach)
-  const allMetadata = frontmatter && isPlainObject(frontmatter)
-    ? { ...frontmatter }
-    : {};
+): Record<string, JsonValue> {
+  const providerFrontmatter = isPlainObject(frontmatter)
+    ? (frontmatter as Record<string, JsonValue>)
+    : undefined;
+
+  const allMetadata = providerFrontmatter ? { ...providerFrontmatter } : {};
 
   // Extract structured rule fields
   let ruleVersion: string | undefined;
   let ruleGlobs: string[] | undefined;
 
-  if (frontmatter && isPlainObject(frontmatter)) {
-    const ruleValue = (frontmatter as Record<string, unknown>).rule;
+  if (providerFrontmatter) {
+    const ruleValue = providerFrontmatter.rule;
     if (ruleValue && isPlainObject(ruleValue)) {
       const rule = ruleValue as Record<string, unknown>;
 
       // Extract version
-      if (typeof rule.version === 'string' && rule.version.trim().length > 0) {
+      if (typeof rule.version === "string" && rule.version.trim().length > 0) {
         ruleVersion = rule.version;
       }
 
       // Extract globs
       if (Array.isArray(rule.globs)) {
         ruleGlobs = rule.globs
-          .filter((g): g is string => typeof g === 'string' && g.trim().length > 0)
-          .map(g => g.trim());
+          .filter(
+            (g): g is string => typeof g === "string" && g.trim().length > 0
+          )
+          .map((g) => g.trim());
       }
     }
   }
@@ -155,27 +171,21 @@ function createOutputMetadata(
     created: allMetadata.created,
     updated: allMetadata.updated,
     labels: allMetadata.labels,
-    ...(ruleGlobs && { 'rule.globs': ruleGlobs }),
+    ...(ruleGlobs && { "rule.globs": ruleGlobs }),
   };
 
   // Include destination-specific metadata if available
   const destinationSettings = resolveProviderSettings(
-    frontmatter && isPlainObject(frontmatter)
-      ? (frontmatter as Record<string, unknown>)
-      : undefined,
+    providerFrontmatter,
     destinationId
   );
-  const destinationMetadata =
-    destinationSettings?.config &&
-    isPlainObject(destinationSettings.config)
-      ? (destinationSettings.config as Record<string, unknown>)
-      : {};
+  const destinationMetadata = destinationSettings?.config ?? {};
 
-  return {
-    ...allMetadata,           // All original frontmatter (pass-through)
-    ...structuredMetadata,    // Structured field overrides
-    ...destinationMetadata,   // Destination-specific overrides
-  };
+  return toJsonRecord({
+    ...allMetadata, // All original frontmatter (pass-through)
+    ...structuredMetadata, // Structured field overrides
+    ...destinationMetadata, // Destination-specific overrides
+  });
 }
 
 /**
@@ -190,25 +200,23 @@ function createCompilationContext(
   destinationId: string,
   projectConfig: Record<string, unknown>,
   frontmatter: Record<string, unknown> | undefined
-): CompiledDoc['context'] {
+): CompiledDoc["context"] {
+  const providerFrontmatter = isPlainObject(frontmatter)
+    ? (frontmatter as Record<string, JsonValue>)
+    : undefined;
+
   const destinationSettings = resolveProviderSettings(
-    frontmatter && isPlainObject(frontmatter)
-      ? (frontmatter as Record<string, unknown>)
-      : undefined,
+    providerFrontmatter,
     destinationId
   );
-  const destinationConfig =
-    destinationSettings?.config &&
-    isPlainObject(destinationSettings.config)
-      ? (destinationSettings.config as Record<string, unknown>)
-      : {};
+  const destinationConfig = destinationSettings?.config ?? {};
 
   return {
     destinationId,
-    config: {
+    config: toJsonRecord({
       ...projectConfig,
       ...destinationConfig,
-    },
+    }),
   };
 }
 
@@ -233,7 +241,11 @@ export function compile(
 
   // Handle empty files consistently
   if (!source.content.trim()) {
-    return createEmptyCompiledDoc(source, destinationId, effectiveProjectConfig);
+    return createEmptyCompiledDoc(
+      source,
+      destinationId,
+      effectiveProjectConfig
+    );
   }
 
   // Extract the body content (everything after frontmatter)
@@ -285,7 +297,7 @@ export function compile(
   };
 
   logger?.debug?.(
-    `Compiled ${source.path ?? 'inline document'} for ${destinationId}`,
+    `Compiled ${source.path ?? "inline document"} for ${destinationId}`,
     { destination: destinationId, file: source.path }
   );
   return compiledDoc;

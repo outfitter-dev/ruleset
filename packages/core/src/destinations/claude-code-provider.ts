@@ -1,13 +1,17 @@
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import {
+  buildHandlebarsOptions,
+  resolveProviderSettings,
+} from "@rulesets/providers";
 import type {
   CompiledDoc,
   DestinationProvider,
   JSONSchema7,
   Logger,
   ParsedDoc,
-} from '../interfaces';
-import { buildHandlebarsOptions, readDestinationConfig } from './utils';
+} from "../interfaces";
+import { extractFrontmatter } from "./frontmatter";
 
 /**
  * Destination provider that renders compiled rules for Claude Code. The
@@ -15,16 +19,16 @@ import { buildHandlebarsOptions, readDestinationConfig } from './utils';
  */
 export class ClaudeCodeProvider implements DestinationProvider {
   get name(): string {
-    return 'claude-code';
+    return "claude-code";
   }
 
   configSchema(): JSONSchema7 {
     return {
-      type: 'object',
+      type: "object",
       properties: {
         outputPath: {
-          type: 'string',
-          description: 'Path where the compiled rules file should be written',
+          type: "string",
+          description: "Path where the compiled rules file should be written",
         },
       },
       additionalProperties: true,
@@ -40,10 +44,13 @@ export class ClaudeCodeProvider implements DestinationProvider {
     projectConfig: Record<string, unknown>;
     logger: Logger;
   }) {
-    const destinationConfig = readDestinationConfig(parsed, 'claude-code');
+    const frontmatter = extractFrontmatter(parsed);
+    const settings = frontmatter
+      ? resolveProviderSettings(frontmatter, "claude-code")
+      : undefined;
     return buildHandlebarsOptions({
-      destinationId: 'claude-code',
-      destinationConfig,
+      providerId: "claude-code",
+      config: settings?.config,
       logger,
     });
   }
@@ -62,7 +69,7 @@ export class ClaudeCodeProvider implements DestinationProvider {
     };
     const cfg = config as ClaudeConfig;
     const outputPath =
-      typeof cfg.outputPath === 'string' && cfg.outputPath.trim() !== ''
+      typeof cfg.outputPath === "string" && cfg.outputPath.trim() !== ""
         ? cfg.outputPath
         : destPath;
     const resolvedPath = path.isAbsolute(outputPath)
@@ -84,7 +91,7 @@ export class ClaudeCodeProvider implements DestinationProvider {
 
     try {
       await fs.writeFile(resolvedPath, compiled.output.content, {
-        encoding: 'utf8',
+        encoding: "utf8",
       });
       logger.info(`Successfully wrote Claude Code rules to: ${resolvedPath}`);
       logger.debug(`Destination: ${compiled.context.destinationId}`);

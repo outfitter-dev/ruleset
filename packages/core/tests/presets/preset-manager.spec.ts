@@ -284,7 +284,12 @@ describe("PresetManager", () => {
       const result = await presetManager.installPreset("corp-preset");
 
       expect(result.installedRules).toHaveLength(1);
-      const installedRulePath = join(projectDir, ".ruleset", "rules", "corp.md");
+      const installedRulePath = join(
+        projectDir,
+        ".ruleset",
+        "rules",
+        "corp.md"
+      );
       const installedContent = await fs.readFile(installedRulePath, "utf-8");
       expect(installedContent).toBe(localRuleContent);
     });

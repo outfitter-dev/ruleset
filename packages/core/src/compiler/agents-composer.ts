@@ -1,11 +1,12 @@
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-import { glob } from 'glob';
-import type { Logger, ParsedDoc, CompiledDoc } from '../interfaces';
-import type { RulesetParser } from '../parser';
-import { compile } from './index';
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import type { JsonValue } from "@rulesets/types";
+import { glob } from "glob";
+import type { CompiledDoc, Logger, ParsedDoc } from "../interfaces";
+import type { RulesetParser } from "../parser";
+import { compile } from "./index";
 
-export interface AgentsComposerOptions {
+export type AgentsComposerOptions = {
   /**
    * Glob patterns to include source rules from
    */
@@ -35,16 +36,19 @@ export interface AgentsComposerOptions {
    * Handle @filename mentions
    */
   resolveFileReferences?: boolean;
-}
+};
 
-export interface ComposedOutput {
+export type ComposedOutput = {
   content: string;
-  metadata: Record<string, unknown>;
+  metadata: Record<string, JsonValue>;
   sources: string[];
-}
+};
+
+const emptyMetadata = (): Record<string, JsonValue> =>
+  ({}) as Record<string, JsonValue>;
 
 export class AgentsComposer {
-  private parser: RulesetParser;
+  private readonly parser: RulesetParser;
 
   constructor(parser: RulesetParser) {
     this.parser = parser;
@@ -55,7 +59,7 @@ export class AgentsComposer {
    */
   async compose(options: AgentsComposerOptions = {}): Promise<ComposedOutput> {
     const {
-      includeGlobs = ['.ruleset/rules/**/*.md', '.agents/rules/**/*.md'],
+      includeGlobs = [".ruleset/rules/**/*.md", ".agents/rules/**/*.md"],
       baseDir = process.cwd(),
       projectConfig = {},
       logger,
@@ -63,26 +67,28 @@ export class AgentsComposer {
       resolveFileReferences = true,
     } = options;
 
-    logger?.info('Starting AGENTS composition', { includeGlobs, baseDir });
+    logger?.info("Starting AGENTS composition", { includeGlobs, baseDir });
 
     // Find all matching files
     const files = await this.findSourceFiles(includeGlobs, baseDir, logger);
     if (files.length === 0) {
-      logger?.warn('No source files found for AGENTS composition');
+      logger?.warn("No source files found for AGENTS composition");
       return {
-        content: '# AGENTS\n\nNo rule files found for composition.',
-        metadata: {},
+        content: "# AGENTS\n\nNo rule files found for composition.",
+        metadata: emptyMetadata(),
         sources: [],
       };
     }
 
-    logger?.info(`Found ${files.length} source files`, { files: files.join(', ') });
+    logger?.info(`Found ${files.length} source files`, {
+      files: files.join(", "),
+    });
 
     // Parse and compile all files
     const compiledDocs: Array<{ doc: CompiledDoc; filePath: string }> = [];
     for (const filePath of files) {
       try {
-        const content = await fs.readFile(filePath, 'utf-8');
+        const content = await fs.readFile(filePath, "utf-8");
         const parsed = this.parser.parse(content, filePath);
 
         // Skip files that don't have rule metadata
@@ -92,19 +98,20 @@ export class AgentsComposer {
         }
 
         // Compile for agents-md destination
-        const compiled = compile(parsed, 'agents-md', projectConfig, { logger });
+        const compiled = compile(parsed, "agents-md", projectConfig, {
+          logger,
+        });
         compiledDocs.push({ doc: compiled, filePath });
       } catch (error) {
         logger?.error(`Failed to process ${filePath}: ${error}`);
-        continue;
       }
     }
 
     if (compiledDocs.length === 0) {
-      logger?.warn('No valid rule files found after parsing');
+      logger?.warn("No valid rule files found after parsing");
       return {
-        content: '# AGENTS\n\nNo valid rule files found for composition.',
-        metadata: {},
+        content: "# AGENTS\n\nNo valid rule files found for composition.",
+        metadata: emptyMetadata(),
         sources: [],
       };
     }
@@ -116,10 +123,10 @@ export class AgentsComposer {
     );
 
     // Compose content
-    let composedContent = await this.composeContent(
+    const composedContent = await this.composeContent(
       compiledDocs.map(({ doc, filePath }) => ({
         content: doc.output.content,
-        metadata: doc.output.metadata || {},
+        metadata: doc.output.metadata ?? emptyMetadata(),
         filePath,
       })),
       {
@@ -152,7 +159,7 @@ export class AgentsComposer {
         const matches = await glob(pattern, {
           cwd: baseDir,
           absolute: true,
-          ignore: ['**/node_modules/**', '**/.git/**', '**/dist/**'],
+          ignore: ["**/node_modules/**", "**/.git/**", "**/dist/**"],
         });
         allFiles.push(...matches);
       } catch (error) {
@@ -169,13 +176,13 @@ export class AgentsComposer {
    */
   private hasRuleMetadata(parsed: ParsedDoc): boolean {
     const frontmatter = parsed.source.frontmatter;
-    if (!frontmatter || typeof frontmatter !== 'object') {
+    if (!frontmatter || typeof frontmatter !== "object") {
       return false;
     }
 
     // Check for rule.* metadata
     const rule = (frontmatter as Record<string, unknown>).rule;
-    if (rule && typeof rule === 'object') {
+    if (rule && typeof rule === "object") {
       return true;
     }
 
@@ -186,9 +193,9 @@ export class AgentsComposer {
    * Merge front matter from multiple documents
    */
   private mergeFrontMatter(
-    frontmatters: Array<Record<string, unknown>>,
+    frontmatters: Record<string, unknown>[],
     logger?: Logger
-  ): Record<string, unknown> {
+  ): Record<string, JsonValue> {
     const merged: Record<string, unknown> = {};
 
     for (const frontmatter of frontmatters) {
@@ -201,9 +208,9 @@ export class AgentsComposer {
           const newArray = value as unknown[];
           merged[key] = [...existingArray, ...newArray];
         } else if (
-          typeof merged[key] === 'object' &&
+          typeof merged[key] === "object" &&
           merged[key] !== null &&
-          typeof value === 'object' &&
+          typeof value === "object" &&
           value !== null &&
           !Array.isArray(merged[key]) &&
           !Array.isArray(value)
@@ -216,15 +223,18 @@ export class AgentsComposer {
           );
         } else if (merged[key] !== value) {
           // Conflict - keep first value but warn
-          logger?.warn(`Front matter conflict for key "${key}", keeping first value`, {
-            existing: merged[key],
-            new: value,
-          });
+          logger?.warn(
+            `Front matter conflict for key "${key}", keeping first value`,
+            {
+              existing: merged[key],
+              new: value,
+            }
+          );
         }
       }
     }
 
-    return merged;
+    return merged as Record<string, JsonValue>;
   }
 
   /**
@@ -246,9 +256,9 @@ export class AgentsComposer {
         const newArray = value as unknown[];
         result[key] = [...existingArray, ...newArray];
       } else if (
-        typeof result[key] === 'object' &&
+        typeof result[key] === "object" &&
         result[key] !== null &&
-        typeof value === 'object' &&
+        typeof value === "object" &&
         value !== null &&
         !Array.isArray(result[key]) &&
         !Array.isArray(value)
@@ -261,10 +271,13 @@ export class AgentsComposer {
         );
       } else if (result[key] !== value) {
         // Conflict - keep first value but warn
-        logger?.warn(`Front matter conflict for nested key "${key}", keeping first value`, {
-          existing: result[key],
-          new: value,
-        });
+        logger?.warn(
+          `Front matter conflict for nested key "${key}", keeping first value`,
+          {
+            existing: result[key],
+            new: value,
+          }
+        );
       }
     }
 
@@ -277,7 +290,7 @@ export class AgentsComposer {
   private async composeContent(
     docs: Array<{
       content: string;
-      metadata: Record<string, unknown>;
+      metadata: Record<string, JsonValue>;
       filePath: string;
     }>,
     options: {
@@ -287,10 +300,15 @@ export class AgentsComposer {
       logger?: Logger;
     }
   ): Promise<string> {
-    const { deduplicateHeadings = true, resolveFileReferences = true, baseDir = process.cwd(), logger } = options;
+    const {
+      deduplicateHeadings = true,
+      resolveFileReferences = true,
+      baseDir = process.cwd(),
+      logger,
+    } = options;
 
     // Start with a main heading
-    let composed = '# AGENTS\n\n';
+    let composed = "# AGENTS\n\n";
     composed += `> This file is composed from ${docs.length} rule files.\n\n`;
 
     const seenHeadings = new Set<string>();
@@ -310,19 +328,28 @@ export class AgentsComposer {
 
       // Handle @filename references if enabled
       if (resolveFileReferences) {
-        processedContent = await this.resolveFileReferences(processedContent, filePath, baseDir, logger);
+        processedContent = await this.resolveFileReferences(
+          processedContent,
+          filePath,
+          baseDir,
+          logger
+        );
       }
 
       // Handle heading deduplication if enabled
       if (deduplicateHeadings) {
-        processedContent = this.deduplicateHeadings(processedContent, seenHeadings, logger);
+        processedContent = this.deduplicateHeadings(
+          processedContent,
+          seenHeadings,
+          logger
+        );
       }
 
       composed += processedContent;
 
       // Ensure proper spacing between sections
-      if (!processedContent.endsWith('\n\n')) {
-        composed += '\n\n';
+      if (!processedContent.endsWith("\n\n")) {
+        composed += "\n\n";
       }
     }
 
@@ -381,7 +408,7 @@ export class AgentsComposer {
           }
         } else {
           // Try common extensions
-          const extensions = ['.md', '.txt'];
+          const extensions = [".md", ".txt"];
 
           for (const ext of extensions) {
             const testPath = path.resolve(sourceDir, filename + ext);
@@ -417,15 +444,17 @@ export class AgentsComposer {
           const relativePath = path.relative(baseDir, resolvedPath!);
           const replacement = `[${filename}](./${relativePath})`;
 
-          processedContent = processedContent.slice(0, startIndex) +
-                            replacement +
-                            processedContent.slice(startIndex + fullMatch.length);
+          processedContent =
+            processedContent.slice(0, startIndex) +
+            replacement +
+            processedContent.slice(startIndex + fullMatch.length);
         } else {
           logger?.warn(`Could not resolve file reference: ${filename}`);
         }
-
       } catch (error) {
-        logger?.error(`Failed to resolve file reference: ${filename}: ${error}`);
+        logger?.error(
+          `Failed to resolve file reference: ${filename}: ${error}`
+        );
       }
     }
 
@@ -440,17 +469,17 @@ export class AgentsComposer {
     seenHeadings: Set<string>,
     logger?: Logger
   ): string {
-    const lines = content.split('\n');
+    const lines = content.split("\n");
     const processedLines: string[] = [];
     let inCodeBlock = false;
     let skipSection = false;
-    let currentSectionHeading = '';
+    let _currentSectionHeading = "";
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
       // Track code blocks to avoid processing headings inside them
-      if (line.startsWith('```')) {
+      if (line.startsWith("```")) {
         inCodeBlock = !inCodeBlock;
         processedLines.push(line);
         continue;
@@ -471,7 +500,7 @@ export class AgentsComposer {
         if (seenHeadings.has(normalizedHeading)) {
           logger?.debug(`Skipping duplicate heading: ${headingText}`);
           skipSection = true;
-          currentSectionHeading = headingText;
+          _currentSectionHeading = headingText;
 
           // Skip until we find a heading of the same or higher level
           let j = i + 1;
@@ -485,10 +514,9 @@ export class AgentsComposer {
           }
           i = j - 1; // Will be incremented by for loop
           continue;
-        } else {
-          seenHeadings.add(normalizedHeading);
-          skipSection = false;
         }
+        seenHeadings.add(normalizedHeading);
+        skipSection = false;
       }
 
       if (!skipSection) {
@@ -496,6 +524,6 @@ export class AgentsComposer {
       }
     }
 
-    return processedLines.join('\n');
+    return processedLines.join("\n");
   }
 }

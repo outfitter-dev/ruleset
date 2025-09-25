@@ -1,13 +1,17 @@
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import {
+  buildHandlebarsOptions,
+  resolveProviderSettings,
+} from "@rulesets/providers";
 import type {
   CompiledDoc,
   DestinationProvider,
   JSONSchema7,
   Logger,
   ParsedDoc,
-} from '../interfaces';
-import { buildHandlebarsOptions, readDestinationConfig } from './utils';
+} from "../interfaces";
+import { extractFrontmatter } from "./frontmatter";
 
 type CopilotConfig = {
   outputPath?: string;
@@ -15,16 +19,16 @@ type CopilotConfig = {
 
 export class CopilotProvider implements DestinationProvider {
   get name(): string {
-    return 'copilot';
+    return "copilot";
   }
 
   configSchema(): JSONSchema7 {
     return {
-      type: 'object',
+      type: "object",
       properties: {
         outputPath: {
-          type: 'string',
-          description: 'Path where the copilot rules should be written',
+          type: "string",
+          description: "Path where the copilot rules should be written",
         },
       },
       additionalProperties: false,
@@ -40,10 +44,13 @@ export class CopilotProvider implements DestinationProvider {
     projectConfig: Record<string, unknown>;
     logger: Logger;
   }) {
-    const destinationConfig = readDestinationConfig(parsed, 'copilot');
+    const frontmatter = extractFrontmatter(parsed);
+    const settings = frontmatter
+      ? resolveProviderSettings(frontmatter, "copilot")
+      : undefined;
     return buildHandlebarsOptions({
-      destinationId: 'copilot',
-      destinationConfig,
+      providerId: "copilot",
+      config: settings?.config,
       logger,
     });
   }
@@ -57,7 +64,7 @@ export class CopilotProvider implements DestinationProvider {
       const stats = await fs.stat(normalised);
       return stats.isDirectory();
     } catch {
-      return path.extname(normalised) === '';
+      return path.extname(normalised) === "";
     }
   }
 
@@ -102,10 +109,10 @@ export class CopilotProvider implements DestinationProvider {
     const baseDir = destHasExt ? path.dirname(resolvedDest) : resolvedDest;
 
     const rawOutput =
-      typeof cfg.outputPath === 'string' ? cfg.outputPath.trim() : '';
+      typeof cfg.outputPath === "string" ? cfg.outputPath.trim() : "";
     const rawName = compiled.source.path
       ? path.basename(compiled.source.path)
-      : 'instructions';
+      : "instructions";
     const fallbackName = path.extname(rawName) ? rawName : `${rawName}.md`;
 
     const outputPath = await this.resolveOutputPath({
@@ -118,23 +125,23 @@ export class CopilotProvider implements DestinationProvider {
 
     const dir = path.dirname(outputPath);
 
-    logger.info('Writing copilot rules', {
+    logger.info("Writing copilot rules", {
       outputPath,
       destinationId: compiled.context.destinationId,
-      provider: 'copilot',
+      provider: "copilot",
     });
 
     try {
       await fs.mkdir(dir, { recursive: true });
-      await fs.writeFile(outputPath, compiled.output.content, 'utf-8');
-      logger.debug('Copilot write complete', {
+      await fs.writeFile(outputPath, compiled.output.content, "utf-8");
+      logger.debug("Copilot write complete", {
         destinationId: compiled.context.destinationId,
         outputPath,
-        provider: 'copilot',
+        provider: "copilot",
       });
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      logger.error(err, { provider: 'copilot', op: 'write', path: outputPath });
+      logger.error(err, { provider: "copilot", op: "write", path: outputPath });
       throw err;
     }
   }

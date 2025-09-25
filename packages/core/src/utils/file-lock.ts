@@ -1,6 +1,6 @@
-import { promises as fs } from 'node:fs';
-import { dirname } from 'node:path';
-import { RESOURCE_LIMITS } from '../config/limits';
+import { promises as fs } from "node:fs";
+import { dirname } from "node:path";
+import { RESOURCE_LIMITS } from "../config/limits";
 
 const { fileLock: limits } = RESOURCE_LIMITS;
 
@@ -25,7 +25,7 @@ export class FileLock {
     while (Date.now() - startTime < timeout) {
       try {
         // Try to create lock file exclusively
-        const fd = await fs.open(this.lockPath, 'wx');
+        const fd = await fs.open(this.lockPath, "wx");
         await fd.write(
           JSON.stringify({
             pid: process.pid,
@@ -36,7 +36,7 @@ export class FileLock {
         return true;
       } catch (error: unknown) {
         // Lock file exists, check if stale
-        if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
+        if ((error as NodeJS.ErrnoException).code === "EEXIST") {
           const isStale = await this.isLockStale();
           if (isStale) {
             await this.forceRelease();

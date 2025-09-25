@@ -69,17 +69,17 @@ export const RESOURCE_LIMITS = {
 } as const;
 
 export const FILE_EXTENSIONS = {
-  markdown: ['.md'],
-  toml: ['.toml'],
-  json: ['.json', '.jsonc'],
+  markdown: [".md"],
+  toml: [".toml"],
+  json: [".json", ".jsonc"],
 } as const;
 
 export const DESTINATION_IDS = [
-  'cursor',
-  'windsurf',
-  'claude-code',
-  'agents-md',
-  'copilot',
+  "cursor",
+  "windsurf",
+  "claude-code",
+  "agents-md",
+  "copilot",
 ] as const;
 
 export type DestinationId = (typeof DESTINATION_IDS)[number];
