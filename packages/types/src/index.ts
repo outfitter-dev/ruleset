@@ -534,6 +534,7 @@ export const rulesetProviderConfigSchema = z
     handlebars: z
       .union([z.boolean(), rulesetProviderHandlebarsSchema])
       .optional(),
+    failOnMissingCapabilities: z.boolean().optional(),
   })
   .catchall(jsonValueSchema);
 
@@ -550,6 +551,7 @@ const rulesetProjectBuildSchema = z
     parallel: z.boolean().optional(),
     maxConcurrency: z.number().int().positive().optional(),
     cache: z.boolean().optional(),
+    failOnMissingCapabilities: z.boolean().optional(),
   })
   .catchall(jsonValueSchema);
 

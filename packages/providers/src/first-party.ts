@@ -7,8 +7,12 @@ import {
   RULESET_CAPABILITIES,
 } from "@rulesets/types";
 
-import type { ProviderCompileInput, ProviderEntry } from "./index";
-import { defineProvider } from "./index";
+import {
+  defineProvider,
+  PROVIDER_SDK_VERSION,
+  type ProviderCompileInput,
+  type ProviderEntry,
+} from "./index";
 
 const PROVIDER_VERSION = "0.4.0-dev";
 const LEADING_CURRENT_DIR = /^\.\//;
@@ -32,7 +36,10 @@ const createMarkdownProvider = (providerId: string): ProviderEntry =>
     handshake: {
       providerId,
       version: PROVIDER_VERSION,
+      sdkVersion: PROVIDER_SDK_VERSION,
       capabilities: DEFAULT_CAPABILITIES,
+      sandbox: { mode: "in-process" },
+      runtime: { bun: ">=1.0.0" },
     },
     compile: ({
       document,

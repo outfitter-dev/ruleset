@@ -84,6 +84,9 @@ Tracking work toward the Rulesets v0.4.0 rewrite.
 - JSON Schema exports in `@rulesets/types` now carry stable `$id` fields under `https://ruleset.md/schema/*` plus helper metadata for future publication.
 - Shipped versioned capability registry + result primitives in `@rulesets/types`, updated provider SDK to consume descriptors, refreshed CLI stubs to advertise markdown/filesystem/diagnostics support, and added focused tests; lint/typecheck scripts run clean post-update.
 - Orchestrator enforces compile target capability requirements, returning structured diagnostics when providers lack declarations; added Bun tests to cover success/failure paths.
+- Provider SDK now embeds SDK version + sandbox descriptors in handshakes, with compatibility checks feeding orchestrator skip diagnostics for mismatched providers; CLI/watch flows surface the new `incompatible-provider` skip reason.
+- Implemented Bun subprocess sandbox execution path: orchestrator serializes compile inputs, spawns provider entry scripts via `bun`, and treats failures as structured diagnostics; added tests covering sandbox success and compatibility skips.
+- Added provider/project config flag `failOnMissingCapabilities` so teams can escalate missing capabilities from skip diagnostics to hard failures; orchestrator now throws when the flag is set, and tests cover the new behaviour.
 - Fixed CLI regression where running `rulesets compile` without explicit sources ignored the default `./.ruleset/rules` directory when config sources were unset; the command now falls back to the CLI default path while still honoring configured sources.
 - Added Bun-based smoke tests for `@rulesets/transform`, `@rulesets/renderer`, and `@rulesets/lib` so the workspace `bun run test` gate passes without "No tests found" failures; ensured lib tests use a provider capability declaration that satisfies the orchestrator negotiation.
 

@@ -10,6 +10,8 @@ import {
 } from "@rulesets/parser";
 import {
   createNoopProvider,
+  evaluateProviderCompatibility,
+  PROVIDER_SDK_VERSION,
   type ProviderCompileInput,
   type ProviderEntry,
   type ProviderHandshake,
@@ -24,28 +26,26 @@ import {
   type RulesetTransform,
   runTransforms,
 } from "@rulesets/transform";
-import type {
-  CompilationInput,
-  CompilationOutput,
-  CompilationSourceSummary,
-  CompileArtifact,
-  CompileTarget,
-  JsonValue,
-  RulesetCapabilityId,
-  RulesetDependency,
-  RulesetDiagnostic,
-  RulesetDiagnostics,
-  RulesetDocument,
-  RulesetProjectConfig,
-  RulesetProviderConfig,
-  RulesetProviderHandlebarsConfig,
-  RulesetRuleFrontmatter,
-  RulesetRuntimeContext,
-  RulesetSource,
-} from "@rulesets/types";
 import {
+  type CompilationInput,
+  type CompilationOutput,
+  type CompilationSourceSummary,
+  type CompileArtifact,
+  type CompileTarget,
   createRulesetError,
   isRulesetError,
+  type JsonValue,
+  type RulesetCapabilityId,
+  type RulesetDependency,
+  type RulesetDiagnostic,
+  type RulesetDiagnostics,
+  type RulesetDocument,
+  type RulesetProjectConfig,
+  type RulesetProviderConfig,
+  type RulesetProviderHandlebarsConfig,
+  type RulesetRuleFrontmatter,
+  type RulesetRuntimeContext,
+  type RulesetSource,
   resolveRulesetCapabilities,
 } from "@rulesets/types";
 import {
@@ -53,6 +53,7 @@ import {
   type RulesetValidator,
   type ValidationOptions,
 } from "@rulesets/validator";
+import { executeProviderCompile } from "./provider-executor";
 
 export type PipelineStartEvent = {
   readonly kind: "pipeline:start";
@@ -103,7 +104,11 @@ export type TargetSkippedEvent = {
   readonly kind: "target:skipped";
   readonly source: RulesetSource;
   readonly target: CompileTarget;
-  readonly reason: "missing-capability" | "render-error" | "provider-error";
+  readonly reason:
+    | "missing-capability"
+    | "render-error"
+    | "provider-error"
+    | "incompatible-provider";
   readonly diagnostics: RulesetDiagnostics;
   readonly missingCapabilities?: readonly string[];
 };
@@ -183,11 +188,23 @@ export type Orchestrator = (
 ) => Promise<CompilationOutput>;
 
 const buildProviderRegistry = (
-  providers: readonly ProviderEntry[]
-): Map<string, ProviderEntry> =>
-  new Map(
-    providers.map((provider) => [provider.handshake.providerId, provider])
-  );
+  providers: readonly ProviderEntry[],
+  compatibilityIssues: Map<string, RulesetDiagnostics>
+): Map<string, ProviderEntry> => {
+  const registry = new Map<string, ProviderEntry>();
+
+  for (const provider of providers) {
+    const diagnostics = evaluateProviderCompatibility(provider);
+    if (diagnostics.length > 0) {
+      compatibilityIssues.set(provider.handshake.providerId, diagnostics);
+      continue;
+    }
+
+    registry.set(provider.handshake.providerId, provider);
+  }
+
+  return registry;
+};
 
 const ensureProvider = (
   registry: Map<string, ProviderEntry>,
@@ -201,6 +218,7 @@ const ensureProvider = (
   const noopHandshake: ProviderHandshake = {
     providerId: targetProviderId,
     version: "0.0.0-placeholder",
+    sdkVersion: PROVIDER_SDK_VERSION,
     capabilities: [],
   };
 
@@ -264,6 +282,17 @@ const isJsonObject = (
   value: JsonValue | undefined
 ): value is Record<string, JsonValue> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
+
+const shouldFailMissingCapabilities = (
+  providerId: string,
+  projectConfig?: RulesetProjectConfig
+): boolean => {
+  const providerConfig = projectConfig?.providers?.[providerId];
+  if (providerConfig?.failOnMissingCapabilities !== undefined) {
+    return providerConfig.failOnMissingCapabilities;
+  }
+  return projectConfig?.build?.failOnMissingCapabilities === true;
+};
 
 const isNonEmptyArray = (value: unknown): value is readonly unknown[] =>
   Array.isArray(value) && value.length > 0;
@@ -867,7 +896,11 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
       invalidatePaths,
     } = resolveOptions(defaults, overrides);
 
-    const registry = buildProviderRegistry(providers);
+    const providerCompatibilityIssues = new Map<string, RulesetDiagnostics>();
+    const registry = buildProviderRegistry(
+      providers,
+      providerCompatibilityIssues
+    );
     const providerCapabilityCache: ProviderCapabilityCache = new WeakMap();
     const cacheState = await loadCompilationCache(input.context.cacheDir);
 
@@ -955,7 +988,6 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
           target,
         } satisfies TargetStartEvent;
 
-        const provider = ensureProvider(registry, target.providerId);
         const requiredCapabilities = deriveRequiredCapabilities(
           documentWithOverrides,
           target,
@@ -972,6 +1004,27 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
           target: targetWithCapabilities,
           required: requiredCapabilities,
         } satisfies TargetCapabilitiesEvent;
+
+        const compatibilityDiagnostics = providerCompatibilityIssues.get(
+          target.providerId
+        );
+
+        if (compatibilityDiagnostics && compatibilityDiagnostics.length > 0) {
+          appendDiagnostics(aggregatedDiagnostics, compatibilityDiagnostics);
+          appendDiagnostics(sourceDiagnostics, compatibilityDiagnostics);
+
+          yield {
+            kind: "target:skipped",
+            source,
+            target: targetWithCapabilities,
+            reason: "incompatible-provider",
+            diagnostics: compatibilityDiagnostics,
+          } satisfies TargetSkippedEvent;
+
+          continue;
+        }
+
+        const provider = ensureProvider(registry, target.providerId);
 
         const missingCapabilities = collectMissingCapabilities(
           provider,
@@ -1026,6 +1079,36 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
 
           appendDiagnostics(aggregatedDiagnostics, [diagnostic]);
           appendDiagnostics(sourceDiagnostics, [diagnostic]);
+
+          if (
+            shouldFailMissingCapabilities(
+              target.providerId,
+              input.projectConfig
+            )
+          ) {
+            let configurationPath: string | undefined;
+            if (
+              input.projectConfig?.providers?.[target.providerId]
+                ?.failOnMissingCapabilities === true
+            ) {
+              configurationPath = `providers.${target.providerId}.failOnMissingCapabilities`;
+            } else if (
+              input.projectConfig?.build?.failOnMissingCapabilities === true
+            ) {
+              configurationPath = "build.failOnMissingCapabilities";
+            }
+
+            throw createRulesetError({
+              code: "PROVIDER_CAPABILITY_UNSUPPORTED",
+              message: `${diagnostic.message} Hard failure requested via configuration.`,
+              diagnostics: [diagnostic],
+              details: {
+                providerId: target.providerId,
+                missing: missingCapabilities,
+                configuration: configurationPath,
+              },
+            });
+          }
 
           const skippedEvent: TargetSkippedEvent = {
             kind: "target:skipped",
@@ -1148,7 +1231,10 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
           rendered: renderedArtifact,
         };
 
-        const providerResult = await provider.compile(compileInput);
+        const providerResult = await executeProviderCompile(
+          provider,
+          compileInput
+        );
 
         if (!providerResult.ok) {
           const providerDiagnostics = diagnosticsFromUnknown(

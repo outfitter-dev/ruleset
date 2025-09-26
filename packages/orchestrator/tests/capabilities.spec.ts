@@ -6,7 +6,9 @@ import path from "node:path";
 import {
   createDefaultProviders,
   defineProvider,
+  PROVIDER_SDK_VERSION,
   type ProviderCompileInput,
+  type ProviderEntry,
   providerCapability,
 } from "@rulesets/providers";
 import {
@@ -16,6 +18,7 @@ import {
   RULESETS_VERSION_TAG,
   type RulesetRuntimeContext,
   type RulesetSource,
+  type RulesetVersionTag,
 } from "@rulesets/types";
 
 import { type CompilationEvent, createOrchestrator } from "../src/index";
@@ -81,7 +84,9 @@ describe("orchestrator capability negotiation", () => {
           handshake: {
             providerId: "noop",
             version: "0.0.1-test",
+            sdkVersion: PROVIDER_SDK_VERSION,
             capabilities: [],
+            sandbox: { mode: "in-process" },
           },
           compile,
         }),
@@ -116,7 +121,9 @@ describe("orchestrator capability negotiation", () => {
           handshake: {
             providerId: "plain",
             version: "0.0.2-test",
+            sdkVersion: PROVIDER_SDK_VERSION,
             capabilities: [providerCapability("render:markdown")],
+            sandbox: { mode: "in-process" },
           },
           compile,
         }),
@@ -156,7 +163,9 @@ describe("orchestrator capability negotiation", () => {
           handshake: {
             providerId: "templated",
             version: "0.0.3-test",
+            sdkVersion: PROVIDER_SDK_VERSION,
             capabilities: [providerCapability("render:handlebars")],
+            sandbox: { mode: "in-process" },
           },
           compile,
         }),
@@ -179,6 +188,176 @@ describe("orchestrator capability negotiation", () => {
     expect(result.artifacts[0]?.target.capabilities).toContain(
       "render:handlebars"
     );
+  });
+
+  test("skips providers with incompatible SDK versions", async () => {
+    const compile = vi.fn((input: ProviderCompileInput) =>
+      createResultOk<CompileArtifact>({
+        target: input.target,
+        contents: input.document.source.contents,
+        diagnostics: [],
+      })
+    );
+
+    const incompatibleProvider = defineProvider({
+      handshake: {
+        providerId: "legacy",
+        version: "0.0.1-test",
+        sdkVersion: "1.0.0" as RulesetVersionTag,
+        capabilities: [providerCapability("render:markdown")],
+        sandbox: { mode: "in-process" },
+      },
+      compile,
+    });
+
+    const events: CompilationEvent[] = [];
+    const orchestrator = createOrchestrator({
+      providers: [incompatibleProvider],
+      onEvent: (event) => {
+        events.push(event);
+      },
+    });
+
+    const result = await orchestrator({
+      context: createRuntimeContext(),
+      sources: [createSource()],
+      targets: [
+        {
+          providerId: "legacy",
+          outputPath: "/virtual/output",
+        },
+      ],
+    });
+
+    expect(compile).not.toHaveBeenCalled();
+    expect(result.artifacts.length).toBe(0);
+    expect(
+      result.diagnostics.some(
+        (diag) => diag.message.includes("SDK") && diag.tags?.includes("legacy")
+      )
+    ).toBe(true);
+
+    const skippedEvent = events.find(
+      (event): event is TargetSkippedEvent =>
+        event.kind === "target:skipped" &&
+        event.reason === "incompatible-provider"
+    );
+
+    expect(skippedEvent).toBeDefined();
+    expect(skippedEvent?.diagnostics.length).toBeGreaterThan(0);
+  });
+
+  test("executes providers inside bun subprocess sandbox", async () => {
+    const sandboxDir = await mkdtemp(path.join(tmpdir(), "rulesets-sandbox-"));
+    const scriptPath = path.join(sandboxDir, "provider.js");
+
+    await writeFile(
+      scriptPath,
+      `const chunks = [];
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => chunks.push(chunk));
+process.stdin.on("end", () => {
+  try {
+    const payload = JSON.parse(chunks.join(""));
+    const artifact = {
+      target: payload.input.target,
+      contents: payload.input.document.source.contents + " :: sandbox",
+      diagnostics: [],
+    };
+    process.stdout.write(JSON.stringify({ ok: true, artifact }));
+  } catch (error) {
+    process.stdout.write(
+      JSON.stringify({
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    );
+    process.exit(1);
+  }
+});
+`,
+      "utf8"
+    );
+
+    const compile = vi.fn<ProviderEntry["compile"]>();
+
+    const sandboxedProvider = defineProvider({
+      handshake: {
+        providerId: "sandbox",
+        version: "0.0.4-test",
+        sdkVersion: PROVIDER_SDK_VERSION,
+        capabilities: [providerCapability("render:markdown")],
+        sandbox: {
+          mode: "bun-subprocess",
+          entry: scriptPath,
+        },
+      },
+      compile,
+    });
+
+    const orchestrator = createOrchestrator({ providers: [sandboxedProvider] });
+
+    try {
+      const result = await orchestrator({
+        context: createRuntimeContext(),
+        sources: [createSource()],
+        targets: [
+          {
+            providerId: "sandbox",
+            outputPath: "/virtual/output",
+          },
+        ],
+      });
+
+      expect(compile).not.toHaveBeenCalled();
+      expect(result.artifacts.length).toBe(1);
+      expect(result.artifacts[0]?.contents).toContain(":: sandbox");
+    } finally {
+      await rm(sandboxDir, { recursive: true, force: true });
+    }
+  });
+
+  test("hard-fails when configuration requires missing capabilities", async () => {
+    const provider = defineProvider({
+      handshake: {
+        providerId: "strict",
+        version: "0.0.5-test",
+        sdkVersion: PROVIDER_SDK_VERSION,
+        capabilities: [],
+        sandbox: { mode: "in-process" },
+      },
+      compile: () =>
+        createResultOk<CompileArtifact>({
+          target: {
+            providerId: "strict",
+            outputPath: "/virtual/output",
+          },
+          contents: "noop",
+          diagnostics: [],
+        }),
+    });
+
+    const orchestrator = createOrchestrator({ providers: [provider] });
+
+    await expect(
+      orchestrator({
+        context: createRuntimeContext(),
+        sources: [createSource()],
+        targets: [
+          {
+            providerId: "strict",
+            outputPath: "/virtual/output",
+          },
+        ],
+        projectConfig: {
+          providers: {
+            strict: {
+              failOnMissingCapabilities: true,
+            },
+          },
+        },
+      })
+    ).rejects.toMatchObject({ code: "PROVIDER_CAPABILITY_UNSUPPORTED" });
   });
 
   test("emits streaming events for each pipeline stage", async () => {
@@ -225,7 +404,9 @@ describe("orchestrator capability negotiation", () => {
       handshake: {
         providerId: "memo",
         version: "0.0.1-test",
+        sdkVersion: PROVIDER_SDK_VERSION,
         capabilities: [providerCapability("render:markdown")],
+        sandbox: { mode: "in-process" },
       },
       compile,
     });
@@ -301,7 +482,9 @@ describe("orchestrator capability negotiation", () => {
       handshake: {
         providerId: "noop",
         version: "0.0.1-test",
+        sdkVersion: PROVIDER_SDK_VERSION,
         capabilities: [providerCapability("render:markdown")],
+        sandbox: { mode: "in-process" },
       },
       compile,
     });

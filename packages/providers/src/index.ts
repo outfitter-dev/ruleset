@@ -10,11 +10,14 @@ import {
   getRulesetCapability,
   type JsonValue,
   type Result,
+  RULESETS_VERSION_TAG,
   type RulesetCapabilityId,
+  type RulesetDiagnostic,
   type RulesetDiagnostics,
   type RulesetDocument,
   type RulesetProjectConfig,
   type RulesetRuntimeContext,
+  type RulesetVersionTag,
 } from "@rulesets/types";
 import type { HelperDelegate } from "handlebars";
 
@@ -57,10 +60,30 @@ export type ProviderCapability = CapabilityDescriptor & {
   readonly optional?: boolean;
 };
 
+export type ProviderSandboxMode = "in-process" | "bun-subprocess" | "custom";
+
+export type ProviderSandboxDescriptor = {
+  readonly mode: ProviderSandboxMode;
+  readonly command?: string;
+  readonly entry?: string;
+  readonly args?: readonly string[];
+  readonly env?: Readonly<Record<string, string>>;
+};
+
+export type ProviderRuntimeDescriptor = {
+  readonly bun?: string;
+  readonly node?: string;
+};
+
+export const PROVIDER_SDK_VERSION: RulesetVersionTag = RULESETS_VERSION_TAG;
+
 export type ProviderHandshake = {
   readonly providerId: string;
   readonly version: string;
+  readonly sdkVersion: RulesetVersionTag;
   readonly capabilities: readonly ProviderCapability[];
+  readonly sandbox?: ProviderSandboxDescriptor;
+  readonly runtime?: ProviderRuntimeDescriptor;
 };
 
 export type ProviderCompileInput = {
@@ -118,6 +141,91 @@ export const createNoopProvider = (
     return createResultOk(artifact);
   },
 });
+
+const SEMVER_MAJOR_PATTERN = /^(\d+)\./;
+
+const parseSemverMajor = (version: string): number | undefined => {
+  const match = SEMVER_MAJOR_PATTERN.exec(version);
+  if (!match) {
+    return;
+  }
+  return Number.parseInt(match[1] ?? "", 10);
+};
+
+const createSdkDiagnostic = (
+  providerId: string,
+  message: string,
+  details?: Record<string, JsonValue>
+): RulesetDiagnostic => ({
+  level: "error",
+  message,
+  hint:
+    details !== undefined
+      ? `Provider ${providerId} is incompatible with SDK ${PROVIDER_SDK_VERSION}. Details: ${JSON.stringify(details)}`
+      : `Provider ${providerId} is incompatible with SDK ${PROVIDER_SDK_VERSION}.`,
+  tags: ["provider", providerId, "sdk"],
+});
+
+export type ProviderCompatibilityOptions = {
+  readonly sdkVersion?: RulesetVersionTag;
+};
+
+export const evaluateProviderCompatibility = (
+  provider: ProviderEntry,
+  options: ProviderCompatibilityOptions = {}
+): RulesetDiagnostics => {
+  const diagnostics: RulesetDiagnostic[] = [];
+  const expectedSdkVersion = options.sdkVersion ?? PROVIDER_SDK_VERSION;
+  const expectedMajor = parseSemverMajor(expectedSdkVersion);
+  const actualSdkVersion = provider.handshake.sdkVersion;
+  const actualMajor = parseSemverMajor(actualSdkVersion);
+
+  if (expectedMajor === undefined) {
+    diagnostics.push(
+      createSdkDiagnostic(
+        provider.handshake.providerId,
+        `Invalid orchestrator SDK version: ${expectedSdkVersion}`,
+        {
+          orchestratorSdkVersion: expectedSdkVersion,
+        }
+      )
+    );
+    return diagnostics;
+  }
+
+  if (actualMajor === undefined) {
+    diagnostics.push(
+      createSdkDiagnostic(
+        provider.handshake.providerId,
+        `Provider reports an invalid SDK version: ${actualSdkVersion}`,
+        {
+          providerSdkVersion: actualSdkVersion,
+        }
+      )
+    );
+    return diagnostics;
+  }
+
+  if (actualMajor !== expectedMajor) {
+    diagnostics.push(
+      createSdkDiagnostic(
+        provider.handshake.providerId,
+        `Provider targets SDK major ${actualMajor}, expected ${expectedMajor}.`,
+        {
+          expectedSdkVersion,
+          providerSdkVersion: actualSdkVersion,
+        }
+      )
+    );
+  }
+
+  return diagnostics;
+};
+
+export const isProviderCompatible = (
+  provider: ProviderEntry,
+  options?: ProviderCompatibilityOptions
+): boolean => evaluateProviderCompatibility(provider, options).length === 0;
 
 export const providerCapability = (
   capability: ProviderCapabilityInput,

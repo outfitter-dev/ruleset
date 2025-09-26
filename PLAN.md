@@ -19,16 +19,16 @@
 - [x] Publish versioned capability registry and error/result primitives (using `type-fest` helpers where possible).
 
 ## 4. Orchestrator Pipeline
-- [ ] Build the Source → Parse → Validate → Transform → Render → Write pipeline in `@rulesets/orchestrator` with streaming AsyncIterable events.
-- [ ] Implement persistent cache management under `.ruleset/cache` with content hashing and dependency graph tracking.
-- [ ] Add incremental compile/watch support prioritising correctness, with configuration hooks for performance tuning.
-- [ ] Expose high-level APIs through `@rulesets/lib` (and `@rulesets/api` if needed) for library consumers.
+- [x] Build the Source → Parse → Validate → Transform → Render → Write pipeline in `@rulesets/orchestrator` with streaming AsyncIterable events.
+- [x] Implement persistent cache management under `.ruleset/cache` with content hashing and dependency graph tracking.
+- [x] Add incremental compile/watch support prioritising correctness, with configuration hooks for performance tuning.
+- [x] Expose high-level APIs through `@rulesets/lib` (and `@rulesets/api` if needed) for library consumers.
 
 ## 5. Provider SDK & Isolation
-- [ ] Ship the versioned Provider SDK (capability negotiation, sandbox handshake, structured errors).
-- [ ] Implement default Bun-based subprocess isolation plus strict Handlebars helper sandboxing.
+- [x] Ship the versioned Provider SDK (capability negotiation, sandbox handshake, structured errors).
+- [x] Implement default Bun-based subprocess isolation plus strict Handlebars helper sandboxing.
 - [ ] Port first-party providers (AGENTS.md, Cursor, Windsurf, Claude Code, Codex, AMP, Gemini, RooCode, OpenCode, Zed, GitHub Copilot) onto the new SDK.
-- [ ] Add graceful warnings + config-driven hard-fail behaviour when providers request unsupported capabilities.
+- [x] Add graceful warnings + config-driven hard-fail behaviour when providers request unsupported capabilities.
 
 ## 6. Rendering & Template Engines
 - [ ] Deliver Handlebars renderer with strict defaults and curated helper set.
