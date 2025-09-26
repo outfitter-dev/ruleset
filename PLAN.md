@@ -31,7 +31,7 @@
 - [x] Add graceful warnings + config-driven hard-fail behaviour when providers request unsupported capabilities.
 
 ## 6. Rendering & Template Engines
-- [ ] Deliver Handlebars renderer with strict defaults and curated helper set.
+- [x] Deliver Handlebars renderer with strict defaults and curated helper set.
 - [ ] Implement Markdown passthrough renderer and XML-tag support for section names.
 - [ ] Provide extension hooks for future JSON/YAML emitters without committing to implementation yet.
 

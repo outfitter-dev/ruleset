@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import {
   createNoopParser,
@@ -17,7 +18,9 @@ import {
   type ProviderHandshake,
 } from "@rulesets/providers";
 import {
-  createPassthroughRenderer,
+  createHandlebarsRenderer,
+  type HandlebarsHelper,
+  type HandlebarsHelperMap,
   type RendererOptions,
   type RulesetRenderer,
 } from "@rulesets/renderer";
@@ -328,8 +331,12 @@ const cloneArtifact = (artifact: CompileArtifact): CompileArtifact => ({
 
 type HandlebarsDirective = {
   readonly enabled: boolean;
-  readonly helpers?: unknown;
-  readonly partials?: unknown;
+  readonly force?: boolean;
+  readonly strict?: boolean;
+  readonly noEscape?: boolean;
+  readonly helpers?: readonly string[];
+  readonly partials?: Record<string, string>;
+  readonly projectConfigOverrides?: Record<string, JsonValue>;
 };
 
 const normalizeHandlebarsDirective = (
@@ -344,10 +351,22 @@ const normalizeHandlebarsDirective = (
   }
 
   if (isJsonObject(value)) {
+    const helpers = toStringArray(value.helpers);
+    const partials = toPartialRecord(value.partials);
+    const overrides = toJsonRecord(value.projectConfigOverrides);
+    const force = typeof value.force === "boolean" ? value.force : undefined;
+    const strict = typeof value.strict === "boolean" ? value.strict : undefined;
+    const noEscape =
+      typeof value.noEscape === "boolean" ? value.noEscape : undefined;
+
     return {
       enabled: true,
-      helpers: value.helpers,
-      partials: value.partials,
+      force,
+      strict,
+      noEscape,
+      helpers,
+      partials,
+      projectConfigOverrides: overrides,
     };
   }
 
@@ -370,10 +389,28 @@ const normalizeConfigHandlebarsDirective = (
     return { enabled: value };
   }
 
+  const helpers = toStringArray(value.helpers);
+  const partials = toPartialRecord(value.partials);
+  const rawOverrides = (value as { projectConfigOverrides?: unknown })
+    .projectConfigOverrides;
+  const overrides = toJsonRecord(rawOverrides);
+  const force = value.force === true ? true : undefined;
+  const strict = typeof value.strict === "boolean" ? value.strict : undefined;
+  const noEscape =
+    typeof value.noEscape === "boolean" ? value.noEscape : undefined;
+  const enabledField =
+    typeof (value as { enabled?: unknown }).enabled === "boolean"
+      ? ((value as { enabled?: boolean }).enabled as boolean)
+      : undefined;
+
   return {
-    enabled: true,
-    helpers: value.helpers,
-    partials: value.partials,
+    enabled: enabledField ?? true,
+    force,
+    strict,
+    noEscape,
+    helpers,
+    partials,
+    projectConfigOverrides: overrides,
   };
 };
 
@@ -381,6 +418,16 @@ type HandlebarsRequirements = {
   requiresHandlebars: boolean;
   requiresHelpers: boolean;
   requiresPartials: boolean;
+};
+
+type AggregatedHandlebarsSettings = {
+  readonly enabled: boolean;
+  readonly force: boolean;
+  readonly strict?: boolean;
+  readonly noEscape?: boolean;
+  readonly helperModules: readonly string[];
+  readonly inlinePartials: Record<string, string>;
+  readonly projectConfigOverrides?: Record<string, JsonValue>;
 };
 
 const CACHE_FILENAME = "orchestrator-cache.json";
@@ -402,6 +449,48 @@ const PARTIAL_EXTENSIONS = [
 ];
 
 const normalizeFsPath = (value: string): string => path.resolve(value);
+
+const toStringArray = (value: unknown): readonly string[] | undefined => {
+  if (!Array.isArray(value)) {
+    return;
+  }
+
+  const entries = value
+    .map((entry) => (typeof entry === "string" ? entry.trim() : undefined))
+    .filter((entry): entry is string => Boolean(entry));
+
+  return entries.length > 0 ? entries : undefined;
+};
+
+const toPartialRecord = (
+  value: unknown
+): Record<string, string> | undefined => {
+  if (!isPlainObjectLike(value)) {
+    return;
+  }
+
+  const record: Record<string, string> = {};
+  for (const [name, template] of Object.entries(value)) {
+    if (typeof template === "string" && template.trim().length > 0) {
+      record[name] = template;
+    }
+  }
+
+  return Object.keys(record).length > 0 ? record : undefined;
+};
+
+const toJsonRecord = (
+  value: unknown
+): Record<string, JsonValue> | undefined => {
+  const candidate = value as JsonValue | undefined;
+  if (!isJsonObject(candidate)) {
+    return;
+  }
+  return candidate as Record<string, JsonValue>;
+};
+
+const isPlainObjectLike = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
 const fileExists = async (target: string): Promise<boolean> => {
   try {
@@ -446,7 +535,7 @@ const collectDependencyDirectories = (
 const resolvePartialDependencyPaths = async (
   dependency: RulesetDependency,
   directories: readonly string[]
-): Promise<Set<string>> => {
+): Promise<string[]> => {
   const resolved = new Set<string>();
   if (dependency.resolvedPath) {
     resolved.add(normalizeFsPath(dependency.resolvedPath));
@@ -454,7 +543,7 @@ const resolvePartialDependencyPaths = async (
 
   const identifier = dependency.identifier;
   if (!identifier) {
-    return resolved;
+    return [...resolved];
   }
 
   const hasExtension = path.extname(identifier) !== "";
@@ -466,12 +555,12 @@ const resolvePartialDependencyPaths = async (
     for (const candidate of candidateNames) {
       const candidatePath = path.resolve(directory, candidate);
       if (await fileExists(candidatePath)) {
-        resolved.add(candidatePath);
+        resolved.add(normalizeFsPath(candidatePath));
       }
     }
   }
 
-  return resolved;
+  return [...resolved];
 };
 
 const collectResolvedDependencyPaths = async (
@@ -496,7 +585,7 @@ const collectResolvedDependencyPaths = async (
           directories
         );
         for (const match of matches) {
-          resolvedPaths.add(normalizeFsPath(match));
+          resolvedPaths.add(match);
         }
         break;
       }
@@ -516,6 +605,257 @@ const collectResolvedDependencyPaths = async (
   }
 
   return resolvedPaths;
+};
+
+type LoadedHandlebarsPartials = {
+  readonly partials: Record<string, string>;
+  readonly diagnostics: RulesetDiagnostics;
+  readonly paths: readonly string[];
+};
+
+const loadHandlebarsPartials = async (
+  document: RulesetDocument,
+  directories: readonly string[]
+): Promise<LoadedHandlebarsPartials> => {
+  const dependencies = document.dependencies;
+  if (!dependencies || dependencies.length === 0) {
+    return { partials: {}, diagnostics: [], paths: [] };
+  }
+
+  const partials = new Map<string, string>();
+  const diagnostics: RulesetDiagnostic[] = [];
+  const paths = new Set<string>();
+
+  for (const dependency of dependencies) {
+    if (dependency.kind !== "partial" && dependency.kind !== "template") {
+      continue;
+    }
+
+    const identifier = dependency.identifier;
+    if (!identifier) {
+      continue;
+    }
+
+    const matches = await resolvePartialDependencyPaths(
+      dependency,
+      directories
+    );
+
+    for (const match of matches) {
+      paths.add(match);
+    }
+
+    if (matches.length === 0) {
+      diagnostics.push({
+        level: "warning",
+        message: `No partial found for identifier '${identifier}'.`,
+        tags: ["renderer", "handlebars", "partial"],
+      });
+      continue;
+    }
+
+    const partialPath = matches[0];
+    try {
+      const contents = await fs.readFile(partialPath, "utf8");
+      partials.set(identifier, contents);
+    } catch (error) {
+      diagnostics.push({
+        level: "warning",
+        message: `Failed to load partial '${identifier}': ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        tags: ["renderer", "handlebars", "partial"],
+      });
+    }
+  }
+
+  return {
+    partials: Object.fromEntries(partials),
+    diagnostics: diagnostics as RulesetDiagnostics,
+    paths: [...paths],
+  };
+};
+
+type LoadedHandlebarsHelpers = {
+  readonly helpers: HandlebarsHelperMap;
+  readonly diagnostics: RulesetDiagnostics;
+  readonly paths: readonly string[];
+};
+
+const importHelperModule = async (
+  specifier: string,
+  cwd: string
+): Promise<{ module: unknown; resolvedPath?: string }> => {
+  if (specifier.startsWith(".") || specifier.startsWith("/")) {
+    const resolvedPath = path.isAbsolute(specifier)
+      ? specifier
+      : path.resolve(cwd, specifier);
+    const module = await import(pathToFileURL(resolvedPath).href);
+    return { module, resolvedPath };
+  }
+
+  const module = await import(specifier);
+  return { module };
+};
+
+const selectHelperExports = (
+  moduleNamespace: unknown
+): Record<string, HandlebarsHelper> => {
+  const helpers: Record<string, HandlebarsHelper> = {};
+
+  if (!isPlainObjectLike(moduleNamespace)) {
+    return helpers;
+  }
+
+  const { default: defaultExport, ...namedExports } = moduleNamespace as Record<
+    string,
+    unknown
+  >;
+
+  if (isPlainObjectLike(defaultExport)) {
+    for (const [name, candidate] of Object.entries(defaultExport)) {
+      if (typeof candidate === "function") {
+        helpers[name] = candidate as HandlebarsHelper;
+      }
+    }
+  }
+
+  for (const [name, candidate] of Object.entries(namedExports)) {
+    if (typeof candidate === "function") {
+      helpers[name] = candidate as HandlebarsHelper;
+    }
+  }
+
+  return helpers;
+};
+
+const loadHandlebarsHelpers = async (
+  helperModules: readonly string[] | undefined,
+  context: RulesetRuntimeContext
+): Promise<LoadedHandlebarsHelpers> => {
+  if (!helperModules || helperModules.length === 0) {
+    return { helpers: {}, diagnostics: [], paths: [] };
+  }
+
+  const diagnostics: RulesetDiagnostic[] = [];
+  const aggregatedHelpers: Record<string, HandlebarsHelper> = {};
+  const paths = new Set<string>();
+
+  for (const entry of helperModules) {
+    const specifier = entry.trim();
+    if (!specifier) {
+      continue;
+    }
+
+    try {
+      const { module, resolvedPath } = await importHelperModule(
+        specifier,
+        context.cwd
+      );
+      if (resolvedPath) {
+        paths.add(normalizeFsPath(resolvedPath));
+      }
+
+      const helpers = selectHelperExports(module);
+      if (Object.keys(helpers).length === 0) {
+        diagnostics.push({
+          level: "warning",
+          message: `Helper module '${specifier}' did not export any helpers.`,
+          tags: ["renderer", "handlebars", "helpers"],
+        });
+        continue;
+      }
+
+      Object.assign(aggregatedHelpers, helpers);
+    } catch (error) {
+      diagnostics.push({
+        level: "error",
+        message: `Failed to load Handlebars helpers from '${specifier}': ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        tags: ["renderer", "handlebars", "helpers"],
+      });
+    }
+  }
+
+  return {
+    helpers: Object.freeze(aggregatedHelpers) as HandlebarsHelperMap,
+    diagnostics: diagnostics as RulesetDiagnostics,
+    paths: [...paths],
+  };
+};
+
+type HandlebarsTemplateContextInput = {
+  readonly document: RulesetDocument;
+  readonly target: CompileTarget;
+  readonly provider: ProviderEntry;
+  readonly runtimeContext: RulesetRuntimeContext;
+  readonly projectConfig?: RulesetProjectConfig;
+  readonly overrides?: Record<string, JsonValue>;
+};
+
+const buildHandlebarsTemplateContext = (
+  input: HandlebarsTemplateContextInput
+): Record<string, unknown> => {
+  const {
+    document,
+    target,
+    provider,
+    runtimeContext,
+    projectConfig,
+    overrides,
+  } = input;
+
+  const frontMatter = document.metadata.frontMatter ?? {};
+  const ruleFrontMatter = isJsonObject(frontMatter.rule)
+    ? (frontMatter.rule as Record<string, JsonValue>)
+    : undefined;
+
+  const metadata: Record<string, unknown> = {
+    description: frontMatter.description,
+    version:
+      (typeof ruleFrontMatter?.version === "string"
+        ? ruleFrontMatter.version
+        : frontMatter.version) ?? document.metadata.version,
+    globs: Array.isArray(ruleFrontMatter?.globs)
+      ? ruleFrontMatter.globs.filter(
+          (value): value is string => typeof value === "string"
+        )
+      : undefined,
+  };
+
+  const env = Object.fromEntries(runtimeContext.env);
+
+  return {
+    provider: {
+      id: provider.handshake.providerId,
+      version: provider.handshake.version,
+      capabilities: provider.handshake.capabilities.map((capability) =>
+        "id" in capability ? capability.id : capability
+      ),
+    },
+    file: {
+      id: document.source.id,
+      path: document.source.path,
+      format: document.source.format,
+      name: frontMatter.name,
+      frontmatter: frontMatter,
+      metadata,
+    },
+    project: projectConfig,
+    overrides,
+    runtime: {
+      cwd: runtimeContext.cwd,
+      cacheDir: runtimeContext.cacheDir,
+      version: runtimeContext.version,
+      env,
+    },
+    target: {
+      outputPath: target.outputPath,
+      capabilities: target.capabilities,
+    },
+    timestamp: new Date().toISOString(),
+  };
 };
 const CACHE_VERSION = 2;
 
@@ -604,6 +944,118 @@ const evaluateHandlebarsRequirements = (
     requiresHandlebars,
     requiresHelpers,
     requiresPartials,
+  };
+};
+
+const deriveHandlebarsSettings = (
+  document: RulesetDocument,
+  projectConfig: RulesetProjectConfig | undefined,
+  providerId: string
+): AggregatedHandlebarsSettings => {
+  const requirement = evaluateHandlebarsRequirements(
+    document,
+    projectConfig,
+    providerId
+  );
+
+  const directives: HandlebarsDirective[] = [];
+
+  const frontMatter = document.metadata.frontMatter;
+  const ruleFrontMatter = isJsonObject(frontMatter?.rule)
+    ? normalizeHandlebarsDirective(
+        (frontMatter?.rule as Record<string, JsonValue>).handlebars as
+          | JsonValue
+          | undefined
+      )
+    : undefined;
+
+  const providerFrontMatter = isJsonObject(frontMatter?.[providerId])
+    ? normalizeHandlebarsDirective(
+        (frontMatter?.[providerId] as Record<string, JsonValue>).handlebars as
+          | JsonValue
+          | undefined
+      )
+    : undefined;
+
+  const projectRuleDirective = normalizeConfigHandlebarsDirective(
+    projectConfig?.rule?.handlebars
+  );
+
+  const providerConfigDirective = normalizeConfigHandlebarsDirective(
+    projectConfig?.providers?.[providerId]?.handlebars
+  );
+
+  if (projectRuleDirective) {
+    directives.push(projectRuleDirective);
+  }
+
+  if (ruleFrontMatter) {
+    directives.push(ruleFrontMatter);
+  }
+
+  if (providerConfigDirective) {
+    directives.push(providerConfigDirective);
+  }
+
+  if (providerFrontMatter) {
+    directives.push(providerFrontMatter);
+  }
+
+  let enabled = requirement.requiresHandlebars;
+  let force = false;
+  let strict: boolean | undefined;
+  let noEscape: boolean | undefined;
+  const helperModules: string[] = [];
+  const inlinePartialRecords: Record<string, string>[] = [];
+  let overrides: Record<string, JsonValue> | undefined;
+
+  for (const directive of directives) {
+    if (directive.enabled === true) {
+      enabled = true;
+    }
+
+    if (directive.force === true) {
+      force = true;
+    }
+
+    if (directive.strict !== undefined) {
+      strict = directive.strict;
+    }
+
+    if (directive.noEscape !== undefined) {
+      noEscape = directive.noEscape;
+    }
+
+    if (directive.helpers) {
+      for (const helperPath of directive.helpers) {
+        if (!helperModules.includes(helperPath)) {
+          helperModules.push(helperPath);
+        }
+      }
+    }
+
+    if (directive.partials) {
+      inlinePartialRecords.push(directive.partials);
+    }
+
+    if (directive.projectConfigOverrides) {
+      overrides = {
+        ...(overrides ?? {}),
+        ...directive.projectConfigOverrides,
+      };
+    }
+  }
+
+  const inlinePartials = Object.assign({}, ...inlinePartialRecords);
+
+  return {
+    enabled,
+    force,
+    strict,
+    noEscape,
+    helperModules,
+    inlinePartials,
+    projectConfigOverrides: overrides,
   };
 };
 
@@ -853,7 +1305,7 @@ const resolveOptions = (
     defaults.transforms ?? [identityTransform];
 
   const renderer =
-    overrides?.renderer ?? defaults.renderer ?? createPassthroughRenderer();
+    overrides?.renderer ?? defaults.renderer ?? createHandlebarsRenderer();
   const rendererOptions: RendererOptions = {
     ...defaults.rendererOptions,
     ...overrides?.rendererOptions,
@@ -1165,10 +1617,114 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
           }
         }
 
+        const handlebarsSettings = deriveHandlebarsSettings(
+          documentWithOverrides,
+          input.projectConfig,
+          target.providerId
+        );
+
+        const dependencyDirectories = collectDependencyDirectories(
+          input.context,
+          input.projectConfig
+        );
+
+        const partialsResult = await loadHandlebarsPartials(
+          documentWithOverrides,
+          dependencyDirectories
+        );
+
+        for (const partialPath of partialsResult.paths) {
+          resolvedDependencyPaths.add(normalizeFsPath(partialPath));
+        }
+
+        appendDiagnostics(aggregatedDiagnostics, partialsResult.diagnostics);
+        appendDiagnostics(sourceDiagnostics, partialsResult.diagnostics);
+
+        const helpersResult = await loadHandlebarsHelpers(
+          handlebarsSettings.helperModules,
+          input.context
+        );
+
+        for (const helperPath of helpersResult.paths) {
+          resolvedDependencyPaths.add(normalizeFsPath(helperPath));
+        }
+
+        appendDiagnostics(aggregatedDiagnostics, helpersResult.diagnostics);
+        appendDiagnostics(sourceDiagnostics, helpersResult.diagnostics);
+
+        const baseHandlebarsOptions = rendererOptions.handlebars ?? {};
+
+        const basePartials: Record<string, string> =
+          baseHandlebarsOptions.partials
+            ? (Object.fromEntries(
+                Object.entries(baseHandlebarsOptions.partials)
+              ) as Record<string, string>)
+            : {};
+
+        const mergedPartials: Record<string, string> = {
+          ...partialsResult.partials,
+          ...basePartials,
+          ...handlebarsSettings.inlinePartials,
+        };
+
+        const helpersFromLoader: Record<string, HandlebarsHelper> =
+          Object.fromEntries(Object.entries(helpersResult.helpers)) as Record<
+            string,
+            HandlebarsHelper
+          >;
+
+        const helpersFromBase: Record<string, HandlebarsHelper> =
+          baseHandlebarsOptions.helpers
+            ? (Object.fromEntries(
+                Object.entries(baseHandlebarsOptions.helpers)
+              ) as Record<string, HandlebarsHelper>)
+            : {};
+
+        const mergedHelpers: Record<string, HandlebarsHelper> = {
+          ...helpersFromBase,
+          ...helpersFromLoader,
+        };
+
+        const templateContext = buildHandlebarsTemplateContext({
+          document: documentWithOverrides,
+          target: targetWithCapabilities,
+          provider,
+          runtimeContext: input.context,
+          projectConfig: input.projectConfig,
+          overrides: handlebarsSettings.projectConfigOverrides,
+        });
+
+        const rendererDiagnostics = [
+          ...(baseHandlebarsOptions.diagnostics ?? []),
+          ...partialsResult.diagnostics,
+          ...helpersResult.diagnostics,
+        ];
+
+        const invocationOptions: RendererOptions = {
+          ...rendererOptions,
+          transforms,
+          handlebars: {
+            ...baseHandlebarsOptions,
+            enabled:
+              baseHandlebarsOptions.enabled === true ||
+              handlebarsSettings.enabled,
+            force:
+              baseHandlebarsOptions.force === true || handlebarsSettings.force,
+            strict: handlebarsSettings.strict ?? baseHandlebarsOptions.strict,
+            noEscape:
+              handlebarsSettings.noEscape ?? baseHandlebarsOptions.noEscape,
+            partials: mergedPartials,
+            helpers: mergedHelpers,
+            context: templateContext,
+            diagnostics: rendererDiagnostics,
+            label: baseHandlebarsOptions.label ?? provider.handshake.providerId,
+          },
+        };
+
         const renderResult = renderer(
           documentWithOverrides,
           targetWithCapabilities,
-          rendererOptions
+          invocationOptions
         );
 
         if (!renderResult.ok) {

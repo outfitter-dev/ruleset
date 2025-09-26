@@ -103,6 +103,7 @@
       "dependencies": {
         "@rulesets/transform": "workspace:*",
         "@rulesets/types": "workspace:*",
+        "handlebars": "^4.7.8",
       },
     },
     "packages/transform": {

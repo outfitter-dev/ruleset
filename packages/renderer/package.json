@@ -32,7 +32,8 @@
   },
   "dependencies": {
     "@rulesets/transform": "workspace:*",
-    "@rulesets/types": "workspace:*"
+    "@rulesets/types": "workspace:*",
+    "handlebars": "^4.7.8"
   },
   "publishConfig": {
     "access": "public"
