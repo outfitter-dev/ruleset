@@ -1,4 +1,5 @@
-import { promises as fs } from "node:fs";
+import type { FSWatcher } from "node:fs";
+import { promises as fsPromises, watch as watchFs } from "node:fs";
 import path, { resolve } from "node:path";
 
 import { loadProjectConfig } from "@rulesets/core";
@@ -21,6 +22,8 @@ import { Command } from "commander";
 import picomatch from "picomatch";
 import { logger } from "../utils/logger";
 import { createSpinner } from "../utils/spinner";
+
+const DEFAULT_WATCH_DEBOUNCE_MS = 150;
 
 // Compile source rules from a file or directory into per-provider outputs
 
@@ -73,17 +76,61 @@ async function runCompile(
       chalk.dim("`--destination` is deprecated; use `--provider` instead.")
     );
   }
-  try {
-    if (options.watch) {
-      throw new Error(
-        "Watch mode is temporarily unavailable while the compiler is being rewritten."
-      );
+  const cwd = process.cwd();
+  const outputDir = resolve(cwd, options.output);
+
+  const defaultProviders = createDefaultProviders();
+  const providerIds =
+    targetProvider !== undefined && targetProvider.length > 0
+      ? [targetProvider]
+      : defaultProviders.map((provider) => provider.handshake.providerId);
+  const uniqueProviderIds = Array.from(new Set(providerIds));
+  const providers = selectProviders(uniqueProviderIds, defaultProviders);
+
+  const missingProviders = uniqueProviderIds.filter(
+    (providerId) =>
+      !providers.some(
+        (provider) => provider.handshake.providerId === providerId
+      )
+  );
+
+  if (providers.length === 0) {
+    const list = uniqueProviderIds.join(", ");
+    spinner.fail(
+      chalk.red(
+        list.length > 0
+          ? `No providers found matching: ${list}`
+          : "No providers available to compile with"
+      )
+    );
+    process.exit(1);
+  }
+
+  if (missingProviders.length > 0) {
+    logger.warn(
+      chalk.yellow(
+        `Skipping unknown provider${missingProviders.length > 1 ? "s" : ""}: ${missingProviders.join(", ")}`
+      )
+    );
+  }
+
+  const context = buildRuntimeContext(cwd);
+  const targets = buildTargets(outputDir, providers);
+
+  const performCompilation = async (
+    phase: "initial" | "incremental"
+  ): Promise<{
+    directories: Set<string>;
+    configWatchPaths: Set<string>;
+    hadSources: boolean;
+  }> => {
+    const startTime = Date.now();
+    const projectConfigResult = await loadProjectConfig({ startPath: cwd });
+    const configWatchPaths = new Set<string>();
+    if (projectConfigResult.path) {
+      configWatchPaths.add(path.dirname(projectConfigResult.path));
     }
 
-    const cwd = process.cwd();
-    const outputDir = resolve(cwd, options.output);
-
-    const projectConfigResult = await loadProjectConfig({ startPath: cwd });
     const configSources = projectConfigResult.config.sources ?? [];
     const hasConfiguredSources = configSources.length > 0;
 
@@ -106,67 +153,21 @@ async function runCompile(
       : undefined;
     const defaultTemplate = projectRuleConfig?.template === true;
 
-    const fileSelections = new Map<string, SourceSelection>();
-    for (const selection of sourceSelections) {
-      const selectionFiles = await collectRuleFiles(selection.path, {
-        globs: mergeGlobPatterns(globalRuleGlobs, selection.globs),
-      });
-      for (const file of selectionFiles) {
-        if (!fileSelections.has(file)) {
-          fileSelections.set(file, selection);
-        }
-      }
-    }
-
-    const files = Array.from(fileSelections.keys()).sort();
-    if (files.length === 0) {
-      spinner.warn(chalk.yellow("No rules files found to compile"));
-      return;
-    }
-
-    const sources = await buildSources(
-      files,
+    const { directories, sources } = await gatherSources(
+      sourceSelections,
       cwd,
-      fileSelections,
+      globalRuleGlobs,
       defaultTemplate
     );
-    const defaultProviders = createDefaultProviders();
-    const providerIds =
-      targetProvider !== undefined && targetProvider.length > 0
-        ? [targetProvider]
-        : defaultProviders.map((provider) => provider.handshake.providerId);
-    const uniqueProviderIds = Array.from(new Set(providerIds));
-    const providers = selectProviders(uniqueProviderIds, defaultProviders);
 
-    const missingProviders = uniqueProviderIds.filter(
-      (providerId) =>
-        !providers.some(
-          (provider) => provider.handshake.providerId === providerId
-        )
-    );
-
-    if (providers.length === 0) {
-      const list = uniqueProviderIds.join(", ");
-      spinner.fail(
-        chalk.red(
-          list.length > 0
-            ? `No providers found matching: ${list}`
-            : "No providers available to compile with"
-        )
-      );
-      process.exit(1);
+    if (sources.length === 0) {
+      const message = usedDefaultSource
+        ? "No rules files found to compile"
+        : `No matching rules found for ${source}`;
+      spinner.warn(chalk.yellow(message));
+      return { directories, configWatchPaths, hadSources: false };
     }
 
-    if (missingProviders.length > 0) {
-      logger.warn(
-        chalk.yellow(
-          `Skipping unknown provider${missingProviders.length > 1 ? "s" : ""}: ${missingProviders.join(", ")}`
-        )
-      );
-    }
-
-    const targets = buildTargets(outputDir, providers);
-    const context = buildRuntimeContext(cwd);
     const compilationInput: CompilationInput = {
       context,
       sources,
@@ -180,8 +181,111 @@ async function runCompile(
     });
 
     await writeArtifacts(output.artifacts, cwd);
+    reportDiagnostics(output.diagnostics);
 
-    reportDiagnostics(output.artifacts, output.diagnostics, spinner);
+    const duration = Date.now() - startTime;
+    const summary =
+      output.artifacts.length === 0
+        ? "No artifacts produced"
+        : `Produced ${output.artifacts.length} artifact${
+            output.artifacts.length === 1 ? "" : "s"
+          }`;
+
+    if (phase === "initial") {
+      spinner.succeed(chalk.green(`${summary} in ${duration}ms`));
+    } else {
+      spinner.succeed(chalk.green(`${summary} (watch) in ${duration}ms`));
+    }
+
+    return { directories, configWatchPaths, hadSources: true };
+  };
+
+  try {
+    const initialResult = await performCompilation("initial");
+
+    if (!options.watch) {
+      return;
+    }
+
+    const normalizePath = (value: string) => path.resolve(value);
+
+    const buildWatchPaths = (
+      directories: Set<string>,
+      configPaths: Set<string>
+    ): Set<string> => {
+      const combined = new Set<string>();
+      for (const dir of directories) {
+        combined.add(normalizePath(dir));
+      }
+      for (const configPath of configPaths) {
+        combined.add(normalizePath(configPath));
+      }
+      return combined;
+    };
+
+    const watchManager = createWatchManager(() => triggerRecompile());
+
+    const updateWatchers = (
+      directories: Set<string>,
+      configPaths: Set<string>
+    ) => {
+      const desired = buildWatchPaths(directories, configPaths);
+      if (desired.size === 0) {
+        desired.add(normalizePath(cwd));
+      }
+      watchManager.update(desired);
+    };
+
+    updateWatchers(initialResult.directories, initialResult.configWatchPaths);
+
+    logger.info(chalk.dim("Watching for changes (press Ctrl+C to exit)..."));
+
+    let rebuildInProgress = false;
+    let pendingRebuild = false;
+
+    const scheduleRecompile = () => {
+      if (rebuildInProgress) {
+        pendingRebuild = true;
+        return;
+      }
+
+      rebuildInProgress = true;
+      pendingRebuild = false;
+      spinner.start("Recompiling...");
+
+      performCompilation("incremental")
+        .then((result) => {
+          updateWatchers(result.directories, result.configWatchPaths);
+        })
+        .catch((error) => {
+          spinner.fail(chalk.red("Failed to compile rulesets"));
+          logger.error(error instanceof Error ? error : String(error));
+        })
+        .finally(() => {
+          rebuildInProgress = false;
+          if (pendingRebuild) {
+            pendingRebuild = false;
+            scheduleRecompile();
+          }
+        });
+    };
+
+    function triggerRecompile() {
+      scheduleRecompile();
+    }
+
+    const cleanup = () => {
+      watchManager.dispose();
+    };
+
+    process.once("SIGINT", () => {
+      cleanup();
+      process.exit(0);
+    });
+
+    await new Promise<void>(() => {
+      // Keep process alive until watch mode is terminated.
+    });
   } catch (error) {
     spinner.fail(chalk.red("Failed to compile rulesets"));
     logger.error(error instanceof Error ? error : String(error));
@@ -224,17 +328,20 @@ const normalizeGlobFilter = (
 
 async function collectRuleFiles(
   entryPath: string,
-  options: CollectRuleFilesOptions = {}
+  options: CollectRuleFilesOptions = {},
+  directories?: Set<string>
 ): Promise<string[]> {
   const result: string[] = [];
   const filter = normalizeGlobFilter(options.globs);
-  const stats = await fs.stat(entryPath).catch(() => null);
+  const stats = await fsPromises.stat(entryPath).catch(() => null);
   if (!stats) {
+    directories?.add(path.dirname(entryPath));
     return result;
   }
   if (stats.isFile()) {
     if (isRuleFile(entryPath)) {
       const baseDir = path.dirname(entryPath);
+      directories?.add(baseDir);
       if (filter(entryPath, baseDir)) {
         result.push(entryPath);
       }
@@ -242,17 +349,20 @@ async function collectRuleFiles(
     return result;
   }
 
+  directories?.add(entryPath);
   const stack = [entryPath];
   while (stack.length > 0) {
     const current = stack.pop();
     if (!current) {
       continue;
     }
-    const entries = await fs.readdir(current, { withFileTypes: true });
+    directories?.add(current);
+    const entries = await fsPromises.readdir(current, { withFileTypes: true });
     for (const entry of entries) {
       const full = path.join(current, entry.name);
       if (entry.isDirectory()) {
         if (!entry.name.startsWith("@")) {
+          directories?.add(full);
           stack.push(full);
         }
         continue;
@@ -263,6 +373,7 @@ async function collectRuleFiles(
         isRuleFile(full) &&
         filter(full, entryPath)
       ) {
+        directories?.add(path.dirname(full));
         result.push(full);
       }
     }
@@ -276,6 +387,44 @@ type SourceSelection = {
   globs?: readonly string[];
   template?: boolean;
 };
+
+type GatheredSources = {
+  readonly files: readonly string[];
+  readonly directories: Set<string>;
+  readonly sources: RulesetSource[];
+};
+
+async function gatherSources(
+  selections: SourceSelection[],
+  cwd: string,
+  globalRuleGlobs: readonly string[] | undefined,
+  defaultTemplate: boolean
+): Promise<GatheredSources> {
+  const fileSelections = new Map<string, SourceSelection>();
+  const directories = new Set<string>();
+
+  for (const selection of selections) {
+    const selectionFiles = await collectRuleFiles(
+      selection.path,
+      { globs: mergeGlobPatterns(globalRuleGlobs, selection.globs) },
+      directories
+    );
+    for (const file of selectionFiles) {
+      if (!fileSelections.has(file)) {
+        fileSelections.set(file, selection);
+      }
+    }
+  }
+
+  const files = Array.from(fileSelections.keys()).sort();
+  const sources = await buildSources(
+    files,
+    cwd,
+    fileSelections,
+    defaultTemplate
+  );
+  return { files, directories, sources };
+}
 
 const resolveSourceSelections = (
   entries: readonly RulesetSourceEntry[],
@@ -309,7 +458,7 @@ async function buildSources(
 ): Promise<RulesetSource[]> {
   const sources: RulesetSource[] = [];
   for (const file of files) {
-    const contents = await fs.readFile(file, "utf8");
+    const contents = await fsPromises.readFile(file, "utf8");
     const relative = path.relative(cwd, file);
     const id = relative.replace(/\\/g, "/");
     const normalized = id.toLowerCase();
@@ -375,23 +524,15 @@ async function writeArtifacts(
 ) {
   for (const artifact of artifacts) {
     const destPath = artifact.target.outputPath;
-    await fs.mkdir(path.dirname(destPath), { recursive: true });
-    await fs.writeFile(destPath, artifact.contents, "utf8");
+    await fsPromises.mkdir(path.dirname(destPath), { recursive: true });
+    await fsPromises.writeFile(destPath, artifact.contents, "utf8");
     logger.info(chalk.dim(`Wrote ${path.relative(cwd, destPath)}`));
   }
 }
 
 function reportDiagnostics(
-  artifacts: readonly CompileArtifact[],
-  diagnostics: readonly { level: string; message: string }[],
-  spinner: { succeed: (msg: string) => void; warn: (msg: string) => void }
+  diagnostics: readonly { level: string; message: string }[]
 ) {
-  if (artifacts.length === 0) {
-    spinner.warn(chalk.yellow("No artifacts were produced"));
-  } else {
-    spinner.succeed(chalk.green(`Produced ${artifacts.length} artifact(s)`));
-  }
-
   if (diagnostics.length > 0) {
     logger.info(chalk.dim("Diagnostics:"));
     for (const diagnostic of diagnostics) {
@@ -399,3 +540,79 @@ function reportDiagnostics(
     }
   }
 }
+
+type WatchManager = {
+  update(paths: Iterable<string>): void;
+  dispose(): void;
+};
+
+const createWatchManager = (
+  onChange: () => void,
+  options: { debounceMs?: number } = {}
+): WatchManager => {
+  const watchers = new Map<string, FSWatcher>();
+  const debounceMs = options.debounceMs ?? DEFAULT_WATCH_DEBOUNCE_MS;
+  let debounceTimer: NodeJS.Timeout | undefined;
+
+  const schedule = () => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+    debounceTimer = setTimeout(() => {
+      debounceTimer = undefined;
+      onChange();
+    }, debounceMs);
+  };
+
+  const attachWatcher = (watchPath: string) => {
+    if (watchers.has(watchPath)) {
+      return;
+    }
+
+    try {
+      const watcher = watchFs(watchPath, { recursive: false }, () => {
+        schedule();
+      });
+
+      watcher.on("error", () => {
+        watcher.close();
+        watchers.delete(watchPath);
+      });
+
+      watchers.set(watchPath, watcher);
+    } catch {
+      // Ignore paths that cannot be watched (may not exist yet).
+    }
+  };
+
+  const update = (paths: Iterable<string>) => {
+    const desired = new Set<string>();
+    for (const value of paths) {
+      desired.add(value);
+    }
+
+    for (const [watchPath, watcher] of watchers) {
+      if (!desired.has(watchPath)) {
+        watcher.close();
+        watchers.delete(watchPath);
+      }
+    }
+
+    for (const watchPath of desired) {
+      attachWatcher(watchPath);
+    }
+  };
+
+  const dispose = () => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+      debounceTimer = undefined;
+    }
+    for (const watcher of watchers.values()) {
+      watcher.close();
+    }
+    watchers.clear();
+  };
+
+  return { update, dispose };
+};
