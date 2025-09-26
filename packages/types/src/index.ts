@@ -57,6 +57,14 @@ export type RulesetDocumentMetadata = {
   readonly version?: RulesetVersionTag;
 };
 
+export type RulesetDependencyKind = "partial" | "import" | "template" | "asset";
+
+export type RulesetDependency = {
+  readonly kind: RulesetDependencyKind;
+  readonly identifier: string;
+  readonly resolvedPath?: string;
+};
+
 export type Section = {
   name: string;
   properties?: Record<string, JsonValue>;
@@ -88,6 +96,7 @@ export type RulesetDocument = {
   readonly metadata: RulesetDocumentMetadata;
   readonly ast: RulesetAst;
   readonly diagnostics?: RulesetDiagnostics;
+  readonly dependencies?: readonly RulesetDependency[];
 };
 
 export type ParsedDoc = {
@@ -188,6 +197,13 @@ export type CompilationInput = {
 export type CompilationOutput = {
   readonly artifacts: readonly CompileArtifact[];
   readonly diagnostics: RulesetDiagnostics;
+  readonly sourceSummaries?: readonly CompilationSourceSummary[];
+};
+
+export type CompilationSourceSummary = {
+  readonly sourceId: string;
+  readonly sourcePath?: string;
+  readonly dependencies: readonly string[];
 };
 
 export type AsyncMaybe<T> = Promise<T> | T;

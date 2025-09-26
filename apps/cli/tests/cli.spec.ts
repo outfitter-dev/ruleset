@@ -131,7 +131,28 @@ describe("rulesets CLI smoke", () => {
       );
 
       expect(code).toBe(0);
-      expect(stdout.split("\n").filter(Boolean).length).toBeGreaterThan(0);
+
+      const entries = stdout
+        .split("\n")
+        .map((line) => {
+          try {
+            return JSON.parse(line);
+          } catch {
+            return null;
+          }
+        })
+        .filter(
+          (value): value is { event?: { kind?: string } } => value !== null
+        );
+
+      expect(entries.length).toBeGreaterThan(0);
+
+      const eventKinds = entries
+        .map((entry) => entry.event?.kind)
+        .filter((kind): kind is string => typeof kind === "string");
+
+      expect(eventKinds).toContain("pipeline:start");
+      expect(eventKinds.at(-1)).toBe("pipeline:end");
 
       const cursorOutput = join(
         outDirAbs,

@@ -1,18 +1,24 @@
-import type { FSWatcher } from "node:fs";
-import { promises as fsPromises, watch as watchFs } from "node:fs";
+import { promises as fsPromises } from "node:fs";
 import path, { resolve } from "node:path";
 
 import { loadProjectConfig } from "@rulesets/core";
-import { compileRulesets } from "@rulesets/orchestrator";
+import {
+  type CompilationEvent,
+  compileRulesetsStream,
+  type WatchExecutor,
+  watchRulesets,
+} from "@rulesets/orchestrator";
 import {
   createDefaultProviders,
   type ProviderEntry,
 } from "@rulesets/providers";
 import {
   type CompilationInput,
+  type CompilationOutput,
   type CompileArtifact,
   type CompileTarget,
   RULESETS_VERSION_TAG,
+  type RulesetDiagnostics,
   type RulesetRuntimeContext,
   type RulesetSource,
   type RulesetSourceEntry,
@@ -20,7 +26,8 @@ import {
 import chalk from "chalk";
 import { Command } from "commander";
 import picomatch from "picomatch";
-import { logger } from "../utils/logger";
+import { collectDependencyWatchPaths } from "../utils/dependency-watch";
+import { type LogLevel, logger } from "../utils/logger";
 import { createSpinner } from "../utils/spinner";
 
 const DEFAULT_WATCH_DEBOUNCE_MS = 150;
@@ -116,15 +123,14 @@ async function runCompile(
 
   const context = buildRuntimeContext(cwd);
   const targets = buildTargets(outputDir, providers);
-
-  const performCompilation = async (
-    phase: "initial" | "incremental"
-  ): Promise<{
-    directories: Set<string>;
-    configWatchPaths: Set<string>;
+  type PreparedCompilation = {
+    input: CompilationInput;
+    watchRoots: Set<string>;
     hadSources: boolean;
-  }> => {
-    const startTime = Date.now();
+    emptyMessage?: string;
+  };
+
+  const prepareCompilation = async (): Promise<PreparedCompilation> => {
     const projectConfigResult = await loadProjectConfig({ startPath: cwd });
     const configWatchPaths = new Set<string>();
     if (projectConfigResult.path) {
@@ -138,11 +144,9 @@ async function runCompile(
       if (!usedDefaultSource) {
         return [source];
       }
-
       if (hasConfiguredSources) {
         return configSources;
       }
-
       return [source];
     })();
 
@@ -160,12 +164,20 @@ async function runCompile(
       defaultTemplate
     );
 
-    if (sources.length === 0) {
-      const message = usedDefaultSource
-        ? "No rules files found to compile"
-        : `No matching rules found for ${source}`;
-      spinner.warn(chalk.yellow(message));
-      return { directories, configWatchPaths, hadSources: false };
+    const dependencyRoots = collectDependencyWatchPaths({
+      cwd,
+      projectConfig: projectConfigResult.config,
+    });
+
+    const watchRoots = new Set<string>();
+    for (const dir of directories) {
+      watchRoots.add(path.resolve(dir));
+    }
+    for (const configPath of configWatchPaths) {
+      watchRoots.add(path.resolve(configPath));
+    }
+    for (const dependencyRoot of dependencyRoots) {
+      watchRoots.add(dependencyRoot);
     }
 
     const compilationInput: CompilationInput = {
@@ -176,9 +188,44 @@ async function runCompile(
       projectConfigPath: projectConfigResult.path,
     };
 
-    const output = await compileRulesets(compilationInput, {
-      providers,
+    const hadSources = sources.length > 0;
+    let emptyMessage: string | undefined;
+    if (!hadSources) {
+      emptyMessage = usedDefaultSource
+        ? "No rules files found to compile"
+        : `No matching rules found for ${source}`;
+    }
+
+    return {
+      input: compilationInput,
+      watchRoots,
+      hadSources,
+      emptyMessage,
+    };
+  };
+
+  const runInitialCompilation = async () => {
+    const prepared = await prepareCompilation();
+
+    if (!prepared.hadSources) {
+      spinner.warn(
+        chalk.yellow(prepared.emptyMessage ?? "No rules files found to compile")
+      );
+      return;
+    }
+
+    const startTime = Date.now();
+    const reporter = createProgressReporter({
+      spinner,
+      cwd,
+      phase: "initial",
     });
+
+    const output = await runCompilationWithProgress(
+      prepared.input,
+      { providers },
+      reporter
+    );
 
     await writeArtifacts(output.artifacts, cwd);
     reportDiagnostics(output.diagnostics);
@@ -191,106 +238,120 @@ async function runCompile(
             output.artifacts.length === 1 ? "" : "s"
           }`;
 
-    if (phase === "initial") {
+    spinner.succeed(chalk.green(`${summary} in ${duration}ms`));
+  };
+
+  if (!options.watch) {
+    try {
+      await runInitialCompilation();
+    } catch (error) {
+      spinner.fail(chalk.red("Failed to compile rulesets"));
+      logger.error(error instanceof Error ? error : String(error));
+      process.exit(1);
+    }
+    return;
+  }
+
+  const executeWatch: WatchExecutor = async (phase, changedPaths) => {
+    const prepared = await prepareCompilation();
+    const watchPaths = new Set<string>(prepared.watchRoots);
+    if (watchPaths.size === 0) {
+      watchPaths.add(cwd);
+    }
+
+    const phaseLabel =
+      phase === "initial" ? "Compiling rulesets..." : "Recompiling...";
+    spinner.start(phaseLabel);
+
+    const reporter = createProgressReporter({
+      spinner,
+      cwd,
+      phase,
+    });
+
+    const startTime = Date.now();
+    const output = await runCompilationWithProgress(
+      prepared.input,
+      {
+        providers,
+        invalidatePaths:
+          changedPaths && changedPaths.size > 0
+            ? Array.from(changedPaths)
+            : undefined,
+      },
+      reporter
+    );
+
+    await writeArtifacts(output.artifacts, cwd);
+    reportDiagnostics(output.diagnostics);
+
+    const duration = Date.now() - startTime;
+    const summary =
+      output.artifacts.length === 0
+        ? "No artifacts produced"
+        : `Produced ${output.artifacts.length} artifact${
+            output.artifacts.length === 1 ? "" : "s"
+          }`;
+
+    if (!prepared.hadSources) {
+      spinner.warn(
+        chalk.yellow(prepared.emptyMessage ?? "No rules files found to compile")
+      );
+    } else if (phase === "initial") {
       spinner.succeed(chalk.green(`${summary} in ${duration}ms`));
     } else {
       spinner.succeed(chalk.green(`${summary} (watch) in ${duration}ms`));
     }
 
-    return { directories, configWatchPaths, hadSources: true };
+    return {
+      output,
+      watchPaths: Array.from(watchPaths),
+    };
   };
 
-  try {
-    const initialResult = await performCompilation("initial");
+  const iterator = watchRulesets(executeWatch, {
+    debounceMs: DEFAULT_WATCH_DEBOUNCE_MS,
+  })[Symbol.asyncIterator]();
 
-    if (!options.watch) {
+  let iteratorClosed = false;
+  const stopIterator = async () => {
+    if (iteratorClosed) {
       return;
     }
-
-    const normalizePath = (value: string) => path.resolve(value);
-
-    const buildWatchPaths = (
-      directories: Set<string>,
-      configPaths: Set<string>
-    ): Set<string> => {
-      const combined = new Set<string>();
-      for (const dir of directories) {
-        combined.add(normalizePath(dir));
+    iteratorClosed = true;
+    if (typeof iterator.return === "function") {
+      try {
+        await iterator.return();
+      } catch {
+        // ignore iterator return errors during shutdown
       }
-      for (const configPath of configPaths) {
-        combined.add(normalizePath(configPath));
-      }
-      return combined;
-    };
-
-    const watchManager = createWatchManager(() => triggerRecompile());
-
-    const updateWatchers = (
-      directories: Set<string>,
-      configPaths: Set<string>
-    ) => {
-      const desired = buildWatchPaths(directories, configPaths);
-      if (desired.size === 0) {
-        desired.add(normalizePath(cwd));
-      }
-      watchManager.update(desired);
-    };
-
-    updateWatchers(initialResult.directories, initialResult.configWatchPaths);
-
-    logger.info(chalk.dim("Watching for changes (press Ctrl+C to exit)..."));
-
-    let rebuildInProgress = false;
-    let pendingRebuild = false;
-
-    const scheduleRecompile = () => {
-      if (rebuildInProgress) {
-        pendingRebuild = true;
-        return;
-      }
-
-      rebuildInProgress = true;
-      pendingRebuild = false;
-      spinner.start("Recompiling...");
-
-      performCompilation("incremental")
-        .then((result) => {
-          updateWatchers(result.directories, result.configWatchPaths);
-        })
-        .catch((error) => {
-          spinner.fail(chalk.red("Failed to compile rulesets"));
-          logger.error(error instanceof Error ? error : String(error));
-        })
-        .finally(() => {
-          rebuildInProgress = false;
-          if (pendingRebuild) {
-            pendingRebuild = false;
-            scheduleRecompile();
-          }
-        });
-    };
-
-    function triggerRecompile() {
-      scheduleRecompile();
     }
+    spinner.stop();
+  };
 
-    const cleanup = () => {
-      watchManager.dispose();
-    };
-
-    process.once("SIGINT", () => {
-      cleanup();
+  process.once("SIGINT", () => {
+    stopIterator().finally(() => {
       process.exit(0);
     });
+  });
 
-    await new Promise<void>(() => {
-      // Keep process alive until watch mode is terminated.
-    });
+  logger.info(chalk.dim("Watching for changes (press Ctrl+C to exit)..."));
+
+  try {
+    while (true) {
+      const { done } = await iterator.next();
+      if (done) {
+        break;
+      }
+    }
   } catch (error) {
+    await stopIterator();
     spinner.fail(chalk.red("Failed to compile rulesets"));
     logger.error(error instanceof Error ? error : String(error));
     process.exit(1);
   }
+
+  await stopIterator();
 }
 // --- helpers -----------------------------------------------------------------
 
@@ -518,6 +579,385 @@ function selectProviders(
     .filter((provider): provider is ProviderEntry => provider !== undefined);
 }
 
+type CompileProgressReporter = {
+  handle(event: CompilationEvent): Promise<void> | void;
+  complete(): void;
+};
+
+type CompilationRunOptions = {
+  providers: readonly ProviderEntry[];
+  invalidatePaths?: readonly string[];
+};
+
+const LOG_LEVEL_ORDER: readonly LogLevel[] = [
+  "debug",
+  "info",
+  "warn",
+  "error",
+] as const;
+
+const levelIndex = (level: LogLevel): number => LOG_LEVEL_ORDER.indexOf(level);
+
+const resolveLogLevel = (): LogLevel => {
+  const raw = (process.env.RULESETS_LOG_LEVEL ?? "").toLowerCase();
+  return raw === "debug" || raw === "info" || raw === "warn" || raw === "error"
+    ? (raw as LogLevel)
+    : "info";
+};
+
+type DiagnosticCounts = {
+  error: number;
+  warning: number;
+  info: number;
+};
+
+const summarizeDiagnosticsCounts = (
+  diagnostics: RulesetDiagnostics | undefined
+): DiagnosticCounts | undefined => {
+  if (!diagnostics || diagnostics.length === 0) {
+    return;
+  }
+  const counts: DiagnosticCounts = { error: 0, warning: 0, info: 0 };
+  for (const diagnostic of diagnostics) {
+    counts[diagnostic.level] += 1;
+  }
+  return counts;
+};
+
+const diagnosticsCountsToText = (
+  counts: DiagnosticCounts | undefined
+): string | undefined => {
+  if (!counts) {
+    return;
+  }
+  const parts: string[] = [];
+  if (counts.error > 0) {
+    parts.push(`${counts.error} error${counts.error === 1 ? "" : "s"}`);
+  }
+  if (counts.warning > 0) {
+    parts.push(`${counts.warning} warning${counts.warning === 1 ? "" : "s"}`);
+  }
+  if (counts.info > 0) {
+    parts.push(`${counts.info} info${counts.info === 1 ? "" : "s"}`);
+  }
+  return parts.join(", ") || undefined;
+};
+
+type ProgressReporterOptions = {
+  spinner: ReturnType<typeof createSpinner>;
+  cwd: string;
+  phase: "initial" | "incremental";
+};
+
+const runCompilationWithProgress = async (
+  input: CompilationInput,
+  options: CompilationRunOptions,
+  reporter: CompileProgressReporter
+): Promise<CompilationOutput> => {
+  let finalOutput: CompilationOutput | undefined;
+  try {
+    for await (const event of compileRulesetsStream(input, options)) {
+      await reporter.handle(event);
+      if (event.kind === "pipeline:end") {
+        finalOutput = event.output;
+      }
+    }
+  } finally {
+    reporter.complete();
+  }
+
+  return (
+    finalOutput ?? {
+      artifacts: [],
+      diagnostics: [],
+    }
+  );
+};
+
+const createProgressReporter = ({
+  spinner,
+  cwd,
+  phase,
+}: ProgressReporterOptions): CompileProgressReporter => {
+  const logLevel = resolveLogLevel();
+  const infoEnabled = levelIndex(logLevel) <= levelIndex("info");
+  const debugEnabled = logLevel === "debug";
+  const jsonMode = process.env.RULESETS_LOG_FORMAT === "json";
+  let pipelineStartTimestamp = Date.now();
+
+  const toRelative = (value: string | undefined): string | undefined => {
+    if (!value) {
+      return;
+    }
+    const relative = path.relative(cwd, value);
+    const normalized = relative.length === 0 ? "./" : relative;
+    return normalized.replace(/\\/g, "/");
+  };
+
+  const describeSource = (source: RulesetSource): string =>
+    source.id || toRelative(source.path) || "(anonymous source)";
+
+  const describeTarget = (target: CompileTarget): string => target.providerId;
+
+  const serializeSource = (source: RulesetSource) => ({
+    id: source.id,
+    path: toRelative(source.path),
+    template: source.template === true ? true : undefined,
+  });
+
+  const serializeTarget = (target: CompileTarget) => ({
+    providerId: target.providerId,
+    outputPath: toRelative(target.outputPath),
+    capabilities: target.capabilities,
+  });
+
+  const serializeArtifact = (artifact: CompileArtifact | undefined) => {
+    if (!artifact) {
+      return;
+    }
+    return {
+      target: serializeTarget(artifact.target),
+      diagnostics: artifact.diagnostics,
+    };
+  };
+
+  const toSerializableEvent = (event: CompilationEvent) => {
+    const base = { kind: event.kind, phase } as Record<string, unknown>;
+    switch (event.kind) {
+      case "pipeline:start":
+        return {
+          ...base,
+          timestamp: event.timestamp,
+        };
+      case "pipeline:end":
+        return {
+          ...base,
+          timestamp: event.timestamp,
+          durationMs: event.timestamp - pipelineStartTimestamp,
+          artifactCount: event.output.artifacts.length,
+          diagnosticsCount: event.output.diagnostics.length,
+        };
+      case "source:start":
+        return {
+          ...base,
+          source: serializeSource(event.source),
+        };
+      case "source:parsed":
+      case "source:validated":
+      case "source:transformed":
+        return {
+          ...base,
+          source: serializeSource(event.source),
+          diagnostics: event.diagnostics,
+          diagnosticsSummary: summarizeDiagnosticsCounts(event.diagnostics),
+        };
+      case "target:start":
+        return {
+          ...base,
+          source: serializeSource(event.source),
+          target: serializeTarget(event.target),
+        };
+      case "target:capabilities":
+        return {
+          ...base,
+          source: serializeSource(event.source),
+          target: serializeTarget(event.target),
+          required: event.required,
+        };
+      case "target:cached":
+        return {
+          ...base,
+          source: serializeSource(event.source),
+          target: serializeTarget(event.target),
+          cached: true,
+          artifact: serializeArtifact(event.artifact),
+        };
+      case "target:rendered":
+      case "target:compiled":
+        return {
+          ...base,
+          source: serializeSource(event.source),
+          target: serializeTarget(event.target),
+          ok: event.ok,
+          diagnostics: event.diagnostics,
+          diagnosticsSummary: summarizeDiagnosticsCounts(event.diagnostics),
+          artifact: serializeArtifact(event.artifact),
+        };
+      case "target:skipped":
+        return {
+          ...base,
+          source: serializeSource(event.source),
+          target: serializeTarget(event.target),
+          reason: event.reason,
+          diagnostics: event.diagnostics,
+          missingCapabilities: event.missingCapabilities,
+        };
+      case "artifact:emitted":
+        return {
+          ...base,
+          source: serializeSource(event.source),
+          artifact: serializeArtifact(event.artifact),
+        };
+      default:
+        return base;
+    }
+  };
+
+  const emitStructured = (payload: Record<string, unknown>) => {
+    if (jsonMode && infoEnabled) {
+      process.stdout.write(
+        `${JSON.stringify({
+          level: "info",
+          ts: new Date().toISOString(),
+          event: payload,
+        })}\n`
+      );
+    } else if (!jsonMode && debugEnabled) {
+      logger.debug(chalk.dim(`[event] ${JSON.stringify(payload)}`));
+    }
+  };
+
+  const logInfo = (message: string) => {
+    if (infoEnabled && !jsonMode) {
+      logger.info(message);
+    }
+  };
+
+  return {
+    handle(event) {
+      if (event.kind === "pipeline:start") {
+        pipelineStartTimestamp = event.timestamp;
+      }
+
+      const payload = toSerializableEvent(event);
+      emitStructured(payload);
+
+      switch (event.kind) {
+        case "pipeline:start": {
+          const baseText =
+            phase === "initial"
+              ? "Scanning sources..."
+              : "Scanning for changes...";
+          spinner.text = baseText;
+          break;
+        }
+        case "source:start": {
+          const label = describeSource(event.source);
+          spinner.text = `Reading ${label}`;
+          break;
+        }
+        case "source:parsed": {
+          const label = describeSource(event.source);
+          spinner.text = `Parsed ${label}`;
+          if (!jsonMode && debugEnabled) {
+            const summary = diagnosticsCountsToText(
+              summarizeDiagnosticsCounts(event.diagnostics)
+            );
+            if (summary) {
+              logger.debug(chalk.dim(`[parse] ${label} (${summary})`));
+            }
+          }
+          break;
+        }
+        case "source:validated": {
+          const label = describeSource(event.source);
+          spinner.text = `Validated ${label}`;
+          break;
+        }
+        case "source:transformed": {
+          const label = describeSource(event.source);
+          spinner.text = `Transformed ${label}`;
+          break;
+        }
+        case "target:start": {
+          const label = `${describeSource(event.source)} → ${describeTarget(event.target)}`;
+          spinner.text = `Compiling ${label}`;
+          break;
+        }
+        case "target:capabilities": {
+          const label = `${describeSource(event.source)} → ${describeTarget(event.target)}`;
+          spinner.text = `Checking capabilities ${label}`;
+          break;
+        }
+        case "target:cached": {
+          const label = `${describeSource(event.source)} → ${describeTarget(event.target)}`;
+          spinner.text = `Cache hit ${label}`;
+          const summary = diagnosticsCountsToText(
+            summarizeDiagnosticsCounts(event.artifact?.diagnostics)
+          );
+          const message = summary ? `${label} (${summary})` : label;
+          logInfo(chalk.cyan(`Cache hit ${message}`));
+          break;
+        }
+        case "target:rendered": {
+          const label = `${describeSource(event.source)} → ${describeTarget(event.target)}`;
+          spinner.text = `Rendered ${label}`;
+          if (!jsonMode && debugEnabled) {
+            const summary = diagnosticsCountsToText(
+              summarizeDiagnosticsCounts(event.diagnostics)
+            );
+            if (summary) {
+              logger.debug(chalk.dim(`[render] ${label} (${summary})`));
+            }
+          }
+          break;
+        }
+        case "target:compiled": {
+          const label = `${describeSource(event.source)} → ${describeTarget(event.target)}`;
+          const summary = diagnosticsCountsToText(
+            summarizeDiagnosticsCounts(event.diagnostics)
+          );
+          const message = summary ? `${label} (${summary})` : label;
+          if (event.ok) {
+            spinner.text = `Compiled ${label}`;
+            logInfo(chalk.green(`Compiled ${message}`));
+          } else {
+            spinner.text = `Failed ${label}`;
+            logger.error(chalk.red(`Provider failed ${message}`));
+          }
+          break;
+        }
+        case "target:skipped": {
+          const label = `${describeSource(event.source)} → ${describeTarget(event.target)}`;
+          spinner.text = `Skipped ${label}`;
+          const reason = event.reason.replace(/-/g, " ");
+          logger.warn(chalk.yellow(`Skipped ${label}: ${reason}`));
+          if (
+            event.missingCapabilities &&
+            event.missingCapabilities.length > 0
+          ) {
+            logger.warn(
+              chalk.yellow(
+                `Missing capabilities: ${event.missingCapabilities.join(", ")}`
+              )
+            );
+          }
+          break;
+        }
+        case "artifact:emitted": {
+          const label = `${describeSource(
+            event.source
+          )} → ${describeTarget(event.artifact.target)}`;
+          spinner.text = `Emitted ${label}`;
+          if (!jsonMode && debugEnabled) {
+            logger.debug(chalk.dim(`[artifact] ${label}`));
+          }
+          break;
+        }
+        case "pipeline:end": {
+          spinner.text = "Finalizing compilation";
+          break;
+        }
+        default:
+          break;
+      }
+    },
+    complete() {
+      // Placeholder for future cleanup hooks.
+    },
+  };
+};
+
 async function writeArtifacts(
   artifacts: readonly CompileArtifact[],
   cwd: string
@@ -540,79 +980,3 @@ function reportDiagnostics(
     }
   }
 }
-
-type WatchManager = {
-  update(paths: Iterable<string>): void;
-  dispose(): void;
-};
-
-const createWatchManager = (
-  onChange: () => void,
-  options: { debounceMs?: number } = {}
-): WatchManager => {
-  const watchers = new Map<string, FSWatcher>();
-  const debounceMs = options.debounceMs ?? DEFAULT_WATCH_DEBOUNCE_MS;
-  let debounceTimer: NodeJS.Timeout | undefined;
-
-  const schedule = () => {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-    }
-    debounceTimer = setTimeout(() => {
-      debounceTimer = undefined;
-      onChange();
-    }, debounceMs);
-  };
-
-  const attachWatcher = (watchPath: string) => {
-    if (watchers.has(watchPath)) {
-      return;
-    }
-
-    try {
-      const watcher = watchFs(watchPath, { recursive: false }, () => {
-        schedule();
-      });
-
-      watcher.on("error", () => {
-        watcher.close();
-        watchers.delete(watchPath);
-      });
-
-      watchers.set(watchPath, watcher);
-    } catch {
-      // Ignore paths that cannot be watched (may not exist yet).
-    }
-  };
-
-  const update = (paths: Iterable<string>) => {
-    const desired = new Set<string>();
-    for (const value of paths) {
-      desired.add(value);
-    }
-
-    for (const [watchPath, watcher] of watchers) {
-      if (!desired.has(watchPath)) {
-        watcher.close();
-        watchers.delete(watchPath);
-      }
-    }
-
-    for (const watchPath of desired) {
-      attachWatcher(watchPath);
-    }
-  };
-
-  const dispose = () => {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-      debounceTimer = undefined;
-    }
-    for (const watcher of watchers.values()) {
-      watcher.close();
-    }
-    watchers.clear();
-  };
-
-  return { update, dispose };
-};
