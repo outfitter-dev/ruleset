@@ -271,6 +271,18 @@ export const unsupportedCapability = (
 
 // biome-ignore lint/performance/noBarrelFile: re-exporting shared helpers keeps the public surface stable during the migration
 export { createDefaultProviders } from "./first-party";
+export {
+  type ClaudeCodeProvider,
+  createClaudeCodeProvider,
+} from "./providers/claude-code";
+export {
+  type CopilotProvider,
+  createCopilotProvider,
+} from "./providers/copilot";
+export {
+  type CursorProvider,
+  createCursorProvider,
+} from "./providers/cursor";
 export type { ProviderSettings } from "./utils";
 export {
   buildHandlebarsOptions,
