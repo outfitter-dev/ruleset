@@ -32,8 +32,8 @@
 
 ## 6. Rendering & Template Engines
 - [x] Deliver Handlebars renderer with strict defaults and curated helper set.
-- [ ] Implement Markdown passthrough renderer and XML-tag support for section names.
-- [ ] Provide extension hooks for future JSON/YAML emitters without committing to implementation yet.
+- [x] Implement Markdown passthrough renderer and XML-tag support for section names.
+- [x] Provide extension hooks for future JSON/YAML emitters without committing to implementation yet.
 
 ## 7. CLI Surface (`apps/cli`)
 - [ ] Rebuild commands (`rules init`, `compile`, `watch`, `install`, `update`, `import`) on top of the new orchestrator.

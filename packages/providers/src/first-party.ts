@@ -27,6 +27,7 @@ const normalizeRelativePath = (contextCwd: string, documentPath?: string) => {
 
 const DEFAULT_CAPABILITIES: readonly CapabilityDescriptor[] = Object.freeze([
   RULESET_CAPABILITIES.MARKDOWN_RENDER,
+  RULESET_CAPABILITIES.OUTPUT_SECTIONS,
   RULESET_CAPABILITIES.OUTPUT_FILESYSTEM,
   RULESET_CAPABILITIES.DIAGNOSTICS_STRUCTURED,
 ]);

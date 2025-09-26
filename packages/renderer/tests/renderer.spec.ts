@@ -3,8 +3,12 @@ import { describe, expect, it } from "bun:test";
 import {
   createHandlebarsRenderer,
   type HandlebarsTemplateContext,
+  type RendererFormatHandler,
+  registerRendererFormat,
+  resetRendererFormatsForTest,
+  unregisterRendererFormat,
 } from "@rulesets/renderer";
-import type { RulesetDocument } from "@rulesets/types";
+import { createResultOk, type RulesetDocument } from "@rulesets/types";
 
 const createDocument = (
   contents: string,
@@ -137,6 +141,164 @@ describe("createHandlebarsRenderer", () => {
     }
 
     expect(result.value.contents).toBe("Intro\nCompiled for claude-code");
+  });
+
+  it("renders XML sections when format is xml", () => {
+    const renderer = createHandlebarsRenderer();
+    const document = createDocument(
+      [
+        "## Instructions",
+        "Follow the steps",
+        "",
+        "## Examples",
+        "- Example one",
+        "",
+      ].join("\n")
+    );
+    const target = {
+      providerId: "xml-provider",
+      outputPath: "/virtual/output.xml",
+      capabilities: ["render:markdown"],
+    } as const;
+
+    const result = renderer(document, target, { format: "xml" });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error("Expected renderer to succeed");
+    }
+
+    const expected = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      "<ruleset>",
+      "  <instructions>",
+      "    <![CDATA[Follow the steps]]>",
+      "  </instructions>",
+      "  <examples>",
+      "    <![CDATA[- Example one]]>",
+      "  </examples>",
+      "</ruleset>",
+    ].join("\n");
+
+    expect(result.value.contents).toBe(expected);
+  });
+
+  it("normalises invalid section names for XML output", () => {
+    const renderer = createHandlebarsRenderer();
+    const document = createDocument(
+      ["## 123 Start", "Content", "", "## 123 Start", "More"].join("\n")
+    );
+    const target = {
+      providerId: "xml-provider",
+      outputPath: "/virtual/output.xml",
+      capabilities: ["render:markdown"],
+    } as const;
+
+    const result = renderer(document, target, { format: "xml" });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error("Expected renderer to succeed");
+    }
+
+    expect(result.value.contents).toContain("<section_1_123_start>");
+    expect(
+      result.value.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes("normalised")
+      )
+    ).toBe(true);
+  });
+
+  it("supports custom renderer formats via registry", () => {
+    resetRendererFormatsForTest();
+    const renderer = createHandlebarsRenderer();
+    const document = createDocument("Hello world\n");
+    const target = {
+      providerId: "json-provider",
+      outputPath: "/virtual/output.json",
+      capabilities: ["render:markdown"],
+    } as const;
+
+    const handler: RendererFormatHandler = ({ artifact }) =>
+      createResultOk({
+        ...artifact,
+        contents: JSON.stringify({ contents: artifact.contents }),
+        diagnostics: [],
+      });
+
+    registerRendererFormat({ id: "json", handler });
+
+    const result = renderer(document, target, { format: "json" });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error("Expected renderer to succeed");
+    }
+
+    expect(result.value.contents).toBe(
+      JSON.stringify({ contents: "Hello world\n" })
+    );
+
+    unregisterRendererFormat("json");
+  });
+
+  it("allows per-render format overrides without global registration", () => {
+    const renderer = createHandlebarsRenderer();
+    const document = createDocument("content\n");
+    const target = {
+      providerId: "inline-provider",
+      outputPath: "/virtual/output.custom",
+      capabilities: ["render:markdown"],
+    } as const;
+
+    const result = renderer(document, target, {
+      format: "custom-inline",
+      formats: [
+        {
+          id: "custom-inline",
+          handler: ({ artifact }) =>
+            createResultOk({
+              ...artifact,
+              contents: artifact.contents.trim().toUpperCase(),
+              diagnostics: [],
+            }),
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error("Expected renderer to succeed");
+    }
+
+    expect(result.value.contents).toBe("CONTENT");
+  });
+
+  it("reports diagnostics when a renderer format is missing", () => {
+    resetRendererFormatsForTest();
+    const renderer = createHandlebarsRenderer();
+    const document = createDocument("noop\n");
+    const target = {
+      providerId: "missing-format",
+      outputPath: "/virtual/output.bin",
+      capabilities: ["render:markdown"],
+    } as const;
+
+    const result = renderer(document, target, { format: "not-registered" });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      throw new Error("Expected renderer to fail");
+    }
+
+    expect(result.error).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          level: "error",
+          message: expect.stringContaining("not registered"),
+        }),
+      ])
+    );
   });
 
   it("returns diagnostics when Handlebars compilation fails", () => {
