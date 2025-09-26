@@ -13,6 +13,7 @@ import {
   type ProviderCompileInput,
   type ProviderEntry,
 } from "./index";
+import { createAgentsMdProvider } from "./providers/agents-md";
 import { createClaudeCodeProvider } from "./providers/claude-code";
 import { createCodexProvider } from "./providers/codex";
 import { createCopilotProvider } from "./providers/copilot";
@@ -83,6 +84,7 @@ const createMarkdownProvider = (providerId: string): ProviderEntry =>
 
 const FACTORIES: Record<string, () => ProviderEntry> = {
   cursor: createCursorProvider,
+  "agents-md": createAgentsMdProvider,
   "claude-code": createClaudeCodeProvider,
   copilot: createCopilotProvider,
   windsurf: createWindsurfProvider,

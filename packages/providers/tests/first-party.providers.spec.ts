@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import {
+  createAgentsMdProvider,
   createClaudeCodeProvider,
   createCodexProvider,
   createCopilotProvider,
@@ -303,6 +304,66 @@ describe("first-party providers", () => {
       );
       expect(
         messages.some((message) => message.includes("enableSharedAgents"))
+      ).toBe(true);
+    });
+  });
+
+  describe("agents-md", () => {
+    it("writes to AGENTS.md by default", async () => {
+      const provider = createAgentsMdProvider();
+      const document = createDocument({
+        id: "docs/overview.rule.md",
+      });
+
+      const artifact = await compileWithProvider(provider, {
+        context,
+        document,
+      });
+
+      expect(artifact.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/agents-md/docs/overview.rule.md`
+      );
+    });
+
+    it("respects outputPath overrides", async () => {
+      const provider = createAgentsMdProvider();
+      const document = createDocument({ id: "docs/setup.rule.md" });
+
+      const artifact = await compileWithProvider(provider, {
+        context,
+        document,
+        projectConfig: {
+          providers: {
+            "agents-md": {
+              outputPath: "AGENTS.md",
+            },
+          },
+        } as RulesetProjectConfig,
+      });
+
+      expect(artifact.target.outputPath).toBe(`${cwd}/AGENTS.md`);
+    });
+
+    it("adds warning diagnostic when useComposer is true", async () => {
+      const provider = createAgentsMdProvider();
+      const document = createDocument({ id: "docs/intro.rule.md" });
+
+      const artifact = await compileWithProvider(provider, {
+        context,
+        document,
+        projectConfig: {
+          providers: {
+            "agents-md": {
+              useComposer: true,
+            },
+          },
+        } as RulesetProjectConfig,
+      });
+
+      expect(
+        artifact.diagnostics.some((diagnostic) =>
+          diagnostic.message.includes("useComposer")
+        )
       ).toBe(true);
     });
   });
