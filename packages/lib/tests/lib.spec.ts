@@ -1,4 +1,6 @@
 import { describe, expect, it } from "bun:test";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 import { compile, createCompiler } from "@rulesets/lib";
 import { createNoopProvider, providerCapability } from "@rulesets/providers";
@@ -11,7 +13,7 @@ type MinimalTarget = Parameters<typeof compile>[0]["targets"][number];
 const createRuntimeContext = (): MinimalContext => ({
   version: RULESETS_VERSION_TAG,
   cwd: process.cwd(),
-  cacheDir: "/virtual/cache",
+  cacheDir: path.join(tmpdir(), "rulesets-lib-cache"),
   env: new Map<string, string>(),
 });
 

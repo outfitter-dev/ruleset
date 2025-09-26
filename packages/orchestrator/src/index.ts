@@ -1,3 +1,7 @@
+import { createHash } from "node:crypto";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+
 import {
   createNoopParser,
   type ParserOptions,
@@ -119,6 +123,13 @@ export type ProviderResultEvent = {
   readonly ok: boolean;
 };
 
+export type TargetCachedEvent = {
+  readonly kind: "target:cached";
+  readonly source: RulesetSource;
+  readonly target: CompileTarget;
+  readonly artifact: CompileArtifact;
+};
+
 export type ArtifactEmittedEvent = {
   readonly kind: "artifact:emitted";
   readonly source: RulesetSource;
@@ -142,6 +153,7 @@ export type CompilationEvent =
   | TargetSkippedEvent
   | RenderResultEvent
   | ProviderResultEvent
+  | TargetCachedEvent
   | ArtifactEmittedEvent
   | PipelineEndEvent;
 
@@ -258,6 +270,29 @@ const isNonEmptyRecord = (value: unknown): value is Record<string, unknown> =>
   !Array.isArray(value) &&
   Object.keys(value).length > 0;
 
+const cloneDiagnostic = (diagnostic: RulesetDiagnostic): RulesetDiagnostic => ({
+  ...diagnostic,
+  location: diagnostic.location
+    ? { ...diagnostic.location }
+    : diagnostic.location,
+  tags: diagnostic.tags ? [...diagnostic.tags] : diagnostic.tags,
+});
+
+const cloneDiagnostics = (
+  diagnostics: RulesetDiagnostics
+): RulesetDiagnostics => diagnostics.map(cloneDiagnostic);
+
+const cloneArtifact = (artifact: CompileArtifact): CompileArtifact => ({
+  target: {
+    ...artifact.target,
+    capabilities: artifact.target.capabilities
+      ? [...artifact.target.capabilities]
+      : artifact.target.capabilities,
+  },
+  contents: artifact.contents,
+  diagnostics: cloneDiagnostics(artifact.diagnostics),
+});
+
 type HandlebarsDirective = {
   readonly enabled: boolean;
   readonly helpers?: unknown;
@@ -313,6 +348,30 @@ type HandlebarsRequirements = {
   requiresHandlebars: boolean;
   requiresHelpers: boolean;
   requiresPartials: boolean;
+};
+
+const CACHE_FILENAME = "orchestrator-cache.json";
+const CACHE_VERSION = 1;
+
+type CachedTargetEntry = {
+  readonly artifact: CompileArtifact;
+};
+
+type CachedSourceEntry = {
+  readonly hash: string;
+  readonly diagnostics: RulesetDiagnostics;
+  readonly targets: Record<string, CachedTargetEntry>;
+};
+
+type CompilationCacheData = {
+  readonly version: number;
+  readonly sources: Record<string, CachedSourceEntry>;
+};
+
+type CacheState = {
+  readonly dir: string;
+  data: CompilationCacheData;
+  dirty: boolean;
 };
 
 const evaluateHandlebarsRequirements = (
@@ -454,16 +513,25 @@ const applyDocumentOverrides = (
   };
 };
 
-type ResolvedOrchestratorOptions = {
-  parser: RulesetParserFn;
-  parserOptions: ParserOptions;
-  validator: RulesetValidator;
-  validationOptions: ValidationOptions;
-  transforms: readonly RulesetTransform[];
-  renderer: RulesetRenderer;
-  rendererOptions: RendererOptions;
-  providers: readonly ProviderEntry[];
+const computeSourceHash = (
+  source: RulesetSource,
+  projectConfigPath?: string
+): string => {
+  const hash = createHash("sha256");
+  hash.update(source.contents);
+  if (source.path) {
+    hash.update(source.path);
+  } else if (source.id) {
+    hash.update(source.id);
+  }
+  if (projectConfigPath) {
+    hash.update(projectConfigPath);
+  }
+  return hash.digest("hex");
 };
+
+const getSourceKey = (source: RulesetSource): string =>
+  source.path ?? source.id ?? "<anonymous>";
 
 const appendDiagnostics = (
   bucket: RulesetDiagnostic[],
@@ -473,6 +541,84 @@ const appendDiagnostics = (
     return;
   }
   bucket.push(...diagnostics);
+};
+
+const loadCompilationCache = async (
+  cacheDir?: string
+): Promise<CacheState | undefined> => {
+  if (!cacheDir) {
+    return;
+  }
+
+  const dir = path.resolve(cacheDir);
+  const filePath = path.join(dir, CACHE_FILENAME);
+
+  try {
+    const contents = await fs.readFile(filePath, "utf8");
+    const parsed = JSON.parse(contents) as CompilationCacheData;
+    if (parsed.version !== CACHE_VERSION || !parsed.sources) {
+      return {
+        dir,
+        data: { version: CACHE_VERSION, sources: {} },
+        dirty: false,
+      };
+    }
+
+    return {
+      dir,
+      data: {
+        version: CACHE_VERSION,
+        sources: parsed.sources,
+      },
+      dirty: false,
+    };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return {
+        dir,
+        data: { version: CACHE_VERSION, sources: {} },
+        dirty: false,
+      };
+    }
+
+    return {
+      dir,
+      data: { version: CACHE_VERSION, sources: {} },
+      dirty: false,
+    };
+  }
+};
+
+const writeCompilationCache = async (state: CacheState): Promise<void> => {
+  const filePath = path.join(state.dir, CACHE_FILENAME);
+  const payload: CompilationCacheData = {
+    version: CACHE_VERSION,
+    sources: state.data.sources,
+  };
+
+  try {
+    await fs.mkdir(state.dir, { recursive: true });
+    await fs.writeFile(filePath, `${JSON.stringify(payload, null, 2)}\n`, {
+      encoding: "utf8",
+    });
+  } catch (_error) {
+    // Swallow file system errors (e.g., read-only cache dir) and disable cache writes.
+    state.dirty = false;
+    return;
+  }
+
+  state.dirty = false;
+};
+
+type ResolvedOrchestratorOptions = {
+  parser: RulesetParserFn;
+  parserOptions: ParserOptions;
+  validator: RulesetValidator;
+  validationOptions: ValidationOptions;
+  transforms: readonly RulesetTransform[];
+  renderer: RulesetRenderer;
+  rendererOptions: RendererOptions;
+  providers: readonly ProviderEntry[];
 };
 
 const diagnosticsFromUnknown = (error: unknown): RulesetDiagnostics => {
@@ -577,6 +723,7 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
 
     const registry = buildProviderRegistry(providers);
     const providerCapabilityCache: ProviderCapabilityCache = new WeakMap();
+    const cacheState = await loadCompilationCache(input.context.cacheDir);
 
     const aggregatedDiagnostics: RulesetDiagnostic[] = [];
     const artifacts: CompileArtifact[] = [];
@@ -593,8 +740,11 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
         source,
       } satisfies SourceStartEvent;
 
+      const sourceDiagnostics: RulesetDiagnostic[] = [];
+
       const parsed: ParserOutput = parser(source, parserOptions);
       appendDiagnostics(aggregatedDiagnostics, parsed.diagnostics);
+      appendDiagnostics(sourceDiagnostics, parsed.diagnostics);
       yield {
         kind: "source:parsed",
         source,
@@ -604,6 +754,7 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
 
       const validated = validator(parsed.document, validationOptions);
       appendDiagnostics(aggregatedDiagnostics, validated.diagnostics);
+      appendDiagnostics(sourceDiagnostics, validated.diagnostics);
       yield {
         kind: "source:validated",
         source,
@@ -613,6 +764,7 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
 
       const transformed = runTransforms(validated.document, ...transforms);
       appendDiagnostics(aggregatedDiagnostics, transformed.diagnostics);
+      appendDiagnostics(sourceDiagnostics, transformed.diagnostics);
       yield {
         kind: "source:transformed",
         source,
@@ -624,6 +776,15 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
         transformed.document,
         input.projectConfig
       );
+
+      const sourceKey = cacheState ? getSourceKey(source) : undefined;
+      const sourceHash = computeSourceHash(source, input.projectConfigPath);
+      const previousCacheEntry =
+        sourceKey && cacheState
+          ? cacheState.data.sources[sourceKey]
+          : undefined;
+
+      const cacheTargets: Record<string, CachedTargetEntry> = {};
 
       for (const target of input.targets) {
         yield {
@@ -655,6 +816,11 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
           requiredCapabilities,
           providerCapabilityCache
         );
+
+        const cachedTargetEntry =
+          previousCacheEntry && previousCacheEntry.hash === sourceHash
+            ? previousCacheEntry.targets[target.providerId]
+            : undefined;
 
         if (missingCapabilities.length > 0) {
           const knownCapabilities =
@@ -695,6 +861,7 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
           } satisfies RulesetDiagnostic;
 
           appendDiagnostics(aggregatedDiagnostics, [diagnostic]);
+          appendDiagnostics(sourceDiagnostics, [diagnostic]);
 
           const skippedEvent: TargetSkippedEvent = {
             kind: "target:skipped",
@@ -708,6 +875,49 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
           continue;
         }
 
+        if (cachedTargetEntry) {
+          const cachedArtifact = cloneArtifact(cachedTargetEntry.artifact);
+
+          if (
+            cachedArtifact.target.outputPath ===
+            targetWithCapabilities.outputPath
+          ) {
+            appendDiagnostics(
+              aggregatedDiagnostics,
+              cachedArtifact.diagnostics
+            );
+            appendDiagnostics(sourceDiagnostics, cachedArtifact.diagnostics);
+            artifacts.push(cachedArtifact);
+            cacheTargets[target.providerId] = {
+              artifact: cloneArtifact(cachedArtifact),
+            };
+
+            yield {
+              kind: "target:cached",
+              source,
+              target: cachedArtifact.target,
+              artifact: cachedArtifact,
+            } satisfies TargetCachedEvent;
+
+            yield {
+              kind: "target:compiled",
+              source,
+              target: cachedArtifact.target,
+              artifact: cachedArtifact,
+              diagnostics: cachedArtifact.diagnostics,
+              ok: true,
+            } satisfies ProviderResultEvent;
+
+            yield {
+              kind: "artifact:emitted",
+              source,
+              artifact: cachedArtifact,
+            } satisfies ArtifactEmittedEvent;
+
+            continue;
+          }
+        }
+
         const renderResult = renderer(
           documentWithOverrides,
           targetWithCapabilities,
@@ -717,6 +927,7 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
         if (!renderResult.ok) {
           const diagnostics = diagnosticsFromUnknown(renderResult.error);
           appendDiagnostics(aggregatedDiagnostics, diagnostics);
+          appendDiagnostics(sourceDiagnostics, diagnostics);
           yield {
             kind: "target:rendered",
             source,
@@ -747,6 +958,7 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
         };
 
         appendDiagnostics(aggregatedDiagnostics, renderedArtifact.diagnostics);
+        appendDiagnostics(sourceDiagnostics, renderedArtifact.diagnostics);
         yield {
           kind: "target:rendered",
           source,
@@ -779,6 +991,7 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
             providerResult.error
           );
           appendDiagnostics(aggregatedDiagnostics, providerDiagnostics);
+          appendDiagnostics(sourceDiagnostics, providerDiagnostics);
 
           yield {
             kind: "target:compiled",
@@ -814,6 +1027,7 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
           aggregatedDiagnostics,
           normalizedArtifact.diagnostics
         );
+        appendDiagnostics(sourceDiagnostics, normalizedArtifact.diagnostics);
         artifacts.push(normalizedArtifact);
 
         yield {
@@ -830,6 +1044,19 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
           source,
           artifact: normalizedArtifact,
         } satisfies ArtifactEmittedEvent;
+
+        cacheTargets[target.providerId] = {
+          artifact: cloneArtifact(normalizedArtifact),
+        };
+      }
+
+      if (cacheState && sourceKey) {
+        cacheState.data.sources[sourceKey] = {
+          hash: sourceHash,
+          diagnostics: cloneDiagnostics(sourceDiagnostics),
+          targets: cacheTargets,
+        };
+        cacheState.dirty = true;
       }
     }
 
@@ -837,6 +1064,10 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
       artifacts,
       diagnostics: aggregatedDiagnostics,
     };
+
+    if (cacheState?.dirty) {
+      await writeCompilationCache(cacheState);
+    }
 
     yield {
       kind: "pipeline:end",

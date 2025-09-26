@@ -93,3 +93,4 @@ Tracking work toward the Rulesets v0.4.0 rewrite.
 - Introduced renderer integration before provider execution and forwarded render artifacts via the provider compile input so providers can reuse rendered output; default providers now honor rendered diagnostics/content.
 - Extended provider compile contracts with optional `rendered` artifacts and updated first-party providers/noop provider to respect renderer results.
 - Added orchestrator unit coverage asserting event emission order and capability handling; CLI compile continues to call the orchestrator (now streaming under the hood) without API changes.
+- Implemented persistent cache support under `.ruleset/cache` with content hashing, target reuse, and a new `target:cached` event; cache writes gracefully degrade on read-only paths, and orchestrator tests cover cache hits.
