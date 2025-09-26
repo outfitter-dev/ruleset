@@ -1,8 +1,14 @@
 import { describe, expect, test } from "bun:test";
 
-import { RULESET_CAPABILITIES } from "@rulesets/types";
+import { RULESET_CAPABILITIES, type RulesetVersionTag } from "@rulesets/types";
 
-import { providerCapability, unsupportedCapability } from "../src/index";
+import {
+  defineProvider,
+  evaluateProviderCompatibility,
+  PROVIDER_SDK_VERSION,
+  providerCapability,
+  unsupportedCapability,
+} from "../src/index";
 
 describe("provider capability helpers", () => {
   test("hydrates known capability descriptors", () => {
@@ -53,5 +59,38 @@ describe("provider capability helpers", () => {
     }
 
     expect(result.error).toBe(diagnostics);
+  });
+
+  test("treats matching SDK versions as compatible", () => {
+    const provider = defineProvider({
+      handshake: {
+        providerId: "valid",
+        version: "0.0.1-test",
+        sdkVersion: PROVIDER_SDK_VERSION,
+        capabilities: [providerCapability("render:markdown")],
+        sandbox: { mode: "in-process" },
+      },
+      compile: () => unsupportedCapability("render:markdown"),
+    });
+
+    const diagnostics = evaluateProviderCompatibility(provider);
+    expect(diagnostics.length).toBe(0);
+  });
+
+  test("flags mismatched SDK versions", () => {
+    const provider = defineProvider({
+      handshake: {
+        providerId: "legacy",
+        version: "0.0.1-test",
+        sdkVersion: "1.0.0" as RulesetVersionTag,
+        capabilities: [providerCapability("render:markdown")],
+        sandbox: { mode: "in-process" },
+      },
+      compile: () => unsupportedCapability("render:markdown"),
+    });
+
+    const diagnostics = evaluateProviderCompatibility(provider);
+    expect(diagnostics.length).toBeGreaterThan(0);
+    expect(diagnostics[0]?.message.includes("SDK")).toBe(true);
   });
 });
