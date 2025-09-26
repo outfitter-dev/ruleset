@@ -27,15 +27,18 @@ import type {
   CompileTarget,
   JsonValue,
   RulesetCapabilityId,
+  RulesetDiagnostic,
   RulesetDiagnostics,
   RulesetDocument,
   RulesetProjectConfig,
   RulesetProviderConfig,
   RulesetProviderHandlebarsConfig,
   RulesetRuleFrontmatter,
+  RulesetSource,
 } from "@rulesets/types";
 import {
   createRulesetError,
+  isRulesetError,
   resolveRulesetCapabilities,
 } from "@rulesets/types";
 import {
@@ -43,6 +46,108 @@ import {
   type RulesetValidator,
   type ValidationOptions,
 } from "@rulesets/validator";
+
+export type PipelineStartEvent = {
+  readonly kind: "pipeline:start";
+  readonly timestamp: number;
+  readonly input: CompilationInput;
+};
+
+export type SourceStartEvent = {
+  readonly kind: "source:start";
+  readonly source: RulesetSource;
+};
+
+export type ParseResultEvent = {
+  readonly kind: "source:parsed";
+  readonly source: RulesetSource;
+  readonly document: RulesetDocument;
+  readonly diagnostics: RulesetDiagnostics;
+};
+
+export type ValidateResultEvent = {
+  readonly kind: "source:validated";
+  readonly source: RulesetSource;
+  readonly document: RulesetDocument;
+  readonly diagnostics: RulesetDiagnostics;
+};
+
+export type TransformResultEvent = {
+  readonly kind: "source:transformed";
+  readonly source: RulesetSource;
+  readonly document: RulesetDocument;
+  readonly diagnostics: RulesetDiagnostics;
+};
+
+export type TargetStartEvent = {
+  readonly kind: "target:start";
+  readonly source: RulesetSource;
+  readonly target: CompileTarget;
+};
+
+export type TargetCapabilitiesEvent = {
+  readonly kind: "target:capabilities";
+  readonly source: RulesetSource;
+  readonly target: CompileTarget;
+  readonly required: readonly string[];
+};
+
+export type TargetSkippedEvent = {
+  readonly kind: "target:skipped";
+  readonly source: RulesetSource;
+  readonly target: CompileTarget;
+  readonly reason: "missing-capability" | "render-error" | "provider-error";
+  readonly diagnostics: RulesetDiagnostics;
+  readonly missingCapabilities?: readonly string[];
+};
+
+export type RenderResultEvent = {
+  readonly kind: "target:rendered";
+  readonly source: RulesetSource;
+  readonly target: CompileTarget;
+  readonly artifact?: CompileArtifact;
+  readonly diagnostics: RulesetDiagnostics;
+  readonly ok: boolean;
+};
+
+export type ProviderResultEvent = {
+  readonly kind: "target:compiled";
+  readonly source: RulesetSource;
+  readonly target: CompileTarget;
+  readonly artifact?: CompileArtifact;
+  readonly diagnostics: RulesetDiagnostics;
+  readonly ok: boolean;
+};
+
+export type ArtifactEmittedEvent = {
+  readonly kind: "artifact:emitted";
+  readonly source: RulesetSource;
+  readonly artifact: CompileArtifact;
+};
+
+export type PipelineEndEvent = {
+  readonly kind: "pipeline:end";
+  readonly timestamp: number;
+  readonly output: CompilationOutput;
+};
+
+export type CompilationEvent =
+  | PipelineStartEvent
+  | SourceStartEvent
+  | ParseResultEvent
+  | ValidateResultEvent
+  | TransformResultEvent
+  | TargetStartEvent
+  | TargetCapabilitiesEvent
+  | TargetSkippedEvent
+  | RenderResultEvent
+  | ProviderResultEvent
+  | ArtifactEmittedEvent
+  | PipelineEndEvent;
+
+export type CompilationEventHandler = (
+  event: CompilationEvent
+) => void | Promise<void>;
 
 export type OrchestratorOptions = {
   readonly parser?: RulesetParserFn;
@@ -53,6 +158,7 @@ export type OrchestratorOptions = {
   readonly renderer?: RulesetRenderer;
   readonly rendererOptions?: RendererOptions;
   readonly providers?: readonly ProviderEntry[];
+  readonly onEvent?: CompilationEventHandler;
 };
 
 export type Orchestrator = (
@@ -86,11 +192,6 @@ const ensureProvider = (
   registry.set(targetProviderId, fallback);
   return fallback;
 };
-
-const collectDiagnostics = (
-  accumulator: RulesetDiagnostics,
-  next: RulesetDiagnostics
-): RulesetDiagnostics => [...accumulator, ...next];
 
 const normalizeCapabilityIds = (
   capabilities?: readonly string[]
@@ -353,44 +454,171 @@ const applyDocumentOverrides = (
   };
 };
 
-export const createOrchestrator =
-  (defaults: OrchestratorOptions = {}): Orchestrator =>
-  async (input, overrides) => {
-    const parser = overrides?.parser ?? defaults.parser ?? createNoopParser();
-    const parserOptions = {
-      ...defaults.parserOptions,
-      ...overrides?.parserOptions,
-    };
-    const validator =
-      overrides?.validator ?? defaults.validator ?? createNoopValidator();
-    const validationOptions = {
-      ...defaults.validationOptions,
-      ...overrides?.validationOptions,
-    };
-    const transforms = overrides?.transforms ??
-      defaults.transforms ?? [identityTransform];
-    const _renderer =
-      overrides?.renderer ?? defaults.renderer ?? createPassthroughRenderer();
-    const _rendererOptions = {
-      ...defaults.rendererOptions,
-      ...overrides?.rendererOptions,
-    };
-    const providerEntries = overrides?.providers ?? defaults.providers ?? [];
-    const registry = buildProviderRegistry(providerEntries);
+type ResolvedOrchestratorOptions = {
+  parser: RulesetParserFn;
+  parserOptions: ParserOptions;
+  validator: RulesetValidator;
+  validationOptions: ValidationOptions;
+  transforms: readonly RulesetTransform[];
+  renderer: RulesetRenderer;
+  rendererOptions: RendererOptions;
+  providers: readonly ProviderEntry[];
+};
+
+const appendDiagnostics = (
+  bucket: RulesetDiagnostic[],
+  diagnostics: RulesetDiagnostics
+): void => {
+  if (diagnostics.length === 0) {
+    return;
+  }
+  bucket.push(...diagnostics);
+};
+
+const diagnosticsFromUnknown = (error: unknown): RulesetDiagnostics => {
+  if (Array.isArray(error)) {
+    return error as RulesetDiagnostics;
+  }
+
+  if (isRulesetError(error)) {
+    return [
+      {
+        level: "error",
+        message: error.message,
+        hint: error.help,
+        tags: ["provider", error.code],
+      },
+    ];
+  }
+
+  if (error instanceof Error) {
+    return [
+      {
+        level: "error",
+        message: error.message,
+        hint: error.stack,
+      },
+    ];
+  }
+
+  if (typeof error === "string") {
+    return [
+      {
+        level: "error",
+        message: error,
+      },
+    ];
+  }
+
+  return [
+    {
+      level: "error",
+      message: "Unknown error during compilation",
+    },
+  ];
+};
+
+const resolveOptions = (
+  defaults: OrchestratorOptions,
+  overrides?: OrchestratorOptions
+): ResolvedOrchestratorOptions => {
+  const parser = overrides?.parser ?? defaults.parser ?? createNoopParser();
+  const parserOptions: ParserOptions = {
+    ...defaults.parserOptions,
+    ...overrides?.parserOptions,
+  };
+
+  const validator =
+    overrides?.validator ?? defaults.validator ?? createNoopValidator();
+  const validationOptions: ValidationOptions = {
+    ...defaults.validationOptions,
+    ...overrides?.validationOptions,
+  };
+
+  const transforms = overrides?.transforms ??
+    defaults.transforms ?? [identityTransform];
+
+  const renderer =
+    overrides?.renderer ?? defaults.renderer ?? createPassthroughRenderer();
+  const rendererOptions: RendererOptions = {
+    ...defaults.rendererOptions,
+    ...overrides?.rendererOptions,
+  };
+
+  const providers = overrides?.providers ?? defaults.providers ?? [];
+
+  return {
+    parser,
+    parserOptions,
+    validator,
+    validationOptions,
+    transforms,
+    renderer,
+    rendererOptions,
+    providers,
+  };
+};
+
+export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
+  async function* orchestratorStream(
+    input: CompilationInput,
+    overrides?: OrchestratorOptions
+  ): AsyncGenerator<CompilationEvent, void, void> {
+    const {
+      parser,
+      parserOptions,
+      validator,
+      validationOptions,
+      transforms,
+      renderer,
+      rendererOptions,
+      providers,
+    } = resolveOptions(defaults, overrides);
+
+    const registry = buildProviderRegistry(providers);
     const providerCapabilityCache: ProviderCapabilityCache = new WeakMap();
 
+    const aggregatedDiagnostics: RulesetDiagnostic[] = [];
     const artifacts: CompileArtifact[] = [];
-    let diagnostics: RulesetDiagnostics = [];
+
+    yield {
+      kind: "pipeline:start",
+      timestamp: Date.now(),
+      input,
+    } satisfies PipelineStartEvent;
 
     for (const source of input.sources) {
+      yield {
+        kind: "source:start",
+        source,
+      } satisfies SourceStartEvent;
+
       const parsed: ParserOutput = parser(source, parserOptions);
-      diagnostics = collectDiagnostics(diagnostics, parsed.diagnostics);
+      appendDiagnostics(aggregatedDiagnostics, parsed.diagnostics);
+      yield {
+        kind: "source:parsed",
+        source,
+        document: parsed.document,
+        diagnostics: parsed.diagnostics,
+      } satisfies ParseResultEvent;
 
       const validated = validator(parsed.document, validationOptions);
-      diagnostics = collectDiagnostics(diagnostics, validated.diagnostics);
+      appendDiagnostics(aggregatedDiagnostics, validated.diagnostics);
+      yield {
+        kind: "source:validated",
+        source,
+        document: validated.document,
+        diagnostics: validated.diagnostics,
+      } satisfies ValidateResultEvent;
 
       const transformed = runTransforms(validated.document, ...transforms);
-      diagnostics = collectDiagnostics(diagnostics, transformed.diagnostics);
+      appendDiagnostics(aggregatedDiagnostics, transformed.diagnostics);
+      yield {
+        kind: "source:transformed",
+        source,
+        document: transformed.document,
+        diagnostics: transformed.diagnostics,
+      } satisfies TransformResultEvent;
 
       const documentWithOverrides = applyDocumentOverrides(
         transformed.document,
@@ -398,12 +626,30 @@ export const createOrchestrator =
       );
 
       for (const target of input.targets) {
+        yield {
+          kind: "target:start",
+          source,
+          target,
+        } satisfies TargetStartEvent;
+
         const provider = ensureProvider(registry, target.providerId);
         const requiredCapabilities = deriveRequiredCapabilities(
           documentWithOverrides,
           target,
           input.projectConfig
         );
+        const targetWithCapabilities: CompileTarget = {
+          ...target,
+          capabilities: requiredCapabilities,
+        };
+
+        yield {
+          kind: "target:capabilities",
+          source,
+          target: targetWithCapabilities,
+          required: requiredCapabilities,
+        } satisfies TargetCapabilitiesEvent;
+
         const missingCapabilities = collectMissingCapabilities(
           provider,
           requiredCapabilities,
@@ -438,64 +684,200 @@ export const createOrchestrator =
             ...unknownCapabilities,
           ];
 
-          const diagnosticMessage = `${error.message} Missing: ${missingCapabilities.join(", ")}.`;
+          const diagnostic = {
+            level: "error" as const,
+            message: `${error.message} Missing: ${missingCapabilities.join(", ")}.`,
+            hint:
+              capabilitySummary.length > 0
+                ? `Details: ${capabilitySummary.join("; ")}`
+                : error.help,
+            tags: ["provider", target.providerId, "capability"],
+          } satisfies RulesetDiagnostic;
 
-          diagnostics = collectDiagnostics(diagnostics, [
-            {
-              level: "error",
-              message: diagnosticMessage,
-              hint:
-                capabilitySummary.length > 0
-                  ? `Details: ${capabilitySummary.join("; ")}`
-                  : error.help,
-              tags: ["provider", target.providerId, "capability"],
-            },
-          ]);
+          appendDiagnostics(aggregatedDiagnostics, [diagnostic]);
 
+          const skippedEvent: TargetSkippedEvent = {
+            kind: "target:skipped",
+            source,
+            target: targetWithCapabilities,
+            reason: "missing-capability",
+            diagnostics: [diagnostic],
+            missingCapabilities,
+          };
+          yield skippedEvent;
           continue;
         }
 
-        const targetWithCapabilities: CompileTarget = {
-          ...target,
-          capabilities: requiredCapabilities,
+        const renderResult = renderer(
+          documentWithOverrides,
+          targetWithCapabilities,
+          rendererOptions
+        );
+
+        if (!renderResult.ok) {
+          const diagnostics = diagnosticsFromUnknown(renderResult.error);
+          appendDiagnostics(aggregatedDiagnostics, diagnostics);
+          yield {
+            kind: "target:rendered",
+            source,
+            target: targetWithCapabilities,
+            diagnostics,
+            ok: false,
+          } satisfies RenderResultEvent;
+
+          const skippedEvent: TargetSkippedEvent = {
+            kind: "target:skipped",
+            source,
+            target: targetWithCapabilities,
+            reason: "render-error",
+            diagnostics,
+          };
+          yield skippedEvent;
+          continue;
+        }
+
+        const renderedArtifact: CompileArtifact = {
+          ...renderResult.value,
+          target: {
+            ...renderResult.value.target,
+            capabilities: normalizeCapabilityIds(
+              renderResult.value.target.capabilities ?? requiredCapabilities
+            ),
+          },
+        };
+
+        appendDiagnostics(aggregatedDiagnostics, renderedArtifact.diagnostics);
+        yield {
+          kind: "target:rendered",
+          source,
+          target: renderedArtifact.target,
+          artifact: renderedArtifact,
+          diagnostics: renderedArtifact.diagnostics,
+          ok: true,
+        } satisfies RenderResultEvent;
+
+        const providerTarget: CompileTarget = {
+          ...renderedArtifact.target,
+          outputPath:
+            renderedArtifact.target.outputPath ??
+            targetWithCapabilities.outputPath,
         };
 
         const compileInput: ProviderCompileInput = {
           document: documentWithOverrides,
           context: input.context,
-          target: targetWithCapabilities,
+          target: providerTarget,
           projectConfig: input.projectConfig,
           projectConfigPath: input.projectConfigPath,
+          rendered: renderedArtifact,
         };
 
-        const result = await provider.compile(compileInput);
+        const providerResult = await provider.compile(compileInput);
 
-        if (result.ok) {
-          const artifactCapabilities = normalizeCapabilityIds(
-            result.value.target.capabilities ?? requiredCapabilities
+        if (!providerResult.ok) {
+          const providerDiagnostics = diagnosticsFromUnknown(
+            providerResult.error
           );
+          appendDiagnostics(aggregatedDiagnostics, providerDiagnostics);
 
-          const artifact: CompileArtifact = {
-            ...result.value,
-            target: {
-              ...result.value.target,
-              capabilities: artifactCapabilities,
-            },
+          yield {
+            kind: "target:compiled",
+            source,
+            target: providerTarget,
+            artifact: undefined,
+            diagnostics: providerDiagnostics,
+            ok: false,
+          } satisfies ProviderResultEvent;
+
+          const skippedEvent: TargetSkippedEvent = {
+            kind: "target:skipped",
+            source,
+            target: providerTarget,
+            reason: "provider-error",
+            diagnostics: providerDiagnostics,
           };
-
-          artifacts.push(artifact);
-          diagnostics = collectDiagnostics(diagnostics, artifact.diagnostics);
-        } else if (Array.isArray(result.error)) {
-          diagnostics = collectDiagnostics(diagnostics, result.error);
+          yield skippedEvent;
+          continue;
         }
+
+        const normalizedArtifact: CompileArtifact = {
+          ...providerResult.value,
+          target: {
+            ...providerResult.value.target,
+            capabilities: normalizeCapabilityIds(
+              providerResult.value.target.capabilities ?? requiredCapabilities
+            ),
+          },
+        };
+
+        appendDiagnostics(
+          aggregatedDiagnostics,
+          normalizedArtifact.diagnostics
+        );
+        artifacts.push(normalizedArtifact);
+
+        yield {
+          kind: "target:compiled",
+          source,
+          target: normalizedArtifact.target,
+          artifact: normalizedArtifact,
+          diagnostics: normalizedArtifact.diagnostics,
+          ok: true,
+        } satisfies ProviderResultEvent;
+
+        yield {
+          kind: "artifact:emitted",
+          source,
+          artifact: normalizedArtifact,
+        } satisfies ArtifactEmittedEvent;
       }
     }
 
-    return {
+    const output: CompilationOutput = {
       artifacts,
-      diagnostics,
+      diagnostics: aggregatedDiagnostics,
     };
+
+    yield {
+      kind: "pipeline:end",
+      timestamp: Date.now(),
+      output,
+    } satisfies PipelineEndEvent;
   };
+
+export const compileRulesetsStream = (
+  input: CompilationInput,
+  options?: OrchestratorOptions
+): AsyncIterable<CompilationEvent> =>
+  createOrchestratorStream(options)(input, options);
+
+export const createOrchestrator = (
+  defaults: OrchestratorOptions = {}
+): Orchestrator => {
+  const streamFactory = createOrchestratorStream(defaults);
+
+  return async (input, overrides) => {
+    const onEvent = overrides?.onEvent ?? defaults.onEvent;
+    let finalOutput: CompilationOutput | undefined;
+
+    for await (const event of streamFactory(input, overrides)) {
+      if (onEvent) {
+        await onEvent(event);
+      }
+
+      if (event.kind === "pipeline:end") {
+        finalOutput = event.output;
+      }
+    }
+
+    return (
+      finalOutput ?? {
+        artifacts: [],
+        diagnostics: [],
+      }
+    );
+  };
+};
 
 export const compileRulesets: Orchestrator = (input, options) =>
   createOrchestrator(options)(input, options);

@@ -16,6 +16,8 @@ pnpm-lock.yaml
 
 # Testing
 coverage/
+!packages/**/tests/
+!packages/**/tests/**
 
 # Logs
 logs/

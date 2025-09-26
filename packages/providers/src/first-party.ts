@@ -34,7 +34,12 @@ const createMarkdownProvider = (providerId: string): ProviderEntry =>
       version: PROVIDER_VERSION,
       capabilities: DEFAULT_CAPABILITIES,
     },
-    compile: ({ document, context, target }: ProviderCompileInput) => {
+    compile: ({
+      document,
+      context,
+      target,
+      rendered,
+    }: ProviderCompileInput) => {
       const normalizedRelative = normalizeRelativePath(
         context.cwd,
         document.source.path
@@ -55,8 +60,8 @@ const createMarkdownProvider = (providerId: string): ProviderEntry =>
           ...target,
           outputPath: destinationPath,
         },
-        contents: document.source.contents,
-        diagnostics: document.diagnostics ?? [],
+        contents: rendered?.contents ?? document.source.contents,
+        diagnostics: rendered?.diagnostics ?? [],
       };
 
       return createResultOk(artifact);

@@ -69,6 +69,7 @@ export type ProviderCompileInput = {
   readonly target: CompileTarget;
   readonly projectConfig?: RulesetProjectConfig;
   readonly projectConfigPath?: string;
+  readonly rendered?: CompileArtifact;
 };
 
 export type ProviderCompileResult = Result<CompileArtifact>;
@@ -105,11 +106,14 @@ export const createNoopProvider = (
   handshake: ProviderHandshake
 ): ProviderEntry => ({
   handshake,
-  compile: ({ document, target }) => {
+  compile: ({ document, target, rendered }) => {
     const artifact: CompileArtifact = {
-      target,
-      contents: document.source.contents,
-      diagnostics: [],
+      target: {
+        ...target,
+        capabilities: rendered?.target.capabilities ?? target.capabilities,
+      },
+      contents: rendered?.contents ?? document.source.contents,
+      diagnostics: rendered?.diagnostics ?? [],
     };
     return createResultOk(artifact);
   },

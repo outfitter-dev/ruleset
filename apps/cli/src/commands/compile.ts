@@ -84,9 +84,20 @@ async function runCompile(
     const outputDir = resolve(cwd, options.output);
 
     const projectConfigResult = await loadProjectConfig({ startPath: cwd });
-    const projectSources: readonly RulesetSourceEntry[] = usedDefaultSource
-      ? (projectConfigResult.config.sources ?? [])
-      : [source];
+    const configSources = projectConfigResult.config.sources ?? [];
+    const hasConfiguredSources = configSources.length > 0;
+
+    const projectSources: readonly RulesetSourceEntry[] = (() => {
+      if (!usedDefaultSource) {
+        return [source];
+      }
+
+      if (hasConfiguredSources) {
+        return configSources;
+      }
+
+      return [source];
+    })();
 
     const sourceSelections = resolveSourceSelections(projectSources, cwd);
     const projectRuleConfig = projectConfigResult.config.rule;
