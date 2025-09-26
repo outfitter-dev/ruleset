@@ -112,3 +112,4 @@ Tracking work toward the Rulesets v0.4.0 rewrite.
 - Ported Windsurf and Codex providers onto the shared filesystem helper, adding XML-aware format negotiation and codex diagnostics for shared agents hints; helper now drives Cursor/Claude/Copilot too for DRY reuse.
 - Added first-party provider tests covering Windsurf XML outputs and Codex override/diagnostic behaviour.
 - Ported agents-md provider into @rulesets/providers using the shared filesystem helper; `useComposer` now emits a warning until the composer port lands, preserving existing output behaviour.
+- Restored `agents-md` composer: provider now aggregates matched rules via the new lightweight composer helper (glob + dedupe) instead of warning, reusing the shared filesystem helper.

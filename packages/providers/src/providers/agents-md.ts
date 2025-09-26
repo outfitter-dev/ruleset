@@ -5,7 +5,7 @@ import {
   type JsonValue,
   RULESET_CAPABILITIES,
 } from "@rulesets/types";
-
+import { createAgentsComposer } from "../composer/agents";
 import {
   defineProvider,
   PROVIDER_SDK_VERSION,
@@ -13,7 +13,7 @@ import {
   type ProviderCompileResult,
 } from "../index";
 import {
-  createDiagnostic,
+  mergeDiagnostics,
   PROVIDER_VERSION,
   resolveFilesystemArtifact,
 } from "../shared";
@@ -30,6 +30,7 @@ type AgentsMdConfig = {
   outputPath?: JsonValue;
   useComposer?: JsonValue;
   detectSymlinks?: JsonValue;
+  includeGlobs?: JsonValue;
 };
 
 const resolveBoolean = (value: JsonValue | undefined): boolean | undefined => {
@@ -76,6 +77,8 @@ const normalizePath = async (outputPath: string, detectSymlinks: boolean) => {
   return outputPath;
 };
 
+const composer = createAgentsComposer();
+
 export const createAgentsMdProvider = () =>
   defineProvider({
     handshake: {
@@ -99,32 +102,38 @@ export const createAgentsMdProvider = () =>
       const config = artifactContext.config as AgentsMdConfig;
       const detectSymlinks = resolveSymlinkFlag(config);
 
+      let diagnostics = artifactContext.artifact.diagnostics;
+      let contents = artifactContext.artifact.contents;
+
+      if (resolveComposerFlag(config)) {
+        const includeGlobs = Array.isArray(config.includeGlobs)
+          ? (config.includeGlobs as unknown[]).filter(
+              (entry): entry is string => typeof entry === "string"
+            )
+          : undefined;
+
+        const composeResult = await composer.compose({
+          baseDir: input.context.cwd,
+          includeGlobs,
+        });
+
+        contents = composeResult.content;
+        diagnostics = mergeDiagnostics(diagnostics, composeResult.diagnostics);
+      }
+
       const normalizedOutput = await normalizePath(
         artifactContext.outputPath,
         detectSymlinks
       );
 
-      const diagnostics = [...artifactContext.artifact.diagnostics];
-
-      if (resolveComposerFlag(config)) {
-        diagnostics.push(
-          createDiagnostic({
-            level: "warning",
-            message:
-              "agents-md.useComposer is not yet supported in the new provider stack; emitting single-source content instead.",
-            hint: "Re-run without useComposer or wait for the composer port to land.",
-            tags: ["provider", "agents-md", "useComposer"],
-          })
-        );
-      }
-
       return createResultOk({
         ...artifactContext.artifact,
+        contents,
+        diagnostics,
         target: {
           ...artifactContext.artifact.target,
           outputPath: normalizedOutput,
         },
-        diagnostics,
       });
     },
   });

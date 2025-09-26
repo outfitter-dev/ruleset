@@ -1,4 +1,6 @@
 import { describe, expect, it } from "bun:test";
+import { promises as fsPromises } from "node:fs";
+import path from "node:path";
 
 import {
   createAgentsMdProvider,
@@ -344,27 +346,55 @@ describe("first-party providers", () => {
       expect(artifact.target.outputPath).toBe(`${cwd}/AGENTS.md`);
     });
 
-    it("adds warning diagnostic when useComposer is true", async () => {
+    it("composes aggregated content when useComposer is true", async () => {
       const provider = createAgentsMdProvider();
-      const document = createDocument({ id: "docs/intro.rule.md" });
+      const tempDir = await fsPromises.mkdtemp(
+        path.join(process.cwd(), "agents-md-test-")
+      );
 
-      const artifact = await compileWithProvider(provider, {
-        context,
-        document,
-        projectConfig: {
-          providers: {
-            "agents-md": {
-              useComposer: true,
-            },
+      try {
+        const rulesDir = path.join(tempDir, ".ruleset", "rules");
+        await fsPromises.mkdir(rulesDir, { recursive: true });
+        await fsPromises.writeFile(
+          path.join(rulesDir, "alpha.rule.md"),
+          "# Alpha\nContent A\n"
+        );
+        await fsPromises.writeFile(
+          path.join(rulesDir, "beta.rule.md"),
+          "# Beta\nContent B\n"
+        );
+
+        const document = createDocument({
+          id: "docs/intro.rule.md",
+          path: path.join(tempDir, "docs", "intro.rule.md"),
+        });
+
+        const artifact = await compileWithProvider(provider, {
+          context: {
+            ...context,
+            cwd: tempDir,
+            cacheDir: path.join(tempDir, ".ruleset", "cache"),
           },
-        } as RulesetProjectConfig,
-      });
+          document,
+          projectConfig: {
+            providers: {
+              "agents-md": {
+                useComposer: true,
+              },
+            },
+          } as RulesetProjectConfig,
+        });
 
-      expect(
-        artifact.diagnostics.some((diagnostic) =>
-          diagnostic.message.includes("useComposer")
-        )
-      ).toBe(true);
+        expect(artifact.diagnostics.length).toBeGreaterThanOrEqual(0);
+        expect(artifact.contents).toContain("# AGENTS");
+        expect(artifact.contents).toContain(
+          "<!-- Source: .ruleset/rules/alpha.rule.md -->"
+        );
+        expect(artifact.contents).toContain("Content A");
+        expect(artifact.contents).toContain("Content B");
+      } finally {
+        await fsPromises.rm(tempDir, { recursive: true, force: true });
+      }
     });
   });
 });
