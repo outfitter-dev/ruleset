@@ -13,6 +13,9 @@ import {
   type ProviderCompileInput,
   type ProviderEntry,
 } from "./index";
+import { createClaudeCodeProvider } from "./providers/claude-code";
+import { createCopilotProvider } from "./providers/copilot";
+import { createCursorProvider } from "./providers/cursor";
 
 const PROVIDER_VERSION = "0.4.0-dev";
 const LEADING_CURRENT_DIR = /^\.\//;
@@ -76,7 +79,26 @@ const createMarkdownProvider = (providerId: string): ProviderEntry =>
     },
   });
 
+const FACTORIES: Record<string, () => ProviderEntry> = {
+  cursor: createCursorProvider,
+  "claude-code": createClaudeCodeProvider,
+  copilot: createCopilotProvider,
+};
+
+const DEFAULT_PROVIDER_ORDER = [
+  "cursor",
+  "windsurf",
+  "claude-code",
+  "agents-md",
+  "copilot",
+  "codex",
+];
+
 export const createDefaultProviders = (): ProviderEntry[] =>
-  ["cursor", "windsurf", "claude-code", "agents-md", "copilot", "codex"].map(
-    (providerId) => createMarkdownProvider(providerId)
-  );
+  DEFAULT_PROVIDER_ORDER.map((providerId) => {
+    const factory = FACTORIES[providerId];
+    if (factory) {
+      return factory();
+    }
+    return createMarkdownProvider(providerId);
+  });

@@ -107,3 +107,5 @@ Tracking work toward the Rulesets v0.4.0 rewrite.
 - Expanded rendering pipeline with Markdown passthrough + XML emission: renderer can convert compiled Markdown into `<ruleset>` XML with section tags, orchestrator threads provider `format` preferences from project/frontmatter, enforces the `output:sections` capability, and first-party providers advertise support. Added Bun tests proving XML outputs and capability negotiation behave as expected.
 - Introduced renderer format registry (`registerRendererFormat`/`unregisterRendererFormat`) with per-render overrides, enabling future JSON/YAML emitters without touching core.
 - Updated `RendererOptions` to accept custom format descriptors and added tests for registry usage, inline overrides, and missing format diagnostics; PLAN §6 extension hook now complete.
+- Ported Cursor, Claude Code, and Copilot providers onto the new @rulesets/providers SDK with shared filesystem helpers; default provider list now instantiates the real implementations instead of Markdown stubs.
+- Added provider-specific tests covering output path resolution and config overrides; lint/typecheck/test suite updated to include the new coverage.
