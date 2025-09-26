@@ -276,6 +276,10 @@ export {
   createClaudeCodeProvider,
 } from "./providers/claude-code";
 export {
+  type CodexProvider,
+  createCodexProvider,
+} from "./providers/codex";
+export {
   type CopilotProvider,
   createCopilotProvider,
 } from "./providers/copilot";
@@ -283,6 +287,10 @@ export {
   type CursorProvider,
   createCursorProvider,
 } from "./providers/cursor";
+export {
+  createWindsurfProvider,
+  type WindsurfProvider,
+} from "./providers/windsurf";
 export type { ProviderSettings } from "./utils";
 export {
   buildHandlebarsOptions,

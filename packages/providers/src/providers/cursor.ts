@@ -10,12 +10,9 @@ import {
   type ProviderCompileResult,
 } from "../index";
 import {
-  buildDefaultOutputPath,
   hasCapability,
-  mergeProviderConfig,
   PROVIDER_VERSION,
-  resolveConfiguredOutputPath,
-  selectRenderedArtifact,
+  resolveFilesystemArtifact,
 } from "../shared";
 
 const CURSOR_CAPABILITIES = Object.freeze([
@@ -40,49 +37,15 @@ export const createCursorProvider = () =>
       runtime: { bun: ">=1.0.0" },
     },
     compile: (input: ProviderCompileInput): ProviderCompileResult => {
-      const { document, context, target, projectConfig, rendered } = input;
-
-      const format = resolveFormat(rendered?.target ?? target);
-
-      const fallbackPath = buildDefaultOutputPath({
-        context,
-        target,
+      const { artifact } = resolveFilesystemArtifact({
         providerId: CURSOR_PROVIDER_ID,
-        document,
-        format,
+        input,
         fallbackExtension: ".md",
+        formatResolver: ({ target: resolvedTarget }) =>
+          resolveFormat(resolvedTarget),
       });
 
-      const config = mergeProviderConfig(
-        document,
-        projectConfig,
-        CURSOR_PROVIDER_ID
-      );
-
-      const desiredOutputPath = resolveConfiguredOutputPath({
-        context,
-        fallbackPath,
-        configuredPath: config.outputPath,
-        format,
-        fallbackExtension: ".md",
-      });
-
-      const artifact = selectRenderedArtifact({
-        rendered,
-        document,
-        target: {
-          ...target,
-          outputPath: desiredOutputPath,
-        },
-      });
-
-      return createResultOk({
-        ...artifact,
-        target: {
-          ...artifact.target,
-          outputPath: desiredOutputPath,
-        },
-      });
+      return createResultOk(artifact);
     },
   });
 

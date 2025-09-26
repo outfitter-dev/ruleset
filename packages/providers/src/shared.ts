@@ -12,6 +12,7 @@ import {
   type RulesetProjectConfig,
   type RulesetRuntimeContext,
 } from "@rulesets/types";
+import type { ProviderCompileInput } from "./index";
 
 import { readProviderConfig } from "./utils";
 
@@ -246,5 +247,92 @@ export const createDiagnostic = (params: {
     message,
     hint,
     tags: tags ? [...tags] : undefined,
+  };
+};
+
+type FilesystemArtifactContext = {
+  readonly artifact: CompileArtifact;
+  readonly config: Record<string, JsonValue>;
+  readonly format: RendererFormat;
+  readonly outputPath: string;
+};
+
+type FilesystemFormatResolver = (params: {
+  readonly target: CompileTarget;
+  readonly rendered?: CompileArtifact;
+  readonly config: Record<string, JsonValue>;
+}) => RendererFormat;
+
+type ConfiguredPathResolver = (
+  config: Record<string, JsonValue>
+) => JsonValue | undefined;
+
+type FilesystemArtifactOptions = {
+  readonly providerId: string;
+  readonly input: ProviderCompileInput;
+  readonly fallbackDir?: string;
+  readonly fallbackExtension?: string;
+  readonly formatResolver?: FilesystemFormatResolver;
+  readonly configuredPathResolver?: ConfiguredPathResolver;
+};
+
+export const resolveFilesystemArtifact = (
+  options: FilesystemArtifactOptions
+): FilesystemArtifactContext => {
+  const {
+    providerId,
+    input,
+    fallbackDir,
+    fallbackExtension = ".md",
+    formatResolver,
+    configuredPathResolver,
+  } = options;
+
+  const { document, context, projectConfig, rendered, target } = input;
+
+  const config = mergeProviderConfig(document, projectConfig, providerId);
+
+  const renderTarget = rendered?.target ?? target;
+
+  const format = formatResolver
+    ? formatResolver({ target: renderTarget, rendered, config })
+    : "markdown";
+
+  const fallbackPath = buildDefaultOutputPath({
+    context,
+    target,
+    providerId,
+    document,
+    format,
+    fallbackDir,
+    fallbackExtension,
+  });
+
+  const configuredPath = configuredPathResolver
+    ? configuredPathResolver(config)
+    : config.outputPath;
+
+  const desiredOutputPath = resolveConfiguredOutputPath({
+    context,
+    fallbackPath,
+    configuredPath,
+    format,
+    fallbackExtension,
+  });
+
+  const artifact = selectRenderedArtifact({
+    rendered,
+    document,
+    target: {
+      ...target,
+      outputPath: desiredOutputPath,
+    },
+  });
+
+  return {
+    artifact,
+    config,
+    format,
+    outputPath: desiredOutputPath,
   };
 };

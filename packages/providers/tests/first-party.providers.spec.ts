@@ -2,8 +2,10 @@ import { describe, expect, it } from "bun:test";
 
 import {
   createClaudeCodeProvider,
+  createCodexProvider,
   createCopilotProvider,
   createCursorProvider,
+  createWindsurfProvider,
   type ProviderEntry,
 } from "@rulesets/providers";
 import type {
@@ -204,6 +206,104 @@ describe("first-party providers", () => {
 
       expect(artifact.diagnostics).toEqual(rendered.diagnostics);
       expect(artifact.contents).toBe("Rendered");
+    });
+  });
+
+  describe("windsurf", () => {
+    it("uses markdown extension by default", async () => {
+      const provider = createWindsurfProvider();
+      const document = createDocument({
+        path: `${cwd}/rules/formatting.rule.md`,
+      });
+
+      const artifact = await compileWithProvider(provider, {
+        context,
+        document,
+      });
+
+      expect(artifact.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/windsurf/rules/formatting.rule.md`
+      );
+    });
+
+    it("switches to xml extension when configured", async () => {
+      const provider = createWindsurfProvider();
+      const document = createDocument({ id: "rules/formatting.rule.md" });
+
+      const artifact = await compileWithProvider(provider, {
+        context,
+        document,
+        projectConfig: {
+          providers: {
+            windsurf: {
+              format: "xml",
+            },
+          },
+        } as RulesetProjectConfig,
+      });
+
+      expect(artifact.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/windsurf/rules/formatting.rule.xml`
+      );
+    });
+  });
+
+  describe("codex", () => {
+    it("falls back to provider scoped directory", async () => {
+      const provider = createCodexProvider();
+      const document = createDocument({ id: "guides/onboarding.rule.md" });
+
+      const artifact = await compileWithProvider(provider, {
+        context,
+        document,
+      });
+
+      expect(artifact.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/codex/guides/onboarding.rule.md`
+      );
+    });
+
+    it("accepts outputPath overrides", async () => {
+      const provider = createCodexProvider();
+      const document = createDocument({ id: "welcome.rule.md" });
+
+      const artifact = await compileWithProvider(provider, {
+        context,
+        document,
+        projectConfig: {
+          providers: {
+            codex: {
+              outputPath: ".codex/AGENTS.md",
+            },
+          },
+        } as RulesetProjectConfig,
+      });
+
+      expect(artifact.target.outputPath).toBe(`${cwd}/.codex/AGENTS.md`);
+    });
+
+    it("emits info diagnostic when shared agents path is requested", async () => {
+      const provider = createCodexProvider();
+      const document = createDocument({ id: "overview.rule.md" });
+
+      const artifact = await compileWithProvider(provider, {
+        context,
+        document,
+        projectConfig: {
+          providers: {
+            codex: {
+              agentsOutputPath: "AGENTS.md",
+            },
+          },
+        } as RulesetProjectConfig,
+      });
+
+      const messages = artifact.diagnostics.map(
+        (diagnostic) => diagnostic.message
+      );
+      expect(
+        messages.some((message) => message.includes("enableSharedAgents"))
+      ).toBe(true);
     });
   });
 });

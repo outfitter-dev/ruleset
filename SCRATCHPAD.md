@@ -109,3 +109,5 @@ Tracking work toward the Rulesets v0.4.0 rewrite.
 - Updated `RendererOptions` to accept custom format descriptors and added tests for registry usage, inline overrides, and missing format diagnostics; PLAN §6 extension hook now complete.
 - Ported Cursor, Claude Code, and Copilot providers onto the new @rulesets/providers SDK with shared filesystem helpers; default provider list now instantiates the real implementations instead of Markdown stubs.
 - Added provider-specific tests covering output path resolution and config overrides; lint/typecheck/test suite updated to include the new coverage.
+- Ported Windsurf and Codex providers onto the shared filesystem helper, adding XML-aware format negotiation and codex diagnostics for shared agents hints; helper now drives Cursor/Claude/Copilot too for DRY reuse.
+- Added first-party provider tests covering Windsurf XML outputs and Codex override/diagnostic behaviour.

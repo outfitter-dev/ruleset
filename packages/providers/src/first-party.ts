@@ -14,8 +14,10 @@ import {
   type ProviderEntry,
 } from "./index";
 import { createClaudeCodeProvider } from "./providers/claude-code";
+import { createCodexProvider } from "./providers/codex";
 import { createCopilotProvider } from "./providers/copilot";
 import { createCursorProvider } from "./providers/cursor";
+import { createWindsurfProvider } from "./providers/windsurf";
 
 const PROVIDER_VERSION = "0.4.0-dev";
 const LEADING_CURRENT_DIR = /^\.\//;
@@ -83,6 +85,8 @@ const FACTORIES: Record<string, () => ProviderEntry> = {
   cursor: createCursorProvider,
   "claude-code": createClaudeCodeProvider,
   copilot: createCopilotProvider,
+  windsurf: createWindsurfProvider,
+  codex: createCodexProvider,
 };
 
 const DEFAULT_PROVIDER_ORDER = [
