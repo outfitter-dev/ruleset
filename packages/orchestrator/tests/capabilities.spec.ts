@@ -541,4 +541,202 @@ process.stdin.on("end", () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+
+  test("renders handlebars templates before delegating to provider", async () => {
+    const provider = defineProvider({
+      handshake: {
+        providerId: "templated",
+        version: "0.1.0-test",
+        sdkVersion: PROVIDER_SDK_VERSION,
+        capabilities: [providerCapability("render:handlebars")],
+        sandbox: { mode: "in-process" },
+      },
+      compile: (input) => {
+        expect(input.rendered?.contents).toContain("Hello templated");
+        return createResultOk<CompileArtifact>({
+          target: input.target,
+          contents: input.rendered?.contents ?? "",
+          diagnostics: [],
+        });
+      },
+    });
+
+    const orchestrator = createOrchestrator({ providers: [provider] });
+
+    const cwd = await mkdtemp(path.join(tmpdir(), "rulesets-hbs-"));
+    const sourceContents = [
+      "---",
+      "rule:",
+      "  template: true",
+      "---",
+      "Hello {{provider.id}}",
+      "",
+    ].join("\n");
+
+    try {
+      const result = await orchestrator({
+        context: createRuntimeContext({ cwd }),
+        sources: [
+          createSource({
+            contents: sourceContents,
+            path: path.join(cwd, ".ruleset", "rules", "welcome.rule.md"),
+            template: true,
+          }),
+        ],
+        targets: [
+          {
+            providerId: "templated",
+            outputPath: path.join(cwd, "dist", "templated.md"),
+          },
+        ],
+        projectConfig: {
+          rule: { template: true },
+        },
+      });
+
+      expect(result.artifacts).toHaveLength(1);
+      expect(result.artifacts[0]?.contents).toContain("Hello templated");
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("loads partial templates from disk during rendering", async () => {
+    const provider = defineProvider({
+      handshake: {
+        providerId: "partial",
+        version: "0.1.0-test",
+        sdkVersion: PROVIDER_SDK_VERSION,
+        capabilities: [providerCapability("render:handlebars")],
+        sandbox: { mode: "in-process" },
+      },
+      compile: (input) =>
+        createResultOk<CompileArtifact>({
+          target: input.target,
+          contents: input.rendered?.contents ?? "",
+          diagnostics: [],
+        }),
+    });
+
+    const orchestrator = createOrchestrator({ providers: [provider] });
+
+    const cwd = await mkdtemp(path.join(tmpdir(), "rulesets-partials-"));
+    const partialDir = path.join(cwd, ".ruleset", "partials");
+    await mkdir(partialDir, { recursive: true });
+    await writeFile(
+      path.join(partialDir, "footer.md"),
+      "Footer for {{provider.id}}"
+    );
+
+    const sourceContents = [
+      "---",
+      "rule:",
+      "  template: true",
+      "---",
+      "Main body",
+      "",
+      "{{> footer }}",
+      "",
+    ].join("\n");
+
+    try {
+      const result = await orchestrator({
+        context: createRuntimeContext({ cwd }),
+        sources: [
+          createSource({
+            contents: sourceContents,
+            path: path.join(cwd, ".ruleset", "rules", "document.rule.md"),
+            template: true,
+          }),
+        ],
+        targets: [
+          {
+            providerId: "partial",
+            outputPath: path.join(cwd, "dist", "partial.md"),
+          },
+        ],
+        projectConfig: {
+          rule: { template: true },
+        },
+      });
+
+      expect(result.artifacts).toHaveLength(1);
+      expect(result.artifacts[0]?.contents).toContain("Footer for partial");
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("registers custom helpers from project configuration", async () => {
+    const provider = defineProvider({
+      handshake: {
+        providerId: "helpers",
+        version: "0.1.0-test",
+        sdkVersion: PROVIDER_SDK_VERSION,
+        capabilities: [
+          providerCapability("render:handlebars"),
+          providerCapability("render:handlebars:helpers"),
+        ],
+        sandbox: { mode: "in-process" },
+      },
+      compile: (input) =>
+        createResultOk<CompileArtifact>({
+          target: input.target,
+          contents: input.rendered?.contents ?? "",
+          diagnostics: [],
+        }),
+    });
+
+    const orchestrator = createOrchestrator({ providers: [provider] });
+
+    const cwd = await mkdtemp(path.join(tmpdir(), "rulesets-helpers-"));
+    const helpersPath = path.join(cwd, "helpers.mjs");
+    await writeFile(
+      helpersPath,
+      "export default { shout: (value) => String(value).toUpperCase() };\n"
+    );
+
+    const sourceContents = [
+      "---",
+      "rule:",
+      "  template: true",
+      "---",
+      "{{shout provider.id}} ready",
+      "",
+    ].join("\n");
+
+    try {
+      const result = await orchestrator({
+        context: createRuntimeContext({ cwd }),
+        sources: [
+          createSource({
+            contents: sourceContents,
+            path: path.join(cwd, ".ruleset", "rules", "helpers.rule.md"),
+            template: true,
+          }),
+        ],
+        targets: [
+          {
+            providerId: "helpers",
+            outputPath: path.join(cwd, "dist", "helpers.md"),
+          },
+        ],
+        projectConfig: {
+          rule: { template: true },
+          providers: {
+            helpers: {
+              handlebars: {
+                helpers: ["./helpers.mjs"],
+              },
+            },
+          },
+        },
+      });
+
+      expect(result.artifacts).toHaveLength(1);
+      expect(result.artifacts[0]?.contents).toContain("HELPERS ready");
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
 });
