@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -267,6 +267,95 @@ describe("orchestrator capability negotiation", () => {
       expect(events.some((event) => event.kind === "target:cached")).toBe(true);
     } finally {
       await rm(cacheDir, { recursive: true, force: true });
+    }
+  });
+
+  test("invalidates cached sources when dependency paths change", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rulesets-deps-"));
+    const rulesDir = path.join(root, ".ruleset", "rules");
+    const partialsDir = path.join(root, ".ruleset", "partials");
+    const cacheDir = path.join(root, ".ruleset", "cache");
+    await mkdir(rulesDir, { recursive: true });
+    await mkdir(partialsDir, { recursive: true });
+    await mkdir(cacheDir, { recursive: true });
+
+    const rulePath = path.join(rulesDir, "example.rule.md");
+    const partialPath = path.join(partialsDir, "footer.md");
+
+    await writeFile(
+      rulePath,
+      `---\nrule:\n  version: "0.4.0"\n---\n\n# Example\n\n{{> footer }}`,
+      "utf8"
+    );
+    await writeFile(partialPath, "Footer", "utf8");
+
+    const compile = vi.fn((input: ProviderCompileInput) =>
+      createResultOk<CompileArtifact>({
+        target: input.target,
+        contents: input.document.source.contents,
+        diagnostics: [],
+      })
+    );
+
+    const provider = defineProvider({
+      handshake: {
+        providerId: "noop",
+        version: "0.0.1-test",
+        capabilities: [providerCapability("render:markdown")],
+      },
+      compile,
+    });
+
+    const orchestrator = createOrchestrator({ providers: [provider] });
+
+    const context = createRuntimeContext({
+      cwd: root,
+      cacheDir,
+    });
+
+    const target: CompileTarget = {
+      providerId: "noop",
+      outputPath: path.join(root, "dist", "noop.md"),
+    };
+
+    const source = createSource({
+      id: "example.rule.md",
+      path: rulePath,
+      contents: await readFile(rulePath, "utf8"),
+    });
+
+    try {
+      const first = await orchestrator({
+        context,
+        sources: [source],
+        targets: [target],
+      });
+
+      expect(compile).toHaveBeenCalledTimes(1);
+      expect(first.sourceSummaries?.[0]?.dependencies).toContain(partialPath);
+
+      await orchestrator({
+        context,
+        sources: [source],
+        targets: [target],
+      });
+
+      expect(compile).toHaveBeenCalledTimes(1);
+
+      await orchestrator(
+        {
+          context,
+          sources: [source],
+          targets: [target],
+        },
+        {
+          invalidatePaths: [partialPath],
+        }
+      );
+
+      expect(compile).toHaveBeenCalledTimes(2);
+    } finally {
+      await rm(root, { recursive: true, force: true });
     }
   });
 });

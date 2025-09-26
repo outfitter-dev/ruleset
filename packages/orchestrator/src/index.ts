@@ -27,10 +27,12 @@ import {
 import type {
   CompilationInput,
   CompilationOutput,
+  CompilationSourceSummary,
   CompileArtifact,
   CompileTarget,
   JsonValue,
   RulesetCapabilityId,
+  RulesetDependency,
   RulesetDiagnostic,
   RulesetDiagnostics,
   RulesetDocument,
@@ -38,6 +40,7 @@ import type {
   RulesetProviderConfig,
   RulesetProviderHandlebarsConfig,
   RulesetRuleFrontmatter,
+  RulesetRuntimeContext,
   RulesetSource,
 } from "@rulesets/types";
 import {
@@ -171,6 +174,7 @@ export type OrchestratorOptions = {
   readonly rendererOptions?: RendererOptions;
   readonly providers?: readonly ProviderEntry[];
   readonly onEvent?: CompilationEventHandler;
+  readonly invalidatePaths?: readonly string[];
 };
 
 export type Orchestrator = (
@@ -351,7 +355,140 @@ type HandlebarsRequirements = {
 };
 
 const CACHE_FILENAME = "orchestrator-cache.json";
-const CACHE_VERSION = 1;
+
+const DEFAULT_PARTIAL_DIRECTORIES = [
+  ".ruleset/partials",
+  ".ruleset/_mixins",
+  ".ruleset/templates",
+];
+
+const PARTIAL_EXTENSIONS = [
+  ".rule.md",
+  ".ruleset.md",
+  ".md",
+  ".mdc",
+  ".hbs",
+  ".handlebars",
+  ".txt",
+];
+
+const normalizeFsPath = (value: string): string => path.resolve(value);
+
+const fileExists = async (target: string): Promise<boolean> => {
+  try {
+    const stats = await fs.stat(target);
+    return stats.isFile();
+  } catch {
+    return false;
+  }
+};
+
+const collectDependencyDirectories = (
+  context: RulesetRuntimeContext,
+  projectConfig?: RulesetProjectConfig
+): readonly string[] => {
+  const directories = new Set<string>();
+
+  for (const relative of DEFAULT_PARTIAL_DIRECTORIES) {
+    directories.add(path.resolve(context.cwd, relative));
+  }
+
+  const projectPartials = projectConfig?.paths?.partials;
+  if (projectPartials) {
+    directories.add(
+      path.isAbsolute(projectPartials)
+        ? normalizeFsPath(projectPartials)
+        : path.resolve(context.cwd, projectPartials)
+    );
+  }
+
+  const projectTemplates = projectConfig?.paths?.templates;
+  if (projectTemplates) {
+    directories.add(
+      path.isAbsolute(projectTemplates)
+        ? normalizeFsPath(projectTemplates)
+        : path.resolve(context.cwd, projectTemplates)
+    );
+  }
+
+  return [...directories];
+};
+
+const resolvePartialDependencyPaths = async (
+  dependency: RulesetDependency,
+  directories: readonly string[]
+): Promise<Set<string>> => {
+  const resolved = new Set<string>();
+  if (dependency.resolvedPath) {
+    resolved.add(normalizeFsPath(dependency.resolvedPath));
+  }
+
+  const identifier = dependency.identifier;
+  if (!identifier) {
+    return resolved;
+  }
+
+  const hasExtension = path.extname(identifier) !== "";
+  const candidateNames = hasExtension
+    ? [identifier]
+    : [identifier, ...PARTIAL_EXTENSIONS.map((ext) => `${identifier}${ext}`)];
+
+  for (const directory of directories) {
+    for (const candidate of candidateNames) {
+      const candidatePath = path.resolve(directory, candidate);
+      if (await fileExists(candidatePath)) {
+        resolved.add(candidatePath);
+      }
+    }
+  }
+
+  return resolved;
+};
+
+const collectResolvedDependencyPaths = async (
+  document: RulesetDocument,
+  context: RulesetRuntimeContext,
+  projectConfig?: RulesetProjectConfig
+): Promise<Set<string>> => {
+  const dependencies = document.dependencies;
+  if (!dependencies || dependencies.length === 0) {
+    return new Set();
+  }
+
+  const directories = collectDependencyDirectories(context, projectConfig);
+  const resolvedPaths = new Set<string>();
+
+  for (const dependency of dependencies) {
+    switch (dependency.kind) {
+      case "partial":
+      case "template": {
+        const matches = await resolvePartialDependencyPaths(
+          dependency,
+          directories
+        );
+        for (const match of matches) {
+          resolvedPaths.add(normalizeFsPath(match));
+        }
+        break;
+      }
+      case "asset":
+      case "import": {
+        if (dependency.resolvedPath) {
+          resolvedPaths.add(normalizeFsPath(dependency.resolvedPath));
+        }
+        break;
+      }
+      default:
+        if (dependency.resolvedPath) {
+          resolvedPaths.add(normalizeFsPath(dependency.resolvedPath));
+        }
+        break;
+    }
+  }
+
+  return resolvedPaths;
+};
+const CACHE_VERSION = 2;
 
 type CachedTargetEntry = {
   readonly artifact: CompileArtifact;
@@ -361,6 +498,7 @@ type CachedSourceEntry = {
   readonly hash: string;
   readonly diagnostics: RulesetDiagnostics;
   readonly targets: Record<string, CachedTargetEntry>;
+  readonly dependencies?: readonly string[];
 };
 
 type CompilationCacheData = {
@@ -619,6 +757,7 @@ type ResolvedOrchestratorOptions = {
   renderer: RulesetRenderer;
   rendererOptions: RendererOptions;
   providers: readonly ProviderEntry[];
+  invalidatePaths: readonly string[];
 };
 
 const diagnosticsFromUnknown = (error: unknown): RulesetDiagnostics => {
@@ -693,6 +832,11 @@ const resolveOptions = (
 
   const providers = overrides?.providers ?? defaults.providers ?? [];
 
+  const invalidatePaths = [
+    ...(defaults.invalidatePaths ?? []),
+    ...(overrides?.invalidatePaths ?? []),
+  ];
+
   return {
     parser,
     parserOptions,
@@ -702,6 +846,7 @@ const resolveOptions = (
     renderer,
     rendererOptions,
     providers,
+    invalidatePaths,
   };
 };
 
@@ -719,6 +864,7 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
       renderer,
       rendererOptions,
       providers,
+      invalidatePaths,
     } = resolveOptions(defaults, overrides);
 
     const registry = buildProviderRegistry(providers);
@@ -727,6 +873,11 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
 
     const aggregatedDiagnostics: RulesetDiagnostic[] = [];
     const artifacts: CompileArtifact[] = [];
+    const sourceSummaries: CompilationSourceSummary[] = [];
+
+    const invalidationSet = new Set(
+      (invalidatePaths ?? []).map((value) => normalizeFsPath(value))
+    );
 
     yield {
       kind: "pipeline:start",
@@ -777,12 +928,23 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
         input.projectConfig
       );
 
+      const resolvedDependencyPaths = await collectResolvedDependencyPaths(
+        documentWithOverrides,
+        input.context,
+        input.projectConfig
+      );
+
       const sourceKey = cacheState ? getSourceKey(source) : undefined;
       const sourceHash = computeSourceHash(source, input.projectConfigPath);
       const previousCacheEntry =
         sourceKey && cacheState
           ? cacheState.data.sources[sourceKey]
           : undefined;
+
+      const previousDependencies = previousCacheEntry?.dependencies ?? [];
+      const dependencyInvalidated = previousDependencies.some((dependency) =>
+        invalidationSet.has(normalizeFsPath(dependency))
+      );
 
       const cacheTargets: Record<string, CachedTargetEntry> = {};
 
@@ -818,7 +980,9 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
         );
 
         const cachedTargetEntry =
-          previousCacheEntry && previousCacheEntry.hash === sourceHash
+          previousCacheEntry &&
+          !dependencyInvalidated &&
+          previousCacheEntry.hash === sourceHash
             ? previousCacheEntry.targets[target.providerId]
             : undefined;
 
@@ -1050,19 +1214,29 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
         };
       }
 
+      const dependencyList = Array.from(resolvedDependencyPaths).sort();
+
       if (cacheState && sourceKey) {
         cacheState.data.sources[sourceKey] = {
           hash: sourceHash,
           diagnostics: cloneDiagnostics(sourceDiagnostics),
           targets: cacheTargets,
+          dependencies: dependencyList,
         };
         cacheState.dirty = true;
       }
+
+      sourceSummaries.push({
+        sourceId: source.id,
+        sourcePath: source.path,
+        dependencies: dependencyList,
+      });
     }
 
     const output: CompilationOutput = {
       artifacts,
       diagnostics: aggregatedDiagnostics,
+      sourceSummaries,
     };
 
     if (cacheState?.dirty) {
@@ -1122,3 +1296,7 @@ export const dryRun: Orchestrator = async (_input, _options) => ({
     },
   ],
 });
+
+export type { WatchExecutor, WatchExecutorResult, WatchOptions } from "./watch";
+// biome-ignore lint/performance/noBarrelFile: orchestrator exposes watch utility for CLI reuse
+export { watchRulesets } from "./watch";

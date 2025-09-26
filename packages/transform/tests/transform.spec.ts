@@ -8,21 +8,28 @@ import {
 } from "@rulesets/transform";
 import type { RulesetDocument } from "@rulesets/types";
 
-const createDocument = (): RulesetDocument => ({
+const createDocument = (
+  overrides: Partial<RulesetDocument> = {}
+): RulesetDocument => ({
   source: {
     id: "sample.rule.md",
     contents: "# Sample",
     format: "rule",
+    ...(overrides.source ?? {}),
   },
   metadata: {
     frontMatter: {},
+    ...(overrides.metadata ?? {}),
   },
   ast: {
     sections: [],
     imports: [],
     variables: [],
     markers: [],
+    ...(overrides.ast ?? {}),
   },
+  diagnostics: overrides.diagnostics,
+  dependencies: overrides.dependencies,
 });
 
 describe("transform helpers", () => {
@@ -58,5 +65,22 @@ describe("transform helpers", () => {
     expect(result.document).toBe(document);
     expect(Array.isArray(result.diagnostics)).toBe(true);
     expect(result.diagnostics.length).toBe(0);
+  });
+
+  it("runTransforms populates partial dependencies", () => {
+    const document = createDocument({
+      source: {
+        id: "with-partials.rule.md",
+        contents: "# Example\n{{> footer }}\n{{> header}}",
+        format: "rule",
+      },
+    });
+
+    const result = runTransforms(document);
+
+    expect(result.document.dependencies).toEqual([
+      { kind: "partial", identifier: "footer" },
+      { kind: "partial", identifier: "header" },
+    ]);
   });
 });
