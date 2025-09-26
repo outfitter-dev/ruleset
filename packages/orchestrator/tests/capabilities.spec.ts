@@ -1,4 +1,7 @@
 import { describe, expect, test, vi } from "bun:test";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 import {
   createDefaultProviders,
@@ -8,6 +11,7 @@ import {
 } from "@rulesets/providers";
 import {
   type CompileArtifact,
+  type CompileTarget,
   createResultOk,
   RULESETS_VERSION_TAG,
   type RulesetRuntimeContext,
@@ -16,11 +20,14 @@ import {
 
 import { type CompilationEvent, createOrchestrator } from "../src/index";
 
-const createRuntimeContext = (): RulesetRuntimeContext => ({
+const createRuntimeContext = (
+  overrides: Partial<RulesetRuntimeContext> = {}
+): RulesetRuntimeContext => ({
   version: RULESETS_VERSION_TAG,
   cwd: process.cwd(),
   cacheDir: "/tmp/rulesets-cache",
   env: new Map<string, string>(),
+  ...overrides,
 });
 
 const createSource = (
@@ -201,5 +208,65 @@ describe("orchestrator capability negotiation", () => {
     expect(kinds).toContain("target:rendered");
     expect(kinds).toContain("target:compiled");
     expect(kinds.at(-1)).toBe("pipeline:end");
+  });
+
+  test("reuses cached artifacts when source unchanged", async () => {
+    const cacheDir = await mkdtemp(path.join(tmpdir(), "rulesets-cache-"));
+
+    const compile = vi.fn((input: ProviderCompileInput) =>
+      createResultOk<CompileArtifact>({
+        target: input.target,
+        contents: input.document.source.contents,
+        diagnostics: [],
+      })
+    );
+
+    const provider = defineProvider({
+      handshake: {
+        providerId: "memo",
+        version: "0.0.1-test",
+        capabilities: [providerCapability("render:markdown")],
+      },
+      compile,
+    });
+
+    const orchestrator = createOrchestrator({ providers: [provider] });
+
+    const source = createSource();
+    const target: CompileTarget = {
+      providerId: "memo",
+      outputPath: path.join(cacheDir, "out", "memo.md"),
+    };
+
+    try {
+      await orchestrator({
+        context: createRuntimeContext({ cacheDir }),
+        sources: [source],
+        targets: [target],
+      });
+
+      expect(compile).toHaveBeenCalledTimes(1);
+
+      compile.mockClear();
+      const events: CompilationEvent[] = [];
+
+      await orchestrator(
+        {
+          context: createRuntimeContext({ cacheDir }),
+          sources: [source],
+          targets: [target],
+        },
+        {
+          onEvent: (event) => {
+            events.push(event);
+          },
+        }
+      );
+
+      expect(compile).not.toHaveBeenCalled();
+      expect(events.some((event) => event.kind === "target:cached")).toBe(true);
+    } finally {
+      await rm(cacheDir, { recursive: true, force: true });
+    }
   });
 });
