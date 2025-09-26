@@ -739,4 +739,65 @@ process.stdin.on("end", () => {
       await rm(cwd, { recursive: true, force: true });
     }
   });
+
+  test("renders XML output when provider format is xml", async () => {
+    const compile = vi.fn((input: ProviderCompileInput) =>
+      createResultOk<CompileArtifact>({
+        target: input.target,
+        contents: input.rendered?.contents ?? "",
+        diagnostics: [],
+      })
+    );
+
+    const provider = defineProvider({
+      handshake: {
+        providerId: "xml",
+        version: "0.1.0-test",
+        sdkVersion: PROVIDER_SDK_VERSION,
+        capabilities: [
+          providerCapability("render:markdown"),
+          providerCapability("output:sections"),
+        ],
+        sandbox: { mode: "in-process" },
+      },
+      compile,
+    });
+
+    const orchestrator = createOrchestrator({ providers: [provider] });
+
+    const cwd = await mkdtemp(path.join(tmpdir(), "rulesets-xml-"));
+
+    try {
+      const result = await orchestrator({
+        context: createRuntimeContext({ cwd }),
+        sources: [
+          createSource({
+            contents: "## Instructions\nFollow along\n",
+            path: path.join(cwd, ".ruleset", "rules", "doc.rule.md"),
+          }),
+        ],
+        targets: [
+          {
+            providerId: "xml",
+            outputPath: path.join(cwd, "dist", "xml.xml"),
+          },
+        ],
+        projectConfig: {
+          providers: {
+            xml: {
+              format: "xml",
+            },
+          },
+        },
+      });
+
+      expect(compile).toHaveBeenCalledTimes(1);
+      const compileInput = compile.mock.calls[0]?.[0];
+      expect(compileInput?.target.capabilities).toContain("output:sections");
+      expect(compileInput?.rendered?.contents).toContain("<ruleset>");
+      expect(result.artifacts[0]?.contents).toContain("<instructions>");
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
 });

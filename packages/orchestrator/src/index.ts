@@ -21,6 +21,7 @@ import {
   createHandlebarsRenderer,
   type HandlebarsHelper,
   type HandlebarsHelperMap,
+  type RendererFormat,
   type RendererOptions,
   type RulesetRenderer,
 } from "@rulesets/renderer";
@@ -491,6 +492,59 @@ const toJsonRecord = (
 
 const isPlainObjectLike = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const normalizeRendererFormat = (
+  value: unknown
+): RendererFormat | undefined => {
+  if (typeof value !== "string") {
+    return;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "xml") {
+    return "xml";
+  }
+
+  if (normalized === "markdown") {
+    return "markdown";
+  }
+
+  return;
+};
+
+const resolveProviderFormat = (
+  document: RulesetDocument,
+  projectConfig: RulesetProjectConfig | undefined,
+  providerId: string
+): RendererFormat => {
+  let format: RendererFormat = "markdown";
+
+  const projectFormat = normalizeRendererFormat(
+    projectConfig?.providers?.[providerId]?.format
+  );
+  if (projectFormat) {
+    format = projectFormat;
+  }
+
+  const frontMatter = document.metadata.frontMatter;
+  if (frontMatter) {
+    const providerOverride = frontMatter[providerId];
+
+    if (isJsonObject(providerOverride)) {
+      const overrideFormat = normalizeRendererFormat(providerOverride.format);
+      if (overrideFormat) {
+        format = overrideFormat;
+      }
+    } else {
+      const overrideFormat = normalizeRendererFormat(providerOverride);
+      if (overrideFormat) {
+        format = overrideFormat;
+      }
+    }
+  }
+
+  return format;
+};
 
 const fileExists = async (target: string): Promise<boolean> => {
   try {
@@ -1062,10 +1116,15 @@ const deriveHandlebarsSettings = (
 const deriveRequiredCapabilities = (
   document: RulesetDocument,
   target: CompileTarget,
-  projectConfig: RulesetProjectConfig | undefined
+  projectConfig: RulesetProjectConfig | undefined,
+  formatOverride?: RendererFormat
 ): readonly string[] => {
   const explicit = normalizeCapabilityIds(target.capabilities);
   const capabilities = new Set<string>(explicit);
+
+  const resolvedFormat =
+    formatOverride ??
+    resolveProviderFormat(document, projectConfig, target.providerId);
 
   const { requiresHandlebars, requiresHelpers, requiresPartials } =
     evaluateHandlebarsRequirements(document, projectConfig, target.providerId);
@@ -1088,6 +1147,10 @@ const deriveRequiredCapabilities = (
 
   if (requiresPartials) {
     capabilities.add("render:handlebars:partials");
+  }
+
+  if (resolvedFormat === "xml") {
+    capabilities.add("output:sections");
   }
 
   return [...capabilities];
@@ -1440,10 +1503,17 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
           target,
         } satisfies TargetStartEvent;
 
+        const renderFormat = resolveProviderFormat(
+          documentWithOverrides,
+          input.projectConfig,
+          target.providerId
+        );
+
         const requiredCapabilities = deriveRequiredCapabilities(
           documentWithOverrides,
           target,
-          input.projectConfig
+          input.projectConfig,
+          renderFormat
         );
         const targetWithCapabilities: CompileTarget = {
           ...target,
@@ -1637,9 +1707,6 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
           resolvedDependencyPaths.add(normalizeFsPath(partialPath));
         }
 
-        appendDiagnostics(aggregatedDiagnostics, partialsResult.diagnostics);
-        appendDiagnostics(sourceDiagnostics, partialsResult.diagnostics);
-
         const helpersResult = await loadHandlebarsHelpers(
           handlebarsSettings.helperModules,
           input.context
@@ -1649,13 +1716,10 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
           resolvedDependencyPaths.add(normalizeFsPath(helperPath));
         }
 
-        appendDiagnostics(aggregatedDiagnostics, helpersResult.diagnostics);
-        appendDiagnostics(sourceDiagnostics, helpersResult.diagnostics);
-
-        const baseHandlebarsOptions = rendererOptions.handlebars ?? {};
+        const baseHandlebarsOptions = rendererOptions.handlebars;
 
         const basePartials: Record<string, string> =
-          baseHandlebarsOptions.partials
+          baseHandlebarsOptions?.partials
             ? (Object.fromEntries(
                 Object.entries(baseHandlebarsOptions.partials)
               ) as Record<string, string>)
@@ -1674,7 +1738,7 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
           >;
 
         const helpersFromBase: Record<string, HandlebarsHelper> =
-          baseHandlebarsOptions.helpers
+          baseHandlebarsOptions?.helpers
             ? (Object.fromEntries(
                 Object.entries(baseHandlebarsOptions.helpers)
               ) as Record<string, HandlebarsHelper>)
@@ -1695,7 +1759,7 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
         });
 
         const rendererDiagnostics = [
-          ...(baseHandlebarsOptions.diagnostics ?? []),
+          ...(baseHandlebarsOptions?.diagnostics ?? []),
           ...partialsResult.diagnostics,
           ...helpersResult.diagnostics,
         ];
@@ -1703,21 +1767,24 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
         const invocationOptions: RendererOptions = {
           ...rendererOptions,
           transforms,
+          format: renderFormat,
           handlebars: {
-            ...baseHandlebarsOptions,
+            ...(baseHandlebarsOptions ?? {}),
             enabled:
-              baseHandlebarsOptions.enabled === true ||
+              (baseHandlebarsOptions?.enabled ?? false) ||
               handlebarsSettings.enabled,
             force:
-              baseHandlebarsOptions.force === true || handlebarsSettings.force,
-            strict: handlebarsSettings.strict ?? baseHandlebarsOptions.strict,
+              (baseHandlebarsOptions?.force ?? false) ||
+              handlebarsSettings.force,
+            strict: handlebarsSettings.strict ?? baseHandlebarsOptions?.strict,
             noEscape:
-              handlebarsSettings.noEscape ?? baseHandlebarsOptions.noEscape,
+              handlebarsSettings.noEscape ?? baseHandlebarsOptions?.noEscape,
             partials: mergedPartials,
             helpers: mergedHelpers,
             context: templateContext,
             diagnostics: rendererDiagnostics,
-            label: baseHandlebarsOptions.label ?? provider.handshake.providerId,
+            label:
+              baseHandlebarsOptions?.label ?? provider.handshake.providerId,
           },
         };
 
