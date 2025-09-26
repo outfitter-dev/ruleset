@@ -14,7 +14,7 @@ import {
   type RulesetSource,
 } from "@rulesets/types";
 
-import { createOrchestrator } from "../src/index";
+import { type CompilationEvent, createOrchestrator } from "../src/index";
 
 const createRuntimeContext = (): RulesetRuntimeContext => ({
   version: RULESETS_VERSION_TAG,
@@ -172,5 +172,34 @@ describe("orchestrator capability negotiation", () => {
     expect(result.artifacts[0]?.target.capabilities).toContain(
       "render:handlebars"
     );
+  });
+
+  test("emits streaming events for each pipeline stage", async () => {
+    const events: CompilationEvent[] = [];
+
+    const orchestrator = createOrchestrator({
+      providers: createDefaultProviders(),
+      onEvent: (event) => {
+        events.push(event);
+      },
+    });
+
+    await orchestrator({
+      context: createRuntimeContext(),
+      sources: [createSource()],
+      targets: [
+        {
+          providerId: "cursor",
+          outputPath: "/virtual/output",
+        },
+      ],
+    });
+
+    const kinds = events.map((event) => event.kind);
+    expect(kinds[0]).toBe("pipeline:start");
+    expect(kinds).toContain("source:parsed");
+    expect(kinds).toContain("target:rendered");
+    expect(kinds).toContain("target:compiled");
+    expect(kinds.at(-1)).toBe("pipeline:end");
   });
 });

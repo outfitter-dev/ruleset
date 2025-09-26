@@ -84,3 +84,12 @@ Tracking work toward the Rulesets v0.4.0 rewrite.
 - JSON Schema exports in `@rulesets/types` now carry stable `$id` fields under `https://ruleset.md/schema/*` plus helper metadata for future publication.
 - Shipped versioned capability registry + result primitives in `@rulesets/types`, updated provider SDK to consume descriptors, refreshed CLI stubs to advertise markdown/filesystem/diagnostics support, and added focused tests; lint/typecheck scripts run clean post-update.
 - Orchestrator enforces compile target capability requirements, returning structured diagnostics when providers lack declarations; added Bun tests to cover success/failure paths.
+- Fixed CLI regression where running `rulesets compile` without explicit sources ignored the default `./.ruleset/rules` directory when config sources were unset; the command now falls back to the CLI default path while still honoring configured sources.
+- Added Bun-based smoke tests for `@rulesets/transform`, `@rulesets/renderer`, and `@rulesets/lib` so the workspace `bun run test` gate passes without "No tests found" failures; ensured lib tests use a provider capability declaration that satisfies the orchestrator negotiation.
+
+### 2025-09-26
+
+- Refactored `@rulesets/orchestrator` to expose an async streaming pipeline (`createOrchestratorStream`) that emits Source→Parse→Validate→Transform→Render→Provider events while compiling; `createOrchestrator` now aggregates those events and accepts an `onEvent` hook for realtime consumers.
+- Introduced renderer integration before provider execution and forwarded render artifacts via the provider compile input so providers can reuse rendered output; default providers now honor rendered diagnostics/content.
+- Extended provider compile contracts with optional `rendered` artifacts and updated first-party providers/noop provider to respect renderer results.
+- Added orchestrator unit coverage asserting event emission order and capability handling; CLI compile continues to call the orchestrator (now streaming under the hood) without API changes.
