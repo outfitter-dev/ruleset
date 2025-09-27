@@ -285,11 +285,11 @@ describe("first-party providers", () => {
       expect(artifact.target.outputPath).toBe(`${cwd}/.codex/AGENTS.md`);
     });
 
-    it("emits info diagnostic when shared agents path is requested", async () => {
+    it("emits shared agents artifact when requested", async () => {
       const provider = createCodexProvider();
       const document = createDocument({ id: "overview.rule.md" });
 
-      const [artifact] = await compileWithProvider(provider, {
+      const artifacts = await compileWithProvider(provider, {
         context,
         document,
         projectConfig: {
@@ -301,12 +301,38 @@ describe("first-party providers", () => {
         } as RulesetProjectConfig,
       });
 
-      const messages = artifact.diagnostics.map(
-        (diagnostic) => diagnostic.message
+      expect(artifacts).toHaveLength(2);
+
+      const [primary, shared] = artifacts;
+      expect(primary.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/codex/overview.rule.md`
       );
-      expect(
-        messages.some((message) => message.includes("enableSharedAgents"))
-      ).toBe(true);
+      expect(shared.target.outputPath).toBe(`${cwd}/AGENTS.md`);
+      expect(shared.contents).toBe(primary.contents);
+      expect(shared.diagnostics).toEqual(primary.diagnostics);
+    });
+
+    it("skips shared artifact when disabled", async () => {
+      const provider = createCodexProvider();
+      const document = createDocument({ id: "overview.rule.md" });
+
+      const artifacts = await compileWithProvider(provider, {
+        context,
+        document,
+        projectConfig: {
+          providers: {
+            codex: {
+              agentsOutputPath: "AGENTS.md",
+              enableSharedAgents: false,
+            },
+          },
+        } as RulesetProjectConfig,
+      });
+
+      expect(artifacts).toHaveLength(1);
+      expect(artifacts[0]?.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/codex/overview.rule.md`
+      );
     });
   });
 

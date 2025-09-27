@@ -118,3 +118,4 @@ Tracking work toward the Rulesets v0.4.0 rewrite.
 
 - Extended orchestrator compile pipeline to accept multiple artifacts per provider target, including updated cache entries (version bump) and target events so watch mode and CLI logs surface all emitted files; added orchestration tests covering multi-artifact responses and cached reuse.
 - Broadened provider compile contract to allow array results, adjusted first-party provider tests to normalize results, and kept codex provider emitting a single artifact until the shared-agents output lands (PLAN §5 task #1 ready for provider-specific follow-up).
+- Codex provider now emits both primary and shared AGENTS artifacts when `agentsOutputPath` is configured and shared output is enabled, reusing the orchestrator multi-artifact pipeline; added regression coverage for enable/disable flows.
