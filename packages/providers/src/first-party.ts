@@ -15,6 +15,7 @@ import {
 } from "./index";
 import { createAgentsMdProvider } from "./providers/agents-md";
 import { createClaudeCodeProvider } from "./providers/claude-code";
+import { createClineProvider } from "./providers/cline";
 import { createCodexProvider } from "./providers/codex";
 import { createCopilotProvider } from "./providers/copilot";
 import { createCursorProvider } from "./providers/cursor";
@@ -91,6 +92,7 @@ const FACTORIES: Record<string, () => ProviderEntry> = {
   windsurf: createWindsurfProvider,
   codex: createCodexProvider,
   "roo-code": createRooCodeProvider,
+  cline: createClineProvider,
 };
 
 const DEFAULT_PROVIDER_ORDER = [
@@ -101,6 +103,7 @@ const DEFAULT_PROVIDER_ORDER = [
   "copilot",
   "codex",
   "roo-code",
+  "cline",
 ];
 
 export const createDefaultProviders = (): ProviderEntry[] =>
