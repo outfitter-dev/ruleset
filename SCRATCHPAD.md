@@ -121,3 +121,4 @@ Tracking work toward the Rulesets v0.4.0 rewrite.
 - Codex provider now emits both primary and shared AGENTS artifacts when `agentsOutputPath` is configured and shared output is enabled, reusing the orchestrator multi-artifact pipeline; added regression coverage for enable/disable flows.
 - Added roo-code provider implementation with support for common rules, mode-specific directories, and optional common copies; default provider list now exposes it and tests cover mode toggles.
 - Introduced cline provider aggregator that composes all compiled documents into a single `.clinerules` file (configurable via outputPath) with source annotations; added CLI default registration and regression coverage.
+- Added codex-agent provider to produce AGENTS.md with per-source section headers, aggregating across compiled documents and respecting custom output paths so Codex web workflows slot into the new orchestrator.
