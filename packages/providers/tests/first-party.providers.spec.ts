@@ -58,7 +58,7 @@ const compileWithProvider = async (
     targetOutput?: string;
     rendered?: CompileArtifact;
   }
-) => {
+): Promise<CompileArtifact[]> => {
   const { context, document, projectConfig, targetOutput, rendered } = options;
 
   const result = await provider.compile({
@@ -76,7 +76,7 @@ const compileWithProvider = async (
     throw new Error(`Provider returned error: ${JSON.stringify(result.error)}`);
   }
 
-  return result.value;
+  return Array.isArray(result.value) ? [...result.value] : [result.value];
 };
 
 describe("first-party providers", () => {
@@ -90,7 +90,7 @@ describe("first-party providers", () => {
         path: `${cwd}/.ruleset/rules/core.guidelines.rule.md`,
       });
 
-      const artifact = await compileWithProvider(provider, {
+      const [artifact] = await compileWithProvider(provider, {
         context,
         document,
       });
@@ -111,7 +111,7 @@ describe("first-party providers", () => {
         },
       });
 
-      const artifact = await compileWithProvider(provider, {
+      const [artifact] = await compileWithProvider(provider, {
         context,
         document,
       });
@@ -129,7 +129,7 @@ describe("first-party providers", () => {
         id: "guides/welcome.rule.md",
       });
 
-      const artifact = await compileWithProvider(provider, {
+      const [artifact] = await compileWithProvider(provider, {
         context,
         document,
       });
@@ -151,7 +151,7 @@ describe("first-party providers", () => {
         },
       } as RulesetProjectConfig;
 
-      const artifact = await compileWithProvider(provider, {
+      const [artifact] = await compileWithProvider(provider, {
         context,
         document,
         projectConfig,
@@ -166,7 +166,7 @@ describe("first-party providers", () => {
       const provider = createCopilotProvider();
       const document = createDocument({ id: "src/features/search.rule.md" });
 
-      const artifact = await compileWithProvider(provider, {
+      const [artifact] = await compileWithProvider(provider, {
         context,
         document,
         projectConfig: {
@@ -201,7 +201,7 @@ describe("first-party providers", () => {
         ],
       };
 
-      const artifact = await compileWithProvider(provider, {
+      const [artifact] = await compileWithProvider(provider, {
         context,
         document,
         rendered,
@@ -219,7 +219,7 @@ describe("first-party providers", () => {
         path: `${cwd}/rules/formatting.rule.md`,
       });
 
-      const artifact = await compileWithProvider(provider, {
+      const [artifact] = await compileWithProvider(provider, {
         context,
         document,
       });
@@ -233,7 +233,7 @@ describe("first-party providers", () => {
       const provider = createWindsurfProvider();
       const document = createDocument({ id: "rules/formatting.rule.md" });
 
-      const artifact = await compileWithProvider(provider, {
+      const [artifact] = await compileWithProvider(provider, {
         context,
         document,
         projectConfig: {
@@ -256,7 +256,7 @@ describe("first-party providers", () => {
       const provider = createCodexProvider();
       const document = createDocument({ id: "guides/onboarding.rule.md" });
 
-      const artifact = await compileWithProvider(provider, {
+      const [artifact] = await compileWithProvider(provider, {
         context,
         document,
       });
@@ -270,7 +270,7 @@ describe("first-party providers", () => {
       const provider = createCodexProvider();
       const document = createDocument({ id: "welcome.rule.md" });
 
-      const artifact = await compileWithProvider(provider, {
+      const [artifact] = await compileWithProvider(provider, {
         context,
         document,
         projectConfig: {
@@ -289,7 +289,7 @@ describe("first-party providers", () => {
       const provider = createCodexProvider();
       const document = createDocument({ id: "overview.rule.md" });
 
-      const artifact = await compileWithProvider(provider, {
+      const [artifact] = await compileWithProvider(provider, {
         context,
         document,
         projectConfig: {
@@ -317,7 +317,7 @@ describe("first-party providers", () => {
         id: "docs/overview.rule.md",
       });
 
-      const artifact = await compileWithProvider(provider, {
+      const [artifact] = await compileWithProvider(provider, {
         context,
         document,
       });
@@ -331,7 +331,7 @@ describe("first-party providers", () => {
       const provider = createAgentsMdProvider();
       const document = createDocument({ id: "docs/setup.rule.md" });
 
-      const artifact = await compileWithProvider(provider, {
+      const [artifact] = await compileWithProvider(provider, {
         context,
         document,
         projectConfig: {
@@ -369,7 +369,7 @@ describe("first-party providers", () => {
           path: path.join(tempDir, "docs", "intro.rule.md"),
         });
 
-        const artifact = await compileWithProvider(provider, {
+        const artifacts = await compileWithProvider(provider, {
           context: {
             ...context,
             cwd: tempDir,
@@ -385,7 +385,8 @@ describe("first-party providers", () => {
           } as RulesetProjectConfig,
         });
 
-        expect(artifact.diagnostics.length).toBeGreaterThanOrEqual(0);
+        expect(artifacts.length).toBeGreaterThanOrEqual(1);
+        const [artifact] = artifacts;
         expect(artifact.contents).toContain("# AGENTS");
         expect(artifact.contents).toContain(
           "<!-- Source: .ruleset/rules/alpha.rule.md -->"

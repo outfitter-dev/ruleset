@@ -330,6 +330,10 @@ const cloneArtifact = (artifact: CompileArtifact): CompileArtifact => ({
   diagnostics: cloneDiagnostics(artifact.diagnostics),
 });
 
+const cloneArtifacts = (
+  artifacts: readonly CompileArtifact[]
+): CompileArtifact[] => artifacts.map(cloneArtifact);
+
 type HandlebarsDirective = {
   readonly enabled: boolean;
   readonly force?: boolean;
@@ -911,10 +915,10 @@ const buildHandlebarsTemplateContext = (
     timestamp: new Date().toISOString(),
   };
 };
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 
 type CachedTargetEntry = {
-  readonly artifact: CompileArtifact;
+  readonly artifacts: readonly CompileArtifact[];
 };
 
 type CachedSourceEntry = {
@@ -1645,43 +1649,50 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
         }
 
         if (cachedTargetEntry) {
-          const cachedArtifact = cloneArtifact(cachedTargetEntry.artifact);
+          const cachedArtifacts = cloneArtifacts(cachedTargetEntry.artifacts);
+          const primaryCachedArtifact = cachedArtifacts[0];
 
           if (
-            cachedArtifact.target.outputPath ===
-            targetWithCapabilities.outputPath
+            primaryCachedArtifact &&
+            primaryCachedArtifact.target.outputPath ===
+              targetWithCapabilities.outputPath
           ) {
-            appendDiagnostics(
-              aggregatedDiagnostics,
-              cachedArtifact.diagnostics
-            );
-            appendDiagnostics(sourceDiagnostics, cachedArtifact.diagnostics);
-            artifacts.push(cachedArtifact);
+            for (const cachedArtifact of cachedArtifacts) {
+              appendDiagnostics(
+                aggregatedDiagnostics,
+                cachedArtifact.diagnostics
+              );
+              appendDiagnostics(sourceDiagnostics, cachedArtifact.diagnostics);
+              artifacts.push(cachedArtifact);
+            }
+
             cacheTargets[target.providerId] = {
-              artifact: cloneArtifact(cachedArtifact),
+              artifacts: cloneArtifacts(cachedArtifacts),
             };
 
             yield {
               kind: "target:cached",
               source,
-              target: cachedArtifact.target,
-              artifact: cachedArtifact,
+              target: primaryCachedArtifact.target,
+              artifact: primaryCachedArtifact,
             } satisfies TargetCachedEvent;
 
-            yield {
-              kind: "target:compiled",
-              source,
-              target: cachedArtifact.target,
-              artifact: cachedArtifact,
-              diagnostics: cachedArtifact.diagnostics,
-              ok: true,
-            } satisfies ProviderResultEvent;
+            for (const cachedArtifact of cachedArtifacts) {
+              yield {
+                kind: "target:compiled",
+                source,
+                target: cachedArtifact.target,
+                artifact: cachedArtifact,
+                diagnostics: cachedArtifact.diagnostics,
+                ok: true,
+              } satisfies ProviderResultEvent;
 
-            yield {
-              kind: "artifact:emitted",
-              source,
-              artifact: cachedArtifact,
-            } satisfies ArtifactEmittedEvent;
+              yield {
+                kind: "artifact:emitted",
+                source,
+                artifact: cachedArtifact,
+              } satisfies ArtifactEmittedEvent;
+            }
 
             continue;
           }
@@ -1886,41 +1897,60 @@ export const createOrchestratorStream = (defaults: OrchestratorOptions = {}) =>
           continue;
         }
 
-        const normalizedArtifact: CompileArtifact = {
-          ...providerResult.value,
-          target: {
-            ...providerResult.value.target,
-            capabilities: normalizeCapabilityIds(
-              providerResult.value.target.capabilities ?? requiredCapabilities
-            ),
-          },
-        };
+        const providerArtifactsRaw = Array.isArray(providerResult.value)
+          ? providerResult.value
+          : [providerResult.value];
 
-        appendDiagnostics(
-          aggregatedDiagnostics,
-          normalizedArtifact.diagnostics
+        const normalizedArtifacts: CompileArtifact[] = providerArtifactsRaw.map(
+          (artifactCandidate) => {
+            const candidateTarget = artifactCandidate.target ?? {};
+            const normalizedTarget: CompileTarget = {
+              ...providerTarget,
+              ...candidateTarget,
+              outputPath:
+                candidateTarget.outputPath ?? providerTarget.outputPath,
+              capabilities: normalizeCapabilityIds(
+                candidateTarget.capabilities ?? requiredCapabilities
+              ),
+            };
+
+            return {
+              target: normalizedTarget,
+              contents: artifactCandidate.contents,
+              diagnostics: artifactCandidate.diagnostics ?? [],
+            } satisfies CompileArtifact;
+          }
         );
-        appendDiagnostics(sourceDiagnostics, normalizedArtifact.diagnostics);
-        artifacts.push(normalizedArtifact);
 
-        yield {
-          kind: "target:compiled",
-          source,
-          target: normalizedArtifact.target,
-          artifact: normalizedArtifact,
-          diagnostics: normalizedArtifact.diagnostics,
-          ok: true,
-        } satisfies ProviderResultEvent;
+        for (const normalizedArtifact of normalizedArtifacts) {
+          appendDiagnostics(
+            aggregatedDiagnostics,
+            normalizedArtifact.diagnostics
+          );
+          appendDiagnostics(sourceDiagnostics, normalizedArtifact.diagnostics);
+          artifacts.push(normalizedArtifact);
 
-        yield {
-          kind: "artifact:emitted",
-          source,
-          artifact: normalizedArtifact,
-        } satisfies ArtifactEmittedEvent;
+          yield {
+            kind: "target:compiled",
+            source,
+            target: normalizedArtifact.target,
+            artifact: normalizedArtifact,
+            diagnostics: normalizedArtifact.diagnostics,
+            ok: true,
+          } satisfies ProviderResultEvent;
 
-        cacheTargets[target.providerId] = {
-          artifact: cloneArtifact(normalizedArtifact),
-        };
+          yield {
+            kind: "artifact:emitted",
+            source,
+            artifact: normalizedArtifact,
+          } satisfies ArtifactEmittedEvent;
+        }
+
+        if (normalizedArtifacts.length > 0) {
+          cacheTargets[target.providerId] = {
+            artifacts: cloneArtifacts(normalizedArtifacts),
+          };
+        }
       }
 
       const dependencyList = Array.from(resolvedDependencyPaths).sort();

@@ -129,14 +129,22 @@ const runBunSubprocess = async (
       try {
         const parsed = JSON.parse(stdout) as {
           ok: boolean;
-          artifact?: CompileArtifact;
+          artifact?: CompileArtifact | null;
+          artifacts?: readonly CompileArtifact[] | null;
           diagnostics?: RulesetDiagnostics;
           error?: string;
         };
 
-        if (parsed.ok && parsed.artifact) {
-          resolve(createResultOk(parsed.artifact));
-          return;
+        if (parsed.ok) {
+          if (Array.isArray(parsed.artifacts)) {
+            resolve(createResultOk(parsed.artifacts));
+            return;
+          }
+
+          if (parsed.artifact) {
+            resolve(createResultOk(parsed.artifact));
+            return;
+          }
         }
 
         if (parsed.diagnostics) {

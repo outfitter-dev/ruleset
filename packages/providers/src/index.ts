@@ -95,7 +95,9 @@ export type ProviderCompileInput = {
   readonly rendered?: CompileArtifact;
 };
 
-export type ProviderCompileResult = Result<CompileArtifact>;
+export type ProviderCompileResult = Result<
+  CompileArtifact | readonly CompileArtifact[]
+>;
 
 export type ProviderEntry = {
   readonly handshake: ProviderHandshake;
@@ -138,7 +140,9 @@ export const createNoopProvider = (
       contents: rendered?.contents ?? document.source.contents,
       diagnostics: rendered?.diagnostics ?? [],
     };
-    return createResultOk(artifact);
+    return createResultOk<CompileArtifact | readonly CompileArtifact[]>(
+      artifact
+    );
   },
 });
 

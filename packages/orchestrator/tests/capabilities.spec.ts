@@ -21,7 +21,12 @@ import {
   type RulesetVersionTag,
 } from "@rulesets/types";
 
-import { type CompilationEvent, createOrchestrator } from "../src/index";
+import {
+  type ArtifactEmittedEvent,
+  type CompilationEvent,
+  createOrchestrator,
+  type ProviderResultEvent,
+} from "../src/index";
 
 const createRuntimeContext = (
   overrides: Partial<RulesetRuntimeContext> = {}
@@ -188,6 +193,65 @@ describe("orchestrator capability negotiation", () => {
     expect(result.artifacts[0]?.target.capabilities).toContain(
       "render:handlebars"
     );
+  });
+
+  test("collects multiple artifacts from provider responses", async () => {
+    const compile = vi.fn((input: ProviderCompileInput) =>
+      createResultOk<readonly CompileArtifact[]>([
+        {
+          target: input.target,
+          contents: "primary",
+          diagnostics: [],
+        },
+        {
+          target: {
+            ...input.target,
+            outputPath: path.join(
+              path.dirname(input.target.outputPath),
+              "shared",
+              path.basename(input.target.outputPath)
+            ),
+          },
+          contents: "shared",
+          diagnostics: [],
+        },
+      ])
+    );
+
+    const orchestrator = createOrchestrator({
+      providers: [
+        defineProvider({
+          handshake: {
+            providerId: "multi",
+            version: "0.0.5-test",
+            sdkVersion: PROVIDER_SDK_VERSION,
+            capabilities: [providerCapability("render:markdown")],
+            sandbox: { mode: "in-process" },
+          },
+          compile,
+        }),
+      ],
+    });
+
+    const result = await orchestrator({
+      context: createRuntimeContext(),
+      sources: [createSource()],
+      targets: [
+        {
+          providerId: "multi",
+          outputPath: "/virtual/output",
+        },
+      ],
+    });
+
+    expect(result.artifacts).toHaveLength(2);
+    expect(result.artifacts.map((artifact) => artifact.contents)).toEqual([
+      "primary",
+      "shared",
+    ]);
+    expect(
+      result.artifacts.map((artifact) => artifact.target.outputPath)
+    ).toEqual(["/virtual/output", path.join("/virtual", "shared", "output")]);
   });
 
   test("skips providers with incompatible SDK versions", async () => {
@@ -446,6 +510,111 @@ process.stdin.on("end", () => {
 
       expect(compile).not.toHaveBeenCalled();
       expect(events.some((event) => event.kind === "target:cached")).toBe(true);
+    } finally {
+      await rm(cacheDir, { recursive: true, force: true });
+    }
+  });
+
+  test("reuses cached multi-artifact outputs", async () => {
+    const cacheDir = await mkdtemp(
+      path.join(tmpdir(), "rulesets-cache-multi-")
+    );
+
+    const compile = vi.fn((input: ProviderCompileInput) =>
+      createResultOk<readonly CompileArtifact[]>([
+        {
+          target: input.target,
+          contents: "primary",
+          diagnostics: [],
+        },
+        {
+          target: {
+            ...input.target,
+            outputPath: path.join(
+              path.dirname(input.target.outputPath),
+              "shared",
+              path.basename(input.target.outputPath)
+            ),
+          },
+          contents: "shared",
+          diagnostics: [],
+        },
+      ])
+    );
+
+    const provider = defineProvider({
+      handshake: {
+        providerId: "memo-multi",
+        version: "0.0.1-test",
+        sdkVersion: PROVIDER_SDK_VERSION,
+        capabilities: [providerCapability("render:markdown")],
+        sandbox: { mode: "in-process" },
+      },
+      compile,
+    });
+
+    const orchestrator = createOrchestrator({ providers: [provider] });
+    const source = createSource();
+    const target: CompileTarget = {
+      providerId: "memo-multi",
+      outputPath: path.join(cacheDir, "out", "memo.md"),
+    };
+
+    try {
+      await orchestrator({
+        context: createRuntimeContext({ cacheDir }),
+        sources: [source],
+        targets: [target],
+      });
+
+      expect(compile).toHaveBeenCalledTimes(1);
+      compile.mockClear();
+
+      const events: CompilationEvent[] = [];
+      const secondResult = await orchestrator(
+        {
+          context: createRuntimeContext({ cacheDir }),
+          sources: [source],
+          targets: [target],
+        },
+        {
+          onEvent: (event) => {
+            events.push(event);
+          },
+        }
+      );
+
+      expect(compile).not.toHaveBeenCalled();
+      const cachedEvents = events.filter(
+        (event) => event.kind === "target:cached"
+      );
+      expect(cachedEvents).toHaveLength(1);
+      expect(cachedEvents[0]?.artifact.contents).toBe("primary");
+
+      const compiledEvents = events.filter(
+        (event): event is ProviderResultEvent =>
+          event.kind === "target:compiled"
+      );
+      expect(compiledEvents).toHaveLength(2);
+      expect(compiledEvents.map((event) => event.artifact?.contents)).toEqual([
+        "primary",
+        "shared",
+      ]);
+
+      const emittedEvents = events.filter(
+        (event): event is ArtifactEmittedEvent =>
+          event.kind === "artifact:emitted"
+      );
+      expect(emittedEvents).toHaveLength(2);
+      expect(emittedEvents.map((event) => event.artifact.contents)).toEqual([
+        "primary",
+        "shared",
+      ]);
+
+      expect(secondResult.artifacts).toHaveLength(2);
+      expect(
+        secondResult.artifacts.map((artifact) => artifact.contents)
+      ).toEqual(["primary", "shared"]);
     } finally {
       await rm(cacheDir, { recursive: true, force: true });
     }
