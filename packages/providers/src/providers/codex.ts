@@ -1,7 +1,10 @@
+import path from "node:path";
+
 import {
   createResultOk,
   type JsonValue,
   RULESET_CAPABILITIES,
+  type RulesetRuntimeContext,
 } from "@rulesets/types";
 import {
   defineProvider,
@@ -10,9 +13,8 @@ import {
   type ProviderCompileResult,
 } from "../index";
 import {
-  createDiagnostic,
-  mergeDiagnostics,
   PROVIDER_VERSION,
+  resolveConfiguredOutputPath,
   resolveFilesystemArtifact,
 } from "../shared";
 
@@ -30,22 +32,65 @@ const resolveConfiguredPath = (config: Record<string, JsonValue>) => {
     return outputPath;
   }
 
-  const agentsOutput = config.agentsOutputPath;
-  if (typeof agentsOutput === "string" && agentsOutput.trim().length > 0) {
-    return agentsOutput;
+  return;
+};
+
+const isTruthy = (value: JsonValue | undefined): boolean | undefined => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true" || normalized === "1" || normalized === "yes") {
+      return true;
+    }
+    if (normalized === "false" || normalized === "0" || normalized === "no") {
+      return false;
+    }
   }
 
   return;
 };
 
-const shouldEmitSharedWarning = (
-  config: Record<string, JsonValue>
-): boolean => {
-  const enableSharedAgents = config.enableSharedAgents;
-  if (enableSharedAgents === false) {
+const sharedAgentsEnabled = (config: Record<string, JsonValue>): boolean => {
+  const resolved = isTruthy(config.enableSharedAgents);
+  // Default to true unless explicitly disabled.
+  return resolved !== false;
+};
+
+const hasSharedAgentsPath = (config: Record<string, JsonValue>): boolean => {
+  const raw = config.agentsOutputPath;
+  if (typeof raw !== "string") {
     return false;
   }
-  return typeof config.agentsOutputPath === "string";
+  return raw.trim().length > 0;
+};
+
+const resolveSharedOutputPath = (params: {
+  context: RulesetRuntimeContext;
+  primaryOutputPath: string;
+  config: Record<string, JsonValue>;
+  format: "markdown" | "xml";
+}): string => {
+  const { context, primaryOutputPath, config, format } = params;
+  const primaryIsFile = path.extname(primaryOutputPath).length > 0;
+  const baseDirectory = primaryIsFile
+    ? path.dirname(primaryOutputPath)
+    : primaryOutputPath;
+  const fallbackPath = path.join(baseDirectory, "AGENTS.md");
+
+  const configuredPath = hasSharedAgentsPath(config)
+    ? config.agentsOutputPath
+    : undefined;
+
+  return resolveConfiguredOutputPath({
+    context,
+    fallbackPath,
+    configuredPath,
+    format,
+    fallbackExtension: ".md",
+  });
 };
 
 export const createCodexProvider = () =>
@@ -59,33 +104,38 @@ export const createCodexProvider = () =>
       runtime: { bun: ">=1.0.0" },
     },
     compile: (input: ProviderCompileInput): ProviderCompileResult => {
-      const { artifact, config } = resolveFilesystemArtifact({
+      const { artifact, config, format } = resolveFilesystemArtifact({
         providerId: PROVIDER_ID,
         input,
         fallbackExtension: ".md",
         configuredPathResolver: resolveConfiguredPath,
       });
 
-      let artifacts = [artifact];
-      if (shouldEmitSharedWarning(config)) {
-        const diagnostic = createDiagnostic({
-          level: "info",
-          message:
-            "codex.enableSharedAgents is not yet supported in the new provider pipeline; only the primary artifact will be written.",
-          hint: "Configure codex.outputPath to control the main output location. The agentsOutputPath setting is currently ignored.",
-          tags: ["provider", "codex", "shared-agents"],
+      const artifacts = [artifact];
+
+      if (sharedAgentsEnabled(config) && hasSharedAgentsPath(config)) {
+        const sharedOutputPath = resolveSharedOutputPath({
+          context: input.context,
+          primaryOutputPath: artifact.target.outputPath,
+          config,
+          format,
         });
 
-        artifacts = [
-          {
-            ...artifact,
-            diagnostics: mergeDiagnostics(artifact.diagnostics, [diagnostic]),
-          },
-        ];
+        if (sharedOutputPath !== artifact.target.outputPath) {
+          artifacts.push({
+            target: {
+              ...artifact.target,
+              outputPath: sharedOutputPath,
+            },
+            contents: artifact.contents,
+            diagnostics: artifact.diagnostics,
+          });
+        }
       }
 
-      const primaryArtifact = artifacts[0] ?? artifact;
-      return createResultOk(primaryArtifact);
+      return artifacts.length === 1
+        ? createResultOk(artifacts[0] ?? artifact)
+        : createResultOk(artifacts);
     },
   });
 
