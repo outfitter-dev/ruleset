@@ -6,6 +6,7 @@ import {
   createAgentsMdProvider,
   createClaudeCodeProvider,
   createClineProvider,
+  createCodexAgentProvider,
   createCodexProvider,
   createCopilotProvider,
   createCursorProvider,
@@ -335,6 +336,58 @@ describe("first-party providers", () => {
       expect(artifacts[0]?.target.outputPath).toBe(
         `${cwd}/.ruleset/dist/codex/overview.rule.md`
       );
+    });
+  });
+
+  describe("codex-agent", () => {
+    it("writes aggregated sections to AGENTS.md", async () => {
+      const provider = createCodexAgentProvider();
+      const first = createDocument({
+        path: `${cwd}/.ruleset/rules/backend.rule.md`,
+        contents: "Backend guidance",
+      });
+      const second = createDocument({
+        path: `${cwd}/.ruleset/rules/frontend.rule.md`,
+        contents: "Frontend guidance",
+      });
+
+      await compileWithProvider(provider, {
+        context,
+        document: first,
+      });
+      const [artifact] = await compileWithProvider(provider, {
+        context,
+        document: second,
+      });
+
+      expect(artifact.target.outputPath).toBe(`${cwd}/AGENTS.md`);
+      expect(artifact.contents).toContain(
+        "## Source: .ruleset/rules/backend.rule.md"
+      );
+      expect(artifact.contents).toContain(
+        "## Source: .ruleset/rules/frontend.rule.md"
+      );
+      expect(artifact.contents).toContain("Backend guidance");
+      expect(artifact.contents).toContain("Frontend guidance");
+    });
+
+    it("respects outputPath override", async () => {
+      const provider = createCodexAgentProvider();
+      const document = createDocument({ id: "docs/platform.rule.md" });
+
+      const [artifact] = await compileWithProvider(provider, {
+        context,
+        document,
+        projectConfig: {
+          providers: {
+            "codex-agent": {
+              outputPath: "./.codex/AGENTS.md",
+            },
+          },
+        } as RulesetProjectConfig,
+      });
+
+      expect(artifact.target.outputPath).toBe(`${cwd}/.codex/AGENTS.md`);
     });
   });
 

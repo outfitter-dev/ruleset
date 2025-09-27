@@ -292,6 +292,10 @@ export {
   createCodexProvider,
 } from "./providers/codex";
 export {
+  type CodexAgentProvider,
+  createCodexAgentProvider,
+} from "./providers/codex-agent";
+export {
   type CopilotProvider,
   createCopilotProvider,
 } from "./providers/copilot";
