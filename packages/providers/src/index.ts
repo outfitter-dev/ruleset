@@ -284,6 +284,10 @@ export {
   createClaudeCodeProvider,
 } from "./providers/claude-code";
 export {
+  type ClineProvider,
+  createClineProvider,
+} from "./providers/cline";
+export {
   type CodexProvider,
   createCodexProvider,
 } from "./providers/codex";

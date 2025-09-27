@@ -5,6 +5,7 @@ import path from "node:path";
 import {
   createAgentsMdProvider,
   createClaudeCodeProvider,
+  createClineProvider,
   createCodexProvider,
   createCopilotProvider,
   createCursorProvider,
@@ -402,6 +403,76 @@ describe("first-party providers", () => {
       );
       expect(outputPaths).toContain(
         `${cwd}/.roo/rules-docs-writer/reference.rule.md`
+      );
+    });
+  });
+
+  describe("cline", () => {
+    it("writes aggregated rules to .clinerules by default", async () => {
+      const provider = createClineProvider();
+      const document = createDocument({
+        path: `${cwd}/.ruleset/rules/overview.rule.md`,
+        contents: "Project overview",
+      });
+
+      const [artifact] = await compileWithProvider(provider, {
+        context,
+        document,
+      });
+
+      expect(artifact.target.outputPath).toBe(`${cwd}/.clinerules`);
+      expect(artifact.contents).toContain("Project overview");
+    });
+
+    it("aggregates multiple documents into single rules file", async () => {
+      const provider = createClineProvider();
+      const alpha = createDocument({
+        path: `${cwd}/.ruleset/rules/alpha.rule.md`,
+        contents: "Alpha guidance",
+      });
+      const beta = createDocument({
+        path: `${cwd}/.ruleset/rules/beta.rule.md`,
+        contents: "Beta guidance",
+      });
+
+      await compileWithProvider(provider, {
+        context,
+        document: alpha,
+      });
+      const [artifact] = await compileWithProvider(provider, {
+        context,
+        document: beta,
+      });
+
+      expect(artifact.target.outputPath).toBe(`${cwd}/.clinerules`);
+      expect(artifact.contents).toContain("Alpha guidance");
+      expect(artifact.contents).toContain("Beta guidance");
+      expect(artifact.contents).toContain(
+        "# Source: .ruleset/rules/alpha.rule.md"
+      );
+      expect(artifact.contents).toContain(
+        "# Source: .ruleset/rules/beta.rule.md"
+      );
+    });
+
+    it("respects outputPath override", async () => {
+      const provider = createClineProvider();
+      const document = createDocument({ id: "docs/reference.rule.md" });
+
+      const [artifact] = await compileWithProvider(provider, {
+        context,
+        document,
+        projectConfig: {
+          providers: {
+            cline: {
+              outputPath: "./config/.rules/clinerules.txt",
+            },
+          },
+        } as RulesetProjectConfig,
+      });
+
+      expect(artifact.target.outputPath).toBe(
+        `${cwd}/config/.rules/clinerules.txt`
       );
     });
   });
