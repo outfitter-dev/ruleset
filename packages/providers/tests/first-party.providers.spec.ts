@@ -8,6 +8,7 @@ import {
   createCodexProvider,
   createCopilotProvider,
   createCursorProvider,
+  createRooCodeProvider,
   createWindsurfProvider,
   type ProviderEntry,
 } from "@rulesets/providers";
@@ -332,6 +333,75 @@ describe("first-party providers", () => {
       expect(artifacts).toHaveLength(1);
       expect(artifacts[0]?.target.outputPath).toBe(
         `${cwd}/.ruleset/dist/codex/overview.rule.md`
+      );
+    });
+  });
+
+  describe("roo-code", () => {
+    it("writes to roo common rules directory by default", async () => {
+      const provider = createRooCodeProvider();
+      const document = createDocument({ id: "guides/overview.rule.md" });
+
+      const [artifact] = await compileWithProvider(provider, {
+        context,
+        document,
+      });
+
+      expect(artifact.target.outputPath).toBe(
+        `${cwd}/.roo/rules/guides/overview.rule.md`
+      );
+    });
+
+    it("writes mode-specific rules when mode provided", async () => {
+      const provider = createRooCodeProvider();
+      const document = createDocument({ id: "debugging.rule.md" });
+
+      const artifacts = await compileWithProvider(provider, {
+        context,
+        document,
+        projectConfig: {
+          providers: {
+            "roo-code": {
+              mode: "debug",
+            },
+          },
+        } as RulesetProjectConfig,
+      });
+
+      expect(artifacts).toHaveLength(1);
+      expect(artifacts[0]?.target.outputPath).toBe(
+        `${cwd}/.roo/rules-debug/debugging.rule.md`
+      );
+    });
+
+    it("supports multiple modes and optional common output", async () => {
+      const provider = createRooCodeProvider();
+      const document = createDocument({ id: "reference.rule.md" });
+
+      const artifacts = await compileWithProvider(provider, {
+        context,
+        document,
+        projectConfig: {
+          providers: {
+            "roo-code": {
+              modes: ["architect", "docs-writer"],
+              includeCommon: true,
+            },
+          },
+        } as RulesetProjectConfig,
+      });
+
+      const expectedArtifacts = 3;
+      expect(artifacts).toHaveLength(expectedArtifacts);
+      const outputPaths = artifacts.map(
+        (artifact) => artifact.target.outputPath
+      );
+      expect(outputPaths).toContain(`${cwd}/.roo/rules/reference.rule.md`);
+      expect(outputPaths).toContain(
+        `${cwd}/.roo/rules-architect/reference.rule.md`
+      );
+      expect(outputPaths).toContain(
+        `${cwd}/.roo/rules-docs-writer/reference.rule.md`
       );
     });
   });

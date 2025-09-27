@@ -296,6 +296,10 @@ export {
   createCursorProvider,
 } from "./providers/cursor";
 export {
+  createRooCodeProvider,
+  type RooCodeProvider,
+} from "./providers/roo-code";
+export {
   createWindsurfProvider,
   type WindsurfProvider,
 } from "./providers/windsurf";
