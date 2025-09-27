@@ -11,6 +11,7 @@ import {
 } from "../index";
 import {
   createDiagnostic,
+  mergeDiagnostics,
   PROVIDER_VERSION,
   resolveFilesystemArtifact,
 } from "../shared";
@@ -65,6 +66,7 @@ export const createCodexProvider = () =>
         configuredPathResolver: resolveConfiguredPath,
       });
 
+      let artifacts = [artifact];
       if (shouldEmitSharedWarning(config)) {
         const diagnostic = createDiagnostic({
           level: "info",
@@ -74,13 +76,16 @@ export const createCodexProvider = () =>
           tags: ["provider", "codex", "shared-agents"],
         });
 
-        return createResultOk({
-          ...artifact,
-          diagnostics: [...artifact.diagnostics, diagnostic],
-        });
+        artifacts = [
+          {
+            ...artifact,
+            diagnostics: mergeDiagnostics(artifact.diagnostics, [diagnostic]),
+          },
+        ];
       }
 
-      return createResultOk(artifact);
+      const primaryArtifact = artifacts[0] ?? artifact;
+      return createResultOk(primaryArtifact);
     },
   });
 

@@ -113,3 +113,8 @@ Tracking work toward the Rulesets v0.4.0 rewrite.
 - Added first-party provider tests covering Windsurf XML outputs and Codex override/diagnostic behaviour.
 - Ported agents-md provider into @rulesets/providers using the shared filesystem helper; `useComposer` now emits a warning until the composer port lands, preserving existing output behaviour.
 - Restored `agents-md` composer: provider now aggregates matched rules via the new lightweight composer helper (glob + dedupe) instead of warning, reusing the shared filesystem helper.
+
+### 2025-09-27
+
+- Extended orchestrator compile pipeline to accept multiple artifacts per provider target, including updated cache entries (version bump) and target events so watch mode and CLI logs surface all emitted files; added orchestration tests covering multi-artifact responses and cached reuse.
+- Broadened provider compile contract to allow array results, adjusted first-party provider tests to normalize results, and kept codex provider emitting a single artifact until the shared-agents output lands (PLAN §5 task #1 ready for provider-specific follow-up).
