@@ -1,0 +1,20 @@
+# Rulesets Configuration
+# https://ruleset.md/docs/configuration
+
+# Provider configuration
+providers:
+  cursor:
+    enabled: true
+  claude-code:
+    enabled: true
+  windsurf:
+    enabled: true
+  agents-md:
+    enabled: true
+
+# Optional: Override default source directories
+# sources:
+#   rules:
+#     - ./rules        # Default: ['.ruleset/rules', '.agents/rules']
+#   partials:
+#     - ./partials     # Default: ['.ruleset/partials']

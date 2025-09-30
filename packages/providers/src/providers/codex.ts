@@ -59,30 +59,23 @@ const sharedAgentsEnabled = (config: Record<string, JsonValue>): boolean => {
   return resolved !== false;
 };
 
-const hasSharedAgentsPath = (config: Record<string, JsonValue>): boolean => {
-  const raw = config.agentsOutputPath;
-  if (typeof raw !== "string") {
-    return false;
-  }
-  return raw.trim().length > 0;
-};
-
 const resolveSharedOutputPath = (params: {
   context: RulesetRuntimeContext;
-  primaryOutputPath: string;
+  targetOutputBase: string;
+  providerId: string;
   config: Record<string, JsonValue>;
   format: "markdown" | "xml";
 }): string => {
-  const { context, primaryOutputPath, config, format } = params;
-  const primaryIsFile = path.extname(primaryOutputPath).length > 0;
-  const baseDirectory = primaryIsFile
-    ? path.dirname(primaryOutputPath)
-    : primaryOutputPath;
-  const fallbackPath = path.join(baseDirectory, "AGENTS.md");
+  const { context, targetOutputBase, providerId, config, format } = params;
 
-  const configuredPath = hasSharedAgentsPath(config)
-    ? config.agentsOutputPath
-    : undefined;
+  const providerBase = path.normalize(path.join(targetOutputBase, providerId));
+
+  const fallbackPath = path.join(providerBase, "AGENTS.md");
+
+  const configuredPath =
+    typeof config.agentsOutputPath === "string"
+      ? config.agentsOutputPath
+      : undefined;
 
   return resolveConfiguredOutputPath({
     context,
@@ -113,15 +106,19 @@ export const createCodexProvider = () =>
 
       const artifacts = [artifact];
 
-      if (sharedAgentsEnabled(config) && hasSharedAgentsPath(config)) {
+      if (sharedAgentsEnabled(config)) {
         const sharedOutputPath = resolveSharedOutputPath({
           context: input.context,
-          primaryOutputPath: artifact.target.outputPath,
+          targetOutputBase: input.target.outputPath,
+          providerId: PROVIDER_ID,
           config,
           format,
         });
 
-        if (sharedOutputPath !== artifact.target.outputPath) {
+        if (
+          path.normalize(sharedOutputPath) !==
+          path.normalize(artifact.target.outputPath)
+        ) {
           artifacts.push({
             target: {
               ...artifact.target,

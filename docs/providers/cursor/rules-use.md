@@ -11,6 +11,7 @@ Cursor (v0.50+, May 2025) uses Markdown files with YAML front-matter (`.mdc` ext
 - **UI Integration:** Rules can be managed directly from the Cursor interface
 - **File Referencing:** Supports `@filename` syntax to include external file content
 - **Character Limits:** Recommended to keep each rule under ~500 lines for optimal performance
+- **Rulesets Output:** Compiler emits `.ruleset/dist/cursor/**` artifacts plus sibling `AGENTS.md` files for easy publishing
 
 ## Canonical Locations & Precedence
 
@@ -258,6 +259,10 @@ Cursor provides a dedicated UI for managing rules:
 - **Dynamic Updates:** Rule changes only apply to new conversations, not ongoing ones
 - **No Cross-Project Rules Linking:** Each project's rules are isolated to that project
 - **Rules Only Guide, Not Dictate:** The AI might still occasionally produce output that doesn't follow a rule
+
+## Rulesets Integration
+
+Run `bun run rules compile --providers cursor` (or `rulesets compile`) to generate Cursor-ready artifacts. By default the compiler writes rendered files under `.ruleset/dist/cursor/...` and produces a sibling `AGENTS.md` beside each document so you can publish either the provider-specific `.mdc` file or a canonical agents file. Override `cursor.outputPath` in project config or front matter to target `.cursor/rules/` directly, and set `cursor.agentsOutputPath` when you want the canonical file written somewhere else (for example the repo root `AGENTS.md`).
 
 ## Version Information
 

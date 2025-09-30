@@ -1,0 +1,9 @@
+---
+name: test-preset
+version: 1.0.0
+rules:
+  - path: test-rule.md
+    content: |
+      # Test Rule from Preset
+      This is a test rule from a preset.
+---

@@ -1,19 +1,9 @@
-import {
-  type CompileTarget,
-  createResultOk,
-  RULESET_CAPABILITIES,
-} from "@rulesets/types";
-import {
-  defineProvider,
-  PROVIDER_SDK_VERSION,
-  type ProviderCompileInput,
-  type ProviderCompileResult,
-} from "../index";
-import {
-  hasCapability,
-  PROVIDER_VERSION,
-  resolveFilesystemArtifact,
-} from "../shared";
+import path from "node:path";
+
+import { type CompileTarget, RULESET_CAPABILITIES } from "@rulesets/types";
+
+import { hasCapability } from "../shared";
+import { createSimpleFilesystemProvider } from "./simple";
 
 const CURSOR_CAPABILITIES = Object.freeze([
   RULESET_CAPABILITIES.MARKDOWN_RENDER,
@@ -21,31 +11,16 @@ const CURSOR_CAPABILITIES = Object.freeze([
   RULESET_CAPABILITIES.DIAGNOSTICS_STRUCTURED,
 ]);
 
-const CURSOR_PROVIDER_ID = "cursor";
-
 const resolveFormat = (target: CompileTarget): "markdown" | "xml" =>
   hasCapability(target, "output:sections") ? "xml" : "markdown";
 
 export const createCursorProvider = () =>
-  defineProvider({
-    handshake: {
-      providerId: CURSOR_PROVIDER_ID,
-      version: PROVIDER_VERSION,
-      sdkVersion: PROVIDER_SDK_VERSION,
-      capabilities: CURSOR_CAPABILITIES,
-      sandbox: { mode: "in-process" },
-      runtime: { bun: ">=1.0.0" },
-    },
-    compile: (input: ProviderCompileInput): ProviderCompileResult => {
-      const { artifact } = resolveFilesystemArtifact({
-        providerId: CURSOR_PROVIDER_ID,
-        input,
-        fallbackExtension: ".md",
-        formatResolver: ({ target: resolvedTarget }) =>
-          resolveFormat(resolvedTarget),
-      });
-
-      return createResultOk(artifact);
+  createSimpleFilesystemProvider({
+    providerId: "cursor",
+    capabilities: CURSOR_CAPABILITIES,
+    formatResolver: ({ target }) => resolveFormat(target),
+    canonicalOutput: {
+      basePath: ({ artifact }) => path.dirname(artifact.target.outputPath),
     },
   });
 

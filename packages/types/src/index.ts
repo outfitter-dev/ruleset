@@ -522,6 +522,11 @@ const rulesetSourceEntrySchema = z.union([
   rulesetSourceConfigSchema,
 ]);
 
+const rulesetSourcesSchema = z.object({
+  rules: z.array(rulesetSourceEntrySchema).optional(),
+  partials: stringArraySchema.optional(),
+});
+
 export const rulesetProviderConfigSchema = z
   .object({
     enabled: z.boolean().optional(),
@@ -574,7 +579,7 @@ export const rulesetProjectConfigSchema = z
   .object({
     version: rulesetVersionSchema.optional(),
     extends: stringArraySchema.optional(),
-    sources: z.array(rulesetSourceEntrySchema).optional(),
+    sources: rulesetSourcesSchema.optional(),
     output: z.string().min(1).optional(),
     rule: rulesetRuleFrontmatterSchema.optional(),
     providers: z.record(rulesetProviderConfigSchema).optional(),
@@ -595,6 +600,7 @@ export type RulesetRuleFrontmatter = z.infer<
 export type RulesetFrontmatter = z.infer<typeof rulesetFrontmatterSchema>;
 export type RulesetSourceConfig = z.infer<typeof rulesetSourceConfigSchema>;
 export type RulesetSourceEntry = z.infer<typeof rulesetSourceEntrySchema>;
+export type RulesetSources = z.infer<typeof rulesetSourcesSchema>;
 export type RulesetProviderConfig = z.infer<typeof rulesetProviderConfigSchema>;
 export type RulesetProjectPathsConfig = z.infer<
   typeof rulesetProjectPathsSchema

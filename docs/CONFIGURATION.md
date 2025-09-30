@@ -647,6 +647,9 @@ rulesets compile --dry-run
 # Verbose output for debugging
 rulesets compile --verbose
 
+# Structured JSON logging (alias: --json)
+rulesets compile --format json
+
 # List discovered configuration
 rulesets list --config
 ```

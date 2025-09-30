@@ -12,6 +12,7 @@ import { Command } from "commander";
 import picomatch from "picomatch";
 import { parseFrontmatter } from "../utils/frontmatter";
 import { logger } from "../utils/logger";
+import { addLoggingOptions } from "../utils/options";
 
 const SUPPORTED_SOURCE_EXTENSIONS = [".ruleset.md", ".md", ".mdc"] as const;
 
@@ -496,15 +497,14 @@ function printProjectSources(
 }
 
 export function listCommand(): Command {
-  return new Command("list")
+  const command = new Command("list")
     .description("List installed rulesets and presets")
-    .option("--json", "Output JSON logs for machine consumption")
-    .option("--log-level <level>", "Log level: debug|info|warn|error")
-    .option("-q, --quiet", "Quiet mode: only errors are printed")
     .option("-g, --global", "List global rulesets")
     .option("-l, --local", "List local project rulesets")
     .option("-p, --presets", "List available and installed presets")
     .action(async (options) => {
       await runList(options);
     });
+
+  return addLoggingOptions(command, { includeDeprecatedJsonAlias: true });
 }

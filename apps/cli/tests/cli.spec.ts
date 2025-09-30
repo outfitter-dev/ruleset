@@ -64,8 +64,8 @@ describe("rulesets CLI smoke", () => {
     expect(stdout).toContain("rulesets");
   });
 
-  it("emits JSON logs in --json mode", () => {
-    const { code, stdout } = runCli(["--json", "list"]);
+  it("emits JSON logs in --format json mode", () => {
+    const { code, stdout } = runCli(["--format", "json", "list"]);
     expect(code).toBe(0);
     const lines = stdout
       .split("\n")
@@ -89,12 +89,20 @@ describe("rulesets CLI smoke", () => {
     expect(hasEmptyMsg).toBe(true);
   });
 
-  it("supports --json after subcommand", () => {
-    const { code, stdout } = runCli(["list", "--json"]);
+  it("supports --format json after subcommand", () => {
+    const { code, stdout } = runCli(["list", "--format", "json"]);
     expect(code).toBe(0);
     const firstLine = stdout.split("\n").find((l) => l.trim().length > 0);
     expect(firstLine).toBeTruthy();
     // Should be parseable JSON
+    JSON.parse(firstLine as string);
+  });
+
+  it("continues to accept deprecated --json alias", () => {
+    const { code, stdout } = runCli(["list", "--json"]);
+    expect(code).toBe(0);
+    const firstLine = stdout.split("\n").find((l) => l.trim().length > 0);
+    expect(firstLine).toBeTruthy();
     JSON.parse(firstLine as string);
   });
 
@@ -126,7 +134,15 @@ describe("rulesets CLI smoke", () => {
       const outDirRel = join(".ruleset", "dist");
       const outDirAbs = join(tmp, outDirRel);
       const { code, stdout } = runCli(
-        ["compile", "--output", outDirRel, "--provider", "cursor", "--json"],
+        [
+          "compile",
+          "--output",
+          outDirRel,
+          "--provider",
+          "cursor",
+          "--format",
+          "json",
+        ],
         { cwd: tmp }
       );
 
@@ -180,7 +196,15 @@ describe("rulesets CLI smoke", () => {
 
     const outDirRel = join(".ruleset", "dist");
     const { code, stderr } = runCli(
-      ["compile", "--output", outDirRel, "--destination", "cursor", "--json"],
+      [
+        "compile",
+        "--output",
+        outDirRel,
+        "--destination",
+        "cursor",
+        "--format",
+        "json",
+      ],
       { cwd: tmp }
     );
 
@@ -234,7 +258,15 @@ describe("rulesets CLI smoke", () => {
     const outDirRel = join(".ruleset", "dist");
     const outDirAbs = join(tmp, outDirRel);
     const { code } = runCli(
-      ["compile", "--output", outDirRel, "--provider", "cursor", "--json"],
+      [
+        "compile",
+        "--output",
+        outDirRel,
+        "--provider",
+        "cursor",
+        "--format",
+        "json",
+      ],
       { cwd: tmp }
     );
 
@@ -285,7 +317,15 @@ describe("rulesets CLI smoke", () => {
     const outDirRel = join(".ruleset", "dist");
     const outDirAbs = join(tmp, outDirRel);
     const { code } = runCli(
-      ["compile", "--output", outDirRel, "--provider", "cursor", "--json"],
+      [
+        "compile",
+        "--output",
+        outDirRel,
+        "--provider",
+        "cursor",
+        "--format",
+        "json",
+      ],
       { cwd: tmp }
     );
 
@@ -378,7 +418,7 @@ rules:
 `;
     writeFileSync(join(presetsDir, "test-preset.yaml"), presetContent);
 
-    const { code, stdout } = runCli(["list", "--presets", "--json"], {
+    const { code, stdout } = runCli(["list", "--presets", "--format", "json"], {
       cwd: tmp,
     });
     expect(code).toBe(0);
@@ -409,7 +449,7 @@ rules:
     writeFileSync(join(presetsDir, "install-test-preset.yaml"), presetContent);
 
     const { code, stdout } = runCli(
-      ["install", "--preset", "install-test-preset", "--json"],
+      ["install", "--preset", "install-test-preset", "--format", "json"],
       { cwd: tmp }
     );
 
@@ -439,7 +479,7 @@ rules:
     );
 
     const { code, stderr } = runCli(
-      ["install", "--preset", "nonexistent-preset", "--json"],
+      ["install", "--preset", "nonexistent-preset", "--format", "json"],
       { cwd: tmp }
     );
 
@@ -467,7 +507,7 @@ rules:
 
     // Install the preset
     const { code } = runCli(
-      ["install", "--preset", "update-test-preset", "--json"],
+      ["install", "--preset", "update-test-preset", "--format", "json"],
       { cwd: tmp }
     );
     expect(code).toBe(0);
@@ -487,7 +527,7 @@ rules:
     );
 
     // Run update command
-    const updateResult = runCli(["update", "--json"], { cwd: tmp });
+    const updateResult = runCli(["update", "--format", "json"], { cwd: tmp });
     expect(updateResult.code).toBe(0);
     expect(updateResult.stdout).toContain(
       "Successfully installed 1 rules from preset 'update-test-preset'"

@@ -168,7 +168,7 @@ async function resolveConfigPath(
  * Loads the project configuration, searching standard locations under `.ruleset/`.
  * Returns an empty configuration when no file is present.
  *
- * If no sources are configured, defaults to ['.ruleset/rules', '.agents/rules'].
+ * If no sources are configured, defaults to { rules: ['.ruleset/rules', '.agents/rules'] }.
  */
 export async function loadProjectConfig(
   options: LoadProjectConfigOptions = {}
@@ -177,7 +177,9 @@ export async function loadProjectConfig(
   if (!resolved) {
     // Return default config with default sources when no config file is found
     const defaultConfig: RulesetProjectConfig = {
-      sources: [".ruleset/rules", ".agents/rules"],
+      sources: {
+        rules: [".ruleset/rules", ".agents/rules"],
+      },
     };
     return { config: defaultConfig };
   }
@@ -211,17 +213,172 @@ export async function loadProjectConfig(
 
   const typedConfig = schemaResult.data;
 
-  const finalConfig: RulesetProjectConfig =
-    typedConfig.sources && typedConfig.sources.length > 0
-      ? typedConfig
-      : {
-          ...typedConfig,
-          sources: [".ruleset/rules", ".agents/rules"],
-        };
+  // Apply defaults if no sources configured
+  const hasRules = typedConfig.sources?.rules && typedConfig.sources.rules.length > 0;
+  const hasPartials = typedConfig.sources?.partials && typedConfig.sources.partials.length > 0;
+  const sourcesEmpty = !hasRules && !hasPartials;
+
+  const finalConfig: RulesetProjectConfig = sourcesEmpty
+    ? {
+        ...typedConfig,
+        sources: {
+          rules: [".ruleset/rules", ".agents/rules"],
+        },
+      }
+    : typedConfig;
 
   return {
     path: resolved.path,
     format: resolved.format,
     config: finalConfig,
+  };
+}
+
+/**
+ * Options for saving project configuration.
+ */
+export type SaveProjectConfigOptions = {
+  /** Path to the configuration file. If not provided, will use discovery to find existing config. */
+  configPath?: string;
+  /** Starting directory for config discovery if configPath not provided. Defaults to process.cwd() */
+  startPath?: string;
+  /** Format to use when creating a new config file. Defaults to 'yaml' */
+  format?: ProjectConfigFormat;
+  /** Whether to create parent directories if they don't exist. Defaults to true */
+  createDirs?: boolean;
+};
+
+/**
+ * Serializes config to the appropriate format string.
+ */
+function serializeConfig(
+  config: ProjectConfig,
+  format: ProjectConfigFormat
+): string {
+  // Remove default values to keep config minimal
+  const minimalConfig = { ...config };
+
+  // Remove default sources if they match defaults
+  const sources = minimalConfig.sources;
+  if (sources) {
+    const rulesMatch =
+      sources.rules?.length === 2 &&
+      sources.rules[0] === ".ruleset/rules" &&
+      sources.rules[1] === ".agents/rules";
+    const noPartials = !sources.partials || sources.partials.length === 0;
+
+    if (rulesMatch && noPartials) {
+      delete minimalConfig.sources;
+    }
+  }
+
+  switch (format) {
+    case "yaml": {
+      const { dump } = require("js-yaml");
+      return dump(minimalConfig, {
+        indent: 2,
+        lineWidth: 120,
+        noRefs: true,
+        sortKeys: false
+      });
+    }
+    case "json":
+      return JSON.stringify(minimalConfig, null, 2) + "\n";
+    case "jsonc":
+      // For JSONC, we use regular JSON but could add comments in the future
+      return JSON.stringify(minimalConfig, null, 2) + "\n";
+    case "toml": {
+      const { stringify } = require("@iarna/toml");
+      return stringify(minimalConfig as any);
+    }
+    default:
+      throw new Error(`Unsupported config format: ${format}`);
+  }
+}
+
+/**
+ * Saves project configuration to disk.
+ *
+ * @param config - The configuration to save
+ * @param options - Options for saving
+ * @returns The path where the config was saved and the format used
+ */
+export async function saveProjectConfig(
+  config: ProjectConfig,
+  options: SaveProjectConfigOptions = {}
+): Promise<{ path: string; format: ProjectConfigFormat }> {
+  const {
+    configPath,
+    startPath = process.cwd(),
+    format: preferredFormat = "yaml",
+    createDirs = true,
+  } = options;
+
+  let targetPath: string;
+  let targetFormat: ProjectConfigFormat;
+
+  if (configPath) {
+    // Use explicit path
+    targetPath = path.resolve(configPath);
+
+    // Determine format from extension or use preferred
+    const ext = path.extname(targetPath).toLowerCase();
+    if (ext === ".yaml" || ext === ".yml") {
+      targetFormat = "yaml";
+    } else if (ext === ".json") {
+      targetFormat = "json";
+    } else if (ext === ".jsonc") {
+      targetFormat = "jsonc";
+    } else if (ext === ".toml") {
+      targetFormat = "toml";
+    } else {
+      targetFormat = preferredFormat;
+    }
+  } else {
+    // Try to find existing config
+    const existing = await loadProjectConfig({ startPath });
+
+    if (existing.path) {
+      // Update existing config
+      targetPath = existing.path;
+      targetFormat = existing.format || preferredFormat;
+    } else {
+      // Create new config in .ruleset directory
+      const projectRoot = await findRulesetRoot(startPath);
+      const configDir = projectRoot
+        ? path.join(projectRoot, ".ruleset")
+        : path.join(startPath, ".ruleset");
+
+      if (createDirs) {
+        await fs.mkdir(configDir, { recursive: true });
+      }
+
+      targetPath = path.join(configDir, `config.${preferredFormat === "yaml" ? "yaml" : preferredFormat}`);
+      targetFormat = preferredFormat;
+    }
+  }
+
+  // Validate config before saving
+  const schemaResult = rulesetProjectConfigSchema.safeParse(config);
+  if (!schemaResult.success) {
+    const issues = schemaResult.error.issues
+      .map(issue => `${issue.path.join(".")} ${issue.message}`)
+      .join(", ");
+    throw new Error(`Invalid configuration: ${issues}`);
+  }
+
+  // Serialize and save
+  const serialized = serializeConfig(config, targetFormat);
+
+  // Ensure parent directory exists
+  if (createDirs) {
+    await fs.mkdir(path.dirname(targetPath), { recursive: true });
+  }
+
+  await fs.writeFile(targetPath, serialized, "utf8");
+
+  return {
+    path: targetPath,
+    format: targetFormat,
   };
 }

@@ -2,6 +2,7 @@ import { GlobalConfig, InstallationManager } from "@rulesets/lib";
 import chalk from "chalk";
 import { Command } from "commander";
 import { logger } from "../utils/logger";
+import { addLoggingOptions } from "../utils/options";
 import { createSpinner } from "../utils/spinner";
 
 async function runSync(options: {
@@ -54,14 +55,13 @@ function reportSyncResults(
 }
 
 export function syncCommand(): Command {
-  return new Command("sync")
+  const command = new Command("sync")
     .description("Sync installed rulesets to their providers")
-    .option("--json", "Output JSON logs for machine consumption")
-    .option("--log-level <level>", "Log level: debug|info|warn|error")
-    .option("-q, --quiet", "Quiet mode: only errors are printed")
     .option("-g, --global", "Sync global rulesets")
     .option("-f, --force", "Force sync even if up to date")
     .action(async (options) => {
       await runSync(options);
     });
+
+  return addLoggingOptions(command, { includeDeprecatedJsonAlias: true });
 }

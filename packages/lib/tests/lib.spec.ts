@@ -3,7 +3,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { compile, compileStream, createCompiler } from "@rulesets/lib";
-import { createNoopProvider, providerCapability } from "@rulesets/providers";
+import {
+  createNoopProvider,
+  PROVIDER_SDK_VERSION,
+  providerCapability,
+} from "@rulesets/providers";
 import { RULESETS_VERSION_TAG } from "@rulesets/types";
 
 type MinimalContext = Parameters<typeof compile>[0]["context"];
@@ -26,6 +30,7 @@ const createProvider = () =>
   createNoopProvider({
     providerId: "noop",
     version: "0.0.0-test",
+    sdkVersion: PROVIDER_SDK_VERSION,
     capabilities: [providerCapability("render:markdown")],
   });
 

@@ -78,6 +78,9 @@ rulesets compile --provider cursor
 
 # Watch for changes and auto-compile
 rulesets compile --watch
+
+# Emit structured JSON logs (useful for agents/automation)
+rulesets compile --format json   # `--json` alias still works
 ```
 
 This generates compiled rules in `.ruleset/dist/`:

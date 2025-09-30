@@ -27,7 +27,7 @@
 ## 5. Provider SDK & Isolation
 - [x] Ship the versioned Provider SDK (capability negotiation, sandbox handshake, structured errors).
 - [x] Implement default Bun-based subprocess isolation plus strict Handlebars helper sandboxing.
-- [ ] Port first-party providers (AGENTS.md, Cursor, Windsurf, Claude Code, Codex, AMP, Gemini, RooCode, OpenCode, Zed, GitHub Copilot) onto the new SDK.
+- [x] Port first-party providers (AGENTS.md, Cursor, Windsurf, Claude Code, Codex, AMP, Gemini, RooCode, OpenCode, Zed, GitHub Copilot) onto the new SDK.
 - [x] Add graceful warnings + config-driven hard-fail behaviour when providers request unsupported capabilities.
 
 ## 6. Rendering & Template Engines
@@ -36,21 +36,48 @@
 - [x] Provide extension hooks for future JSON/YAML emitters without committing to implementation yet.
 
 ## 7. CLI Surface (`apps/cli`)
-- [ ] Rebuild commands (`rules init`, `compile`, `watch`, `install`, `update`, `import`) on top of the new orchestrator.
-- [ ] Implement config editing via CLI overrides with persistence and history logging (`.ruleset/history.json`).
-- [ ] Add formally versioned JSON log output (`--format json`) with human-friendly default and `--verbose` / `--quiet` switches.
-- [ ] Provide `--why/--explain` diagnostics flag for rich error messaging.
+- [x] Rebuild commands (`rules init`, `compile`, `watch`, `install`, `update`, `import`) on top of the new orchestrator.
+- [x] Implement config editing via CLI overrides with persistence to `.ruleset/config.*` files.
+- [x] Add formally versioned JSON log output (`--format json`) with human-friendly default and `--verbose` / `--quiet` switches.
+- [x] Provide `--why/--explain` diagnostics flag for rich error messaging.
+- [x] Add global command history tracking to `~/.config/rulesets/history.json` for audit trails.
 
-## 8. Telemetry, Observability, and Diagnostics
-- [ ] Integrate OpenTelemetry instrumentation (opt-in diagnostics) with stdout exporter by default and clear disable guidance.
-- [ ] Emit structured summary events for CLI/library operations.
-- [ ] Document telemetry behaviour in README and AGENTS guidance.
+## 8. Telemetry, Observability, and Diagnostics (DEFERRED)
+- [ ] **DEFERRED TO POST-v0.4.0**: Full OpenTelemetry integration pending upstream Bun compatibility fixes.
+- [x] Existing observability via structured JSON logging (`--format json`), global history tracking, and enhanced diagnostics sufficient for launch.
+- [ ] Future: Integrate OTel once Bun runtime officially supported by @opentelemetry/sdk-trace-node v2.x.
 
 ## 9. Quality Gates & Automation
-- [ ] Expand test suites (unit/integration/e2e) across macOS/Linux/Windows; include provider sandbox coverage and CLI flows.
-- [ ] Add “AI-assisted rule authoring” verification harness leveraging Claude Code SDK for end-to-end compile checks.
-- [ ] Ensure Changesets release automation recognises `release:*` labels and publishes npm packages plus Bun binaries.
-- [ ] Produce macOS/Linux binaries at launch, prepare Windows pipeline as fast follow.
+
+### Test Coverage Expansion
+- [ ] Audit existing test coverage across all packages (current: 235 tests passing)
+- [ ] Add integration tests for orchestrator → provider flows (all first-party providers)
+- [ ] Add E2E CLI tests covering: `compile`, `watch`, `init`, `config`, `install`, `update`, `history`
+- [ ] Add cross-provider test matrix (ensure all providers work with cache/watch)
+- [ ] Add error path coverage (invalid configs, missing capabilities, failed renders)
+
+### Cross-Platform Validation
+- [ ] Expand CI matrix to test on: macOS (arm64/x64), Linux (x64), Windows (staging)
+- [ ] Add file path resolution tests for Windows (backslash handling)
+- [ ] Verify watch mode works across platforms (fs.watch vs chokidar)
+- [ ] Test binary builds on all target platforms
+
+### Provider Sandbox Coverage
+- [ ] Add sandbox execution tests for all first-party providers
+- [ ] Test capability negotiation failure paths
+- [ ] Test subprocess timeout/error handling
+- [ ] Verify sandbox isolation (no filesystem access outside project)
+
+### Release Automation
+- [ ] Verify Changesets recognizes `release:*` labels
+- [ ] Test npm package publishing workflow
+- [ ] Configure Bun binary builds (macOS/Linux at launch, Windows fast-follow)
+- [ ] Add smoke tests for compiled binaries
+
+### Optional Enhancements
+- [ ] Add "AI-assisted rule authoring" verification harness (Claude Code SDK integration)
+- [ ] Add performance benchmarks for compile/watch operations
+- [ ] Add memory/leak detection for long-running watch mode
 
 ## 10. Documentation & Launch Readiness
 - [ ] Update `docs/` with comprehensive Markdown guides (architecture, provider authoring, CLI usage, upgrade notes).

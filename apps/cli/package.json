@@ -36,7 +36,7 @@
   "scripts": {
     "build": "rm -rf dist tsconfig.tsbuildinfo && bunx tsc --project tsconfig.json",
     "build:bundle": "rm -rf dist tsconfig.tsbuildinfo && bun build ./src/index.ts --outdir dist --target bun --format esm --sourcemap --entry-naming index.js --external @rulesets/* --external chalk --external commander --external js-yaml --external picomatch --external ora && bunx tsc --emitDeclarationOnly --project tsconfig.json",
-    "build:binary": "rm -rf dist tsconfig.tsbuildinfo && bun build ./src/index.ts --compile --target bun --outfile dist/rulesets --external @rulesets/* --external chalk --external commander --external js-yaml --external picomatch --external ora",
+    "build:binary": "rm -rf dist tsconfig.tsbuildinfo && bun build ./src/index.ts --compile --target bun --outfile dist/rulesets",
     "clean": "rm -rf dist",
     "dev": "bun run src/index.ts",
     "test": "bun test",

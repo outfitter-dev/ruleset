@@ -10,8 +10,6 @@ TypeScript rules for this codebase. Enforced by Ultracite + Biome: fast, determi
 
 ## Before You Code
 
-0. Start the file with a TLDR purpose comment including the version marker:
-   // TLDR: File purpose (mixd-v0)
 1. Scan patterns → align with existing conventions
 2. Map edge cases → define failure modes
 3. Apply rules exactly → document exceptions
