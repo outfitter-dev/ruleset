@@ -2,17 +2,15 @@ import { GlobalConfig, initializeProject } from "@rulesets/lib";
 import chalk from "chalk";
 import { Command } from "commander";
 import { logger } from "../utils/logger";
+import { addLoggingOptions } from "../utils/options";
 import { createSpinner } from "../utils/spinner";
 // import { fileURLToPath } from 'node:url';
 
 // const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export function initCommand(): Command {
-  return new Command("init")
+  const command = new Command("init")
     .description("Initialize Rulesets in the current project")
-    .option("--json", "Output JSON logs for machine consumption")
-    .option("--log-level <level>", "Log level: debug|info|warn|error")
-    .option("-q, --quiet", "Quiet mode: only errors are printed")
     .option("-g, --global", "Initialize global configuration")
     .action(async (options) => {
       const spinner = createSpinner("Initializing Rulesets...");
@@ -44,4 +42,6 @@ export function initCommand(): Command {
         process.exit(1);
       }
     });
+
+  return addLoggingOptions(command, { includeDeprecatedJsonAlias: true });
 }

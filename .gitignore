@@ -47,3 +47,14 @@ bun-debug.log*
 
 # Archived agent docs
 .agents/.archive/
+
+# Sandbox temporary workspaces
+examples/sandbox/
+
+# Template outputs (compiled rules should not be committed)
+examples/templates/*/.ruleset/dist/
+examples/templates/*/.cursor/
+examples/templates/*/.windsurf/
+examples/templates/*/.codeium/
+examples/templates/*/AGENTS.md
+examples/templates/*/CLAUDE.md

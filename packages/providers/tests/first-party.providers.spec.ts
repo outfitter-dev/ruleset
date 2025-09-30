@@ -4,14 +4,18 @@ import path from "node:path";
 
 import {
   createAgentsMdProvider,
+  createAmpProvider,
   createClaudeCodeProvider,
   createClineProvider,
   createCodexAgentProvider,
   createCodexProvider,
   createCopilotProvider,
   createCursorProvider,
+  createGeminiProvider,
+  createOpenCodeProvider,
   createRooCodeProvider,
   createWindsurfProvider,
+  createZedProvider,
   type ProviderEntry,
 } from "@rulesets/providers";
 import type {
@@ -93,14 +97,24 @@ describe("first-party providers", () => {
         path: `${cwd}/.ruleset/rules/core.guidelines.rule.md`,
       });
 
-      const [artifact] = await compileWithProvider(provider, {
+      const artifacts = await compileWithProvider(provider, {
         context,
         document,
       });
 
-      expect(artifact.target.outputPath).toBe(
+      expect(artifacts).toHaveLength(2);
+
+      const [primary, canonical] = artifacts;
+
+      expect(primary.target.outputPath).toBe(
         `${cwd}/.ruleset/dist/cursor/.ruleset/rules/core.guidelines.rule.md`
       );
+
+      expect(canonical.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/cursor/.ruleset/rules/AGENTS.md`
+      );
+      expect(canonical.contents).toBe(primary.contents);
+      expect(canonical.diagnostics).toEqual(primary.diagnostics);
     });
 
     it("respects per-document outputPath overrides", async () => {
@@ -114,13 +128,21 @@ describe("first-party providers", () => {
         },
       });
 
-      const [artifact] = await compileWithProvider(provider, {
+      const artifacts = await compileWithProvider(provider, {
         context,
         document,
       });
 
-      expect(artifact.target.outputPath).toBe(
+      expect(artifacts).toHaveLength(2);
+
+      const [primary, canonical] = artifacts;
+
+      expect(primary.target.outputPath).toBe(
         `${cwd}/.cursor/rules/quickstart.mdc`
+      );
+
+      expect(canonical.target.outputPath).toBe(
+        `${cwd}/.cursor/rules/AGENTS.md`
       );
     });
   });
@@ -169,7 +191,7 @@ describe("first-party providers", () => {
       const provider = createCopilotProvider();
       const document = createDocument({ id: "src/features/search.rule.md" });
 
-      const [artifact] = await compileWithProvider(provider, {
+      const artifacts = await compileWithProvider(provider, {
         context,
         document,
         projectConfig: {
@@ -181,9 +203,19 @@ describe("first-party providers", () => {
         } as RulesetProjectConfig,
       });
 
-      expect(artifact.target.outputPath).toBe(
+      expect(artifacts).toHaveLength(2);
+
+      const [primary, canonical] = artifacts;
+
+      expect(primary.target.outputPath).toBe(
         `${cwd}/.github/copilot/search.rule.md`
       );
+
+      expect(canonical.target.outputPath).toBe(
+        `${cwd}/.github/copilot/AGENTS.md`
+      );
+      expect(canonical.contents).toBe(primary.contents);
+      expect(canonical.diagnostics).toEqual(primary.diagnostics);
     });
 
     it("keeps rendered diagnostics intact", async () => {
@@ -204,14 +236,20 @@ describe("first-party providers", () => {
         ],
       };
 
-      const [artifact] = await compileWithProvider(provider, {
+      const artifacts = await compileWithProvider(provider, {
         context,
         document,
         rendered,
       });
 
-      expect(artifact.diagnostics).toEqual(rendered.diagnostics);
-      expect(artifact.contents).toBe("Rendered");
+      expect(artifacts).toHaveLength(2);
+
+      const [primary, canonical] = artifacts;
+
+      expect(primary.diagnostics).toEqual(rendered.diagnostics);
+      expect(primary.contents).toBe("Rendered");
+      expect(canonical.contents).toBe(primary.contents);
+      expect(canonical.diagnostics).toEqual(primary.diagnostics);
     });
   });
 
@@ -222,21 +260,31 @@ describe("first-party providers", () => {
         path: `${cwd}/rules/formatting.rule.md`,
       });
 
-      const [artifact] = await compileWithProvider(provider, {
+      const artifacts = await compileWithProvider(provider, {
         context,
         document,
       });
 
-      expect(artifact.target.outputPath).toBe(
+      expect(artifacts).toHaveLength(2);
+
+      const [primary, canonical] = artifacts;
+
+      expect(primary.target.outputPath).toBe(
         `${cwd}/.ruleset/dist/windsurf/rules/formatting.rule.md`
       );
+
+      expect(canonical.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/windsurf/rules/AGENTS.md`
+      );
+      expect(canonical.contents).toBe(primary.contents);
+      expect(canonical.diagnostics).toEqual(primary.diagnostics);
     });
 
     it("switches to xml extension when configured", async () => {
       const provider = createWindsurfProvider();
       const document = createDocument({ id: "rules/formatting.rule.md" });
 
-      const [artifact] = await compileWithProvider(provider, {
+      const artifacts = await compileWithProvider(provider, {
         context,
         document,
         projectConfig: {
@@ -248,9 +296,19 @@ describe("first-party providers", () => {
         } as RulesetProjectConfig,
       });
 
-      expect(artifact.target.outputPath).toBe(
+      expect(artifacts).toHaveLength(2);
+
+      const [primary, canonical] = artifacts;
+
+      expect(primary.target.outputPath).toBe(
         `${cwd}/.ruleset/dist/windsurf/rules/formatting.rule.xml`
       );
+
+      expect(canonical.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/windsurf/rules/AGENTS.md`
+      );
+      expect(canonical.contents).toBe(primary.contents);
+      expect(canonical.diagnostics).toEqual(primary.diagnostics);
     });
   });
 
@@ -259,21 +317,31 @@ describe("first-party providers", () => {
       const provider = createCodexProvider();
       const document = createDocument({ id: "guides/onboarding.rule.md" });
 
-      const [artifact] = await compileWithProvider(provider, {
+      const artifacts = await compileWithProvider(provider, {
         context,
         document,
       });
 
-      expect(artifact.target.outputPath).toBe(
+      expect(artifacts).toHaveLength(2);
+
+      const [primary, shared] = artifacts;
+
+      expect(primary.target.outputPath).toBe(
         `${cwd}/.ruleset/dist/codex/guides/onboarding.rule.md`
       );
+
+      expect(shared.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/codex/AGENTS.md`
+      );
+      expect(shared.contents).toBe(primary.contents);
+      expect(shared.diagnostics).toEqual(primary.diagnostics);
     });
 
     it("accepts outputPath overrides", async () => {
       const provider = createCodexProvider();
       const document = createDocument({ id: "welcome.rule.md" });
 
-      const [artifact] = await compileWithProvider(provider, {
+      const artifacts = await compileWithProvider(provider, {
         context,
         document,
         projectConfig: {
@@ -285,7 +353,13 @@ describe("first-party providers", () => {
         } as RulesetProjectConfig,
       });
 
-      expect(artifact.target.outputPath).toBe(`${cwd}/.codex/AGENTS.md`);
+      expect(artifacts).toHaveLength(2);
+
+      const [primary, shared] = artifacts;
+      expect(primary.target.outputPath).toBe(`${cwd}/.codex/AGENTS.md`);
+      expect(shared.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/codex/AGENTS.md`
+      );
     });
 
     it("emits shared agents artifact when requested", async () => {
@@ -335,6 +409,201 @@ describe("first-party providers", () => {
       expect(artifacts).toHaveLength(1);
       expect(artifacts[0]?.target.outputPath).toBe(
         `${cwd}/.ruleset/dist/codex/overview.rule.md`
+      );
+    });
+  });
+
+  describe("amp", () => {
+    it("writes artifacts under amp directory by default", async () => {
+      const provider = createAmpProvider();
+      const document = createDocument({ id: "docs/overview.rule.md" });
+
+      const artifacts = await compileWithProvider(provider, {
+        context,
+        document,
+      });
+
+      expect(artifacts).toHaveLength(2);
+
+      const [primary, canonical] = artifacts;
+
+      expect(primary.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/amp/docs/overview.rule.md`
+      );
+
+      expect(canonical.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/amp/docs/AGENTS.md`
+      );
+      expect(canonical.contents).toBe(primary.contents);
+      expect(canonical.diagnostics).toEqual(primary.diagnostics);
+    });
+
+    it("respects outputPath overrides", async () => {
+      const provider = createAmpProvider();
+      const document = createDocument({ id: "docs/overview.rule.md" });
+
+      const artifacts = await compileWithProvider(provider, {
+        context,
+        document,
+        projectConfig: {
+          providers: {
+            amp: {
+              outputPath: "./AGENTS.md",
+            },
+          },
+        } as RulesetProjectConfig,
+      });
+
+      expect(artifacts).toHaveLength(1);
+      expect(artifacts[0]?.target.outputPath).toBe(`${cwd}/AGENTS.md`);
+    });
+  });
+
+  describe("gemini", () => {
+    it("writes artifacts under gemini directory by default", async () => {
+      const provider = createGeminiProvider();
+      const document = createDocument({ id: "docs/quickstart.rule.md" });
+
+      const artifacts = await compileWithProvider(provider, {
+        context,
+        document,
+      });
+
+      expect(artifacts).toHaveLength(2);
+
+      const [primary, canonical] = artifacts;
+
+      expect(primary.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/gemini/docs/quickstart.rule.md`
+      );
+
+      expect(canonical.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/gemini/docs/AGENTS.md`
+      );
+      expect(canonical.contents).toBe(primary.contents);
+      expect(canonical.diagnostics).toEqual(primary.diagnostics);
+    });
+
+    it("accepts configured GEMINI.md output", async () => {
+      const provider = createGeminiProvider();
+      const document = createDocument({ id: "docs/quickstart.rule.md" });
+
+      const artifacts = await compileWithProvider(provider, {
+        context,
+        document,
+        projectConfig: {
+          providers: {
+            gemini: {
+              outputPath: "./AGENTS.md",
+            },
+          },
+        } as RulesetProjectConfig,
+      });
+
+      expect(artifacts).toHaveLength(1);
+      expect(artifacts[0]?.target.outputPath).toBe(`${cwd}/AGENTS.md`);
+    });
+  });
+
+  describe("opencode", () => {
+    it("defaults to provider scoped output", async () => {
+      const provider = createOpenCodeProvider();
+      const document = createDocument({ id: "docs/reference.rule.md" });
+
+      const artifacts = await compileWithProvider(provider, {
+        context,
+        document,
+      });
+
+      expect(artifacts).toHaveLength(2);
+
+      const [primary, canonical] = artifacts;
+
+      expect(primary.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/opencode/docs/reference.rule.md`
+      );
+
+      expect(canonical.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/opencode/docs/AGENTS.md`
+      );
+      expect(canonical.contents).toBe(primary.contents);
+      expect(canonical.diagnostics).toEqual(primary.diagnostics);
+    });
+
+    it("normalises directory output overrides", async () => {
+      const provider = createOpenCodeProvider();
+      const document = createDocument({ id: "docs/reference.rule.md" });
+
+      const artifacts = await compileWithProvider(provider, {
+        context,
+        document,
+        projectConfig: {
+          providers: {
+            opencode: {
+              outputPath: "./.opencode/rules/",
+            },
+          },
+        } as RulesetProjectConfig,
+      });
+
+      expect(artifacts).toHaveLength(2);
+
+      const [primary, canonical] = artifacts;
+
+      expect(primary.target.outputPath).toBe(
+        `${cwd}/.opencode/rules/reference.rule.md`
+      );
+
+      expect(canonical.target.outputPath).toBe(
+        `${cwd}/.opencode/rules/AGENTS.md`
+      );
+    });
+  });
+
+  describe("zed", () => {
+    it("writes artifacts under zed directory by default", async () => {
+      const provider = createZedProvider();
+      const document = createDocument({ id: "docs/checklist.rule.md" });
+
+      const artifacts = await compileWithProvider(provider, {
+        context,
+        document,
+      });
+
+      expect(artifacts).toHaveLength(2);
+
+      const [primary, canonical] = artifacts;
+
+      expect(primary.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/zed/docs/checklist.rule.md`
+      );
+
+      expect(canonical.target.outputPath).toBe(
+        `${cwd}/.ruleset/dist/zed/docs/AGENTS.md`
+      );
+      expect(canonical.contents).toBe(primary.contents);
+      expect(canonical.diagnostics).toEqual(primary.diagnostics);
+    });
+
+    it("supports configured rules directories", async () => {
+      const provider = createZedProvider();
+      const document = createDocument({ id: "docs/checklist.rule.md" });
+
+      const artifacts = await compileWithProvider(provider, {
+        context,
+        document,
+        projectConfig: {
+          providers: {
+            zed: {
+              outputPath: "./.zed/rules/AGENTS.md",
+            },
+          },
+        } as RulesetProjectConfig,
+      });
+
+      expect(artifacts).toHaveLength(1);
+      expect(artifacts[0]?.target.outputPath).toBe(
+        `${cwd}/.zed/rules/AGENTS.md`
       );
     });
   });

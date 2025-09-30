@@ -1,0 +1,36 @@
+# Rulesets v0.4 Configuration Example
+# This shows the new proposed structure
+
+sources:
+  rules: .rules/example/src
+  partials: .rules/example/src/partials
+
+# Output configuration
+output:
+  # Unified output (single canonical location)
+  unified: .rules/example/compiled
+
+  # Provider-specific outputs
+  providers:
+    cursor: .cursor/rules
+    windsurf: .windsurf/rules
+    claude-code: true  # Uses default (CLAUDE.md in root)
+    agents: .agents/rules
+    codex: .agents/rules
+
+# Alternatively, you can define compositions here instead of in .md files:
+# compositions:
+#   - name: AGENTS
+#     output: .agents/AGENTS.md
+#     providers:
+#       all: true
+#     sections:
+#       - file: core.md
+#         heading: true
+#         mode: embed
+#       - file:
+#           glob: conventions/*.md
+#         heading:
+#           text: title
+#           level: inherit
+#         mode: embed

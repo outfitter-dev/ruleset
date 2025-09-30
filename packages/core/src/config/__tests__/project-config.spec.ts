@@ -36,7 +36,7 @@ describe("loadProjectConfig", () => {
     const result = await loadProjectConfig({ startPath: projectDir });
 
     expect(result.config).toEqual({
-      sources: [".ruleset/rules", ".agents/rules"],
+      sources: { rules: [".ruleset/rules", ".agents/rules"] },
     });
     expect(result.path).toBeUndefined();
     expect(result.format).toBeUndefined();

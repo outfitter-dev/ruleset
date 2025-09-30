@@ -11,6 +11,7 @@ GitHub Copilot (build 6c3e9e6, May 2025) accepts natural-language rules written 
 - **Rule Types:** Ask Mode, Edit Mode, Agent Mode/Coding Agent
 - **File References:** None; references other standard GitHub information like issues
 - **Character Limits:** No explicit limit, but recommended to keep under ~600 tokens
+- **Rulesets Output:** Compiler emits `.ruleset/dist/copilot/**` documents plus optional `AGENTS.md` siblings for sharing
 
 ## Canonical Locations & Precedence
 
@@ -125,6 +126,10 @@ When working with Copilot, the rules are processed as follows:
 - **No templating:** No support for dynamic content or variables in rules files
 - **Limited feedback:** No UI shows which rules are actively influencing responses
 - **Command triggers:** Special commands in VS Code may override certain rule aspects
+
+## Rulesets Integration
+
+Compile with `rules compile --providers copilot` to generate repository instructions from your Rulesets sources. The provider writes rendered Markdown under `.ruleset/dist/copilot/...` and automatically creates a sibling `AGENTS.md` in each directory so you can either sync the repository-specific `.md` files or the canonical agents view. Use `copilot.outputPath` to publish directly into `.github/copilot-instructions.md` (or another directory), and set `copilot.agentsOutputPath` if you want the canonical file to land somewhere else such as the repo root.
 
 ## Version Information
 

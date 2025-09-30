@@ -32,6 +32,14 @@ export const collectDependencyWatchPaths = ({
     add(relative);
   }
 
+  // Add sources.partials directories
+  const sources = projectConfig?.sources;
+  if (sources?.partials) {
+    for (const partialPath of sources.partials) {
+      add(partialPath);
+    }
+  }
+
   if (projectConfig?.paths?.partials) {
     add(projectConfig.paths.partials);
   }

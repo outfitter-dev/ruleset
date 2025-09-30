@@ -1,19 +1,13 @@
+import path from "node:path";
+
 import {
   type CompileTarget,
-  createResultOk,
+  type JsonValue,
   RULESET_CAPABILITIES,
 } from "@rulesets/types";
-import {
-  defineProvider,
-  PROVIDER_SDK_VERSION,
-  type ProviderCompileInput,
-  type ProviderCompileResult,
-} from "../index";
-import {
-  hasCapability,
-  PROVIDER_VERSION,
-  resolveFilesystemArtifact,
-} from "../shared";
+
+import { hasCapability } from "../shared";
+import { createSimpleFilesystemProvider } from "./simple";
 
 const PROVIDER_ID = "windsurf";
 
@@ -41,7 +35,7 @@ const normalizeFormat = (value: unknown): "markdown" | "xml" | undefined => {
 
 const resolveFormat = (
   target: CompileTarget,
-  config: Record<string, unknown>
+  config: Record<string, JsonValue>
 ) => {
   const configuredFormat = normalizeFormat(config.format);
   if (configuredFormat) {
@@ -51,25 +45,12 @@ const resolveFormat = (
 };
 
 export const createWindsurfProvider = () =>
-  defineProvider({
-    handshake: {
-      providerId: PROVIDER_ID,
-      version: PROVIDER_VERSION,
-      sdkVersion: PROVIDER_SDK_VERSION,
-      capabilities: WINDSURF_CAPABILITIES,
-      sandbox: { mode: "in-process" },
-      runtime: { bun: ">=1.0.0" },
-    },
-    compile: (input: ProviderCompileInput): ProviderCompileResult => {
-      const { artifact } = resolveFilesystemArtifact({
-        providerId: PROVIDER_ID,
-        input,
-        fallbackExtension: ".md",
-        formatResolver: ({ target: resolvedTarget, config }) =>
-          resolveFormat(resolvedTarget, config),
-      });
-
-      return createResultOk(artifact);
+  createSimpleFilesystemProvider({
+    providerId: PROVIDER_ID,
+    capabilities: WINDSURF_CAPABILITIES,
+    formatResolver: ({ target, config }) => resolveFormat(target, config),
+    canonicalOutput: {
+      basePath: ({ artifact }) => path.dirname(artifact.target.outputPath),
     },
   });
 

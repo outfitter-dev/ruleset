@@ -18,6 +18,7 @@ import {
   type CompileArtifact,
   type CompileTarget,
   RULESETS_VERSION_TAG,
+  type RulesetDiagnostic,
   type RulesetDiagnostics,
   type RulesetRuntimeContext,
   type RulesetSource,
@@ -28,6 +29,7 @@ import { Command } from "commander";
 import picomatch from "picomatch";
 import { collectDependencyWatchPaths } from "../utils/dependency-watch";
 import { type LogLevel, logger } from "../utils/logger";
+import { addLoggingOptions } from "../utils/options";
 import { createSpinner } from "../utils/spinner";
 
 const DEFAULT_WATCH_DEBOUNCE_MS = 150;
@@ -39,11 +41,8 @@ const DEFAULT_WATCH_DEBOUNCE_MS = 150;
  * into provider-specific artefacts and can optionally watch for changes.
  */
 export function compileCommand(): Command {
-  return new Command("compile")
+  const command = new Command("compile")
     .description("Compile source rules to provider formats")
-    .option("--json", "Output JSON logs for machine consumption")
-    .option("--log-level <level>", "Log level: debug|info|warn|error")
-    .option("-q, --quiet", "Quiet mode: only errors are printed")
     .argument("[source]", "Source file or directory", "./.ruleset/rules")
     .option("-o, --output <dir>", "Output directory", "./.ruleset/dist")
     .option(
@@ -52,10 +51,14 @@ export function compileCommand(): Command {
     )
     .option("-d, --destination <dest>", "Deprecated alias for --provider")
     .option("-w, --watch", "Watch for changes and recompile")
-    .action(async (source: string, options, command) => {
-      const usedDefaultSource = command.args.length === 0;
+    .option("--why", "Show detailed diagnostics with explanations")
+    .option("--explain", "Alias for --why, shows detailed diagnostics")
+    .action(async (source: string, options, cmd) => {
+      const usedDefaultSource = cmd.args.length === 0;
       await runCompile(source, options, usedDefaultSource);
     });
+
+  return addLoggingOptions(command, { includeDeprecatedJsonAlias: true });
 }
 
 /** Options supported by the CLI compile command. */
@@ -64,6 +67,8 @@ type CompileOptions = {
   provider?: string;
   destination?: string; // Deprecated alias, kept for backwards compatibility
   watch?: boolean;
+  why?: boolean;
+  explain?: boolean;
 };
 
 /**
@@ -137,7 +142,9 @@ async function runCompile(
       configWatchPaths.add(path.dirname(projectConfigResult.path));
     }
 
-    const configSources = projectConfigResult.config.sources ?? [];
+    // Extract rules sources from config
+    const configSources: readonly RulesetSourceEntry[] =
+      projectConfigResult.config.sources?.rules ?? [];
     const hasConfiguredSources = configSources.length > 0;
 
     const projectSources: readonly RulesetSourceEntry[] = (() => {
@@ -228,7 +235,8 @@ async function runCompile(
     );
 
     await writeArtifacts(output.artifacts, cwd);
-    reportDiagnostics(output.diagnostics);
+    const explainMode = options.why || options.explain;
+    reportDiagnostics(output.diagnostics, { explain: explainMode });
 
     const duration = Date.now() - startTime;
     const summary =
@@ -283,7 +291,8 @@ async function runCompile(
     );
 
     await writeArtifacts(output.artifacts, cwd);
-    reportDiagnostics(output.diagnostics);
+    const explainMode = options.why || options.explain;
+    reportDiagnostics(output.diagnostics, { explain: explainMode });
 
     const duration = Date.now() - startTime;
     const summary =
@@ -970,13 +979,154 @@ async function writeArtifacts(
   }
 }
 
+function getDiagnosticIcon(level: RulesetDiagnostic["level"]): string {
+  if (level === "error") {
+    return "✗";
+  }
+  if (level === "warning") {
+    return "⚠";
+  }
+  return "ℹ";
+}
+
+function getDiagnosticColor(level: RulesetDiagnostic["level"]) {
+  if (level === "error") {
+    return chalk.red;
+  }
+  if (level === "warning") {
+    return chalk.yellow;
+  }
+  return chalk.blue;
+}
+
 function reportDiagnostics(
-  diagnostics: readonly { level: string; message: string }[]
+  diagnostics: readonly RulesetDiagnostic[],
+  options?: { explain?: boolean }
 ) {
-  if (diagnostics.length > 0) {
+  if (diagnostics.length === 0) {
+    return;
+  }
+
+  const explain = options?.explain ?? false;
+
+  if (explain) {
+    // Detailed output with explanations
+    logger.info(chalk.cyan.bold("\n═══ Detailed Diagnostics ═══\n"));
+
+    let count = 0;
+    for (const diagnostic of diagnostics) {
+      count++;
+      const icon = getDiagnosticIcon(diagnostic.level);
+      const levelColor = getDiagnosticColor(diagnostic.level);
+
+      logger.info(
+        levelColor.bold(
+          `${icon} [${diagnostic.level.toUpperCase()}] ${diagnostic.message}`
+        )
+      );
+
+      if (diagnostic.location) {
+        logger.info(
+          chalk.dim(
+            `   Location: line ${diagnostic.location.line}, column ${diagnostic.location.column}`
+          )
+        );
+      }
+
+      if (diagnostic.hint) {
+        logger.info(chalk.green(`   💡 Hint: ${diagnostic.hint}`));
+      }
+
+      if (diagnostic.tags && diagnostic.tags.length > 0) {
+        logger.info(chalk.dim(`   Tags: ${diagnostic.tags.join(", ")}`));
+      }
+
+      // Add explanations based on common diagnostic patterns
+      const explanation = getExplanation(diagnostic);
+      if (explanation) {
+        logger.info(chalk.cyan(`   ℹ️  Explanation: ${explanation}`));
+      }
+
+      if (count < diagnostics.length) {
+        logger.info(""); // Add space between diagnostics
+      }
+    }
+
+    logger.info(chalk.cyan.bold("\n═══════════════════════════\n"));
+
+    // Summary
+    const errors = diagnostics.filter((d) => d.level === "error").length;
+    const warnings = diagnostics.filter((d) => d.level === "warning").length;
+    const info = diagnostics.filter((d) => d.level === "info").length;
+
+    const summary: string[] = [];
+    if (errors > 0) {
+      summary.push(chalk.red(`${errors} error${errors === 1 ? "" : "s"}`));
+    }
+    if (warnings > 0) {
+      summary.push(
+        chalk.yellow(`${warnings} warning${warnings === 1 ? "" : "s"}`)
+      );
+    }
+    if (info > 0) {
+      summary.push(chalk.blue(`${info} info message${info === 1 ? "" : "s"}`));
+    }
+
+    if (summary.length > 0) {
+      logger.info(`Summary: ${summary.join(", ")}`);
+    }
+  } else {
+    // Simple output
     logger.info(chalk.dim("Diagnostics:"));
     for (const diagnostic of diagnostics) {
-      logger.info(`  [${diagnostic.level}] ${diagnostic.message}`);
+      const icon = getDiagnosticIcon(diagnostic.level);
+      const color = getDiagnosticColor(diagnostic.level);
+      logger.info(`  ${color(icon)} ${diagnostic.message}`);
     }
   }
+}
+
+/**
+ * Generate explanations for common diagnostic patterns
+ */
+function getExplanation(diagnostic: RulesetDiagnostic): string | undefined {
+  const message = diagnostic.message.toLowerCase();
+
+  if (message.includes("capability") && message.includes("missing")) {
+    return "The provider doesn't support this feature. Consider using a different provider or disabling this capability requirement.";
+  }
+
+  if (message.includes("frontmatter") || message.includes("yaml")) {
+    return "There's an issue with the YAML frontmatter at the top of your rule file. Check for syntax errors like incorrect indentation or missing colons.";
+  }
+
+  if (message.includes("handlebars") || message.includes("template")) {
+    return "This error relates to Handlebars template processing. Ensure all variables are defined and template syntax is correct.";
+  }
+
+  if (message.includes("partial") && message.includes("not found")) {
+    return "The referenced partial file doesn't exist in .ruleset/partials/. Create the file or check the partial name for typos.";
+  }
+
+  if (message.includes("provider") && message.includes("unknown")) {
+    return "The specified provider isn't recognized. Check available providers with 'rules list --providers' or verify the provider ID.";
+  }
+
+  if (message.includes("permission") || message.includes("access denied")) {
+    return "The operation requires write permissions. Check that you have access to modify files in the target directory.";
+  }
+
+  if (message.includes("syntax") || message.includes("parse")) {
+    return "There's a syntax error in your rule file. Review the file for unclosed tags, mismatched brackets, or invalid Markdown.";
+  }
+
+  if (message.includes("validation") || message.includes("schema")) {
+    return "The configuration doesn't match the expected schema. Refer to the documentation for the correct structure.";
+  }
+
+  if (message.includes("dependency") || message.includes("import")) {
+    return "There's an issue with file dependencies or imports. Ensure all referenced files exist and paths are correct.";
+  }
+
+  return;
 }

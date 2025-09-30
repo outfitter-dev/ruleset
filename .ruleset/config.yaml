@@ -1,0 +1,13 @@
+# Rulesets configuration (YAML)
+
+rule:
+  version: "0.2.0"
+  template: false
+
+providers:
+  cursor:
+    enabled: true
+  windsurf:
+    enabled: true
+  claude-code:
+    enabled: true

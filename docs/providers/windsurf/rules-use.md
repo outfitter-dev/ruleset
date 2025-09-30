@@ -10,6 +10,7 @@ Windsurf (v1.9+, May 2025) uses a flexible folder-based rules system with multip
 - **UI Integration:** Rules can be toggled and edited through the Windsurf UI
 - **File References:** Supports `@relative/path.ext` syntax to include file contents
 - **Integration:** Works alongside Cascade Memories and Workflows
+- **Rulesets Output:** Compiler emits `.ruleset/dist/windsurf/**` plus optional canonical `AGENTS.md` companions
 
 ## Canonical Locations & Precedence
 
@@ -172,6 +173,10 @@ Windsurf provides a dedicated UI for managing rules:
 - **Security**: Rules are sent to Windsurf's backend LLMs—avoid including secrets
 - **Legacy support**: Single `.windsurfrules` still works but lacks front-matter and trigger support
 - **Subdirectory rules**: For monorepos, consider nested rules for different project areas
+
+## Rulesets Integration
+
+Generate Windsurf artifacts with `rules compile --providers windsurf`. The compiler writes files beneath `.ruleset/dist/windsurf/...` and also creates a canonical `AGENTS.md` beside each document so you can copy either the provider-specific file or a shared agents reference. Configure `windsurf.outputPath` to publish directly into `.windsurf/rules/` (or another directory), and set `windsurf.agentsOutputPath` if the canonical file should land somewhere else, such as a repo-level `AGENTS.md`.
 
 ## Version Information
 

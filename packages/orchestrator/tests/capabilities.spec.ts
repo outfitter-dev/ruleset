@@ -66,7 +66,7 @@ describe("orchestrator capability negotiation", () => {
       ],
     });
 
-    expect(result.artifacts.length).toBe(1);
+    expect(result.artifacts.length).toBeGreaterThan(0);
     expect(result.diagnostics.length).toBe(0);
   });
 

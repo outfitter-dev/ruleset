@@ -569,6 +569,19 @@ const collectDependencyDirectories = (
     directories.add(path.resolve(context.cwd, relative));
   }
 
+  // Add sources.partials directories
+  const sources = projectConfig?.sources;
+  if (sources?.partials) {
+    for (const partialPath of sources.partials) {
+      directories.add(
+        path.isAbsolute(partialPath)
+          ? normalizeFsPath(partialPath)
+          : path.resolve(context.cwd, partialPath)
+      );
+    }
+  }
+
+  // Add paths.partials directory (legacy config structure)
   const projectPartials = projectConfig?.paths?.partials;
   if (projectPartials) {
     directories.add(

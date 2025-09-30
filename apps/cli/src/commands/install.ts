@@ -6,16 +6,14 @@ import {
 import chalk from "chalk";
 import { Command } from "commander";
 import { logger } from "../utils/logger";
+import { addLoggingOptions } from "../utils/options";
 import { createSpinner } from "../utils/spinner";
 
 export function installCommand(): Command {
-  return new Command("install")
+  const command = new Command("install")
     .description(
       "Install a ruleset from npm/GitHub or install rules from a preset"
     )
-    .option("--json", "Output JSON logs for machine consumption")
-    .option("--log-level <level>", "Log level: debug|info|warn|error")
-    .option("-q, --quiet", "Quiet mode: only errors are printed")
     .argument(
       "[package]",
       "Package name, GitHub URL, or preset name (when using --preset)"
@@ -34,6 +32,8 @@ export function installCommand(): Command {
     .action(async (packageName: string | undefined, options) => {
       await runInstallCommand(packageName, options);
     });
+
+  return addLoggingOptions(command, { includeDeprecatedJsonAlias: true });
 }
 
 type InstallCommandOptions = {

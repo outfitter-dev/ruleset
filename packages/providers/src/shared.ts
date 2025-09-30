@@ -21,6 +21,7 @@ export const PROVIDER_VERSION = "0.4.0-dev";
 export type RendererFormat = "markdown" | "xml";
 
 const FILE_EXTENSION_PATTERN = /\.[^.]+$/;
+const LEADING_RELATIVE_SEGMENTS = /^\.\/+/;
 
 export const hasCapability = (
   target: CompileTarget | undefined,
@@ -40,8 +41,9 @@ export const selectRenderedArtifact = (params: {
   if (rendered) {
     return {
       target: {
-        ...target,
         ...rendered.target,
+        ...target,
+        capabilities: target.capabilities ?? rendered.target.capabilities,
       },
       contents: rendered.contents,
       diagnostics: rendered.diagnostics,
@@ -91,6 +93,16 @@ export const deriveDocumentSegments = (
 ): string[] => {
   const sourcePath = document.source.path;
   if (sourcePath) {
+    if (!path.isAbsolute(sourcePath)) {
+      const normalized = sourcePath
+        .replace(/\\+/g, "/")
+        .replace(LEADING_RELATIVE_SEGMENTS, "");
+      const relativeSegments = sanitizeSegments(normalized.split("/"));
+      if (relativeSegments.length > 0) {
+        return relativeSegments;
+      }
+    }
+
     const relative = path
       .relative(context.cwd, sourcePath)
       .replace(/\\+/g, "/");
@@ -334,5 +346,82 @@ export const resolveFilesystemArtifact = (
     config,
     format,
     outputPath: desiredOutputPath,
+  };
+};
+
+export type CanonicalBasePath =
+  | "target"
+  | "context"
+  | ((params: {
+      readonly context: RulesetRuntimeContext;
+      readonly target: CompileTarget;
+      readonly artifact: CompileArtifact;
+      readonly config: Record<string, JsonValue>;
+    }) => string);
+
+type CanonicalArtifactOptions = {
+  readonly artifact: CompileArtifact;
+  readonly context: RulesetRuntimeContext;
+  readonly target: CompileTarget;
+  readonly config: Record<string, JsonValue>;
+  readonly format: RendererFormat;
+  readonly fileName?: string;
+  readonly basePath?: CanonicalBasePath;
+  readonly configuredPath?: JsonValue;
+  readonly fallbackExtension?: string;
+};
+
+export const createCanonicalArtifact = (
+  options: CanonicalArtifactOptions
+): CompileArtifact | undefined => {
+  const {
+    artifact,
+    context,
+    target,
+    config,
+    format,
+    fileName = "AGENTS.md",
+    basePath = "target",
+    configuredPath,
+    fallbackExtension = ".md",
+  } = options;
+
+  const resolvedBasePath = (() => {
+    if (typeof basePath === "function") {
+      return basePath({ context, target, artifact, config });
+    }
+    if (basePath === "context") {
+      return context.cwd;
+    }
+    return target.outputPath ?? context.cwd;
+  })();
+
+  const normalizedFileName =
+    fileName.trim().length > 0 ? fileName : "AGENTS.md";
+  const fallbackPath = path.isAbsolute(normalizedFileName)
+    ? path.normalize(normalizedFileName)
+    : path.normalize(path.join(resolvedBasePath, normalizedFileName));
+
+  const canonicalOutputPath = resolveConfiguredOutputPath({
+    context,
+    fallbackPath,
+    configuredPath,
+    format,
+    fallbackExtension,
+  });
+
+  if (
+    path.normalize(canonicalOutputPath) ===
+    path.normalize(artifact.target.outputPath)
+  ) {
+    return;
+  }
+
+  return {
+    ...artifact,
+    target: {
+      ...artifact.target,
+      outputPath: canonicalOutputPath,
+    },
   };
 };

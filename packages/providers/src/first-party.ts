@@ -14,14 +14,18 @@ import {
   type ProviderEntry,
 } from "./index";
 import { createAgentsMdProvider } from "./providers/agents-md";
+import { createAmpProvider } from "./providers/amp";
 import { createClaudeCodeProvider } from "./providers/claude-code";
 import { createClineProvider } from "./providers/cline";
 import { createCodexProvider } from "./providers/codex";
 import { createCodexAgentProvider } from "./providers/codex-agent";
 import { createCopilotProvider } from "./providers/copilot";
 import { createCursorProvider } from "./providers/cursor";
+import { createGeminiProvider } from "./providers/gemini";
+import { createOpenCodeProvider } from "./providers/opencode";
 import { createRooCodeProvider } from "./providers/roo-code";
 import { createWindsurfProvider } from "./providers/windsurf";
+import { createZedProvider } from "./providers/zed";
 
 const PROVIDER_VERSION = "0.4.0-dev";
 const LEADING_CURRENT_DIR = /^\.\//;
@@ -86,15 +90,19 @@ const createMarkdownProvider = (providerId: string): ProviderEntry =>
   });
 
 const FACTORIES: Record<string, () => ProviderEntry> = {
-  cursor: createCursorProvider,
   "agents-md": createAgentsMdProvider,
+  amp: createAmpProvider,
   "claude-code": createClaudeCodeProvider,
-  copilot: createCopilotProvider,
-  windsurf: createWindsurfProvider,
-  "codex-agent": createCodexAgentProvider,
-  codex: createCodexProvider,
-  "roo-code": createRooCodeProvider,
   cline: createClineProvider,
+  codex: createCodexProvider,
+  "codex-agent": createCodexAgentProvider,
+  copilot: createCopilotProvider,
+  cursor: createCursorProvider,
+  gemini: createGeminiProvider,
+  opencode: createOpenCodeProvider,
+  "roo-code": createRooCodeProvider,
+  windsurf: createWindsurfProvider,
+  zed: createZedProvider,
 };
 
 const DEFAULT_PROVIDER_ORDER = [
@@ -104,9 +112,13 @@ const DEFAULT_PROVIDER_ORDER = [
   "agents-md",
   "copilot",
   "codex",
+  "amp",
+  "gemini",
   "roo-code",
   "codex-agent",
   "cline",
+  "opencode",
+  "zed",
 ];
 
 export const createDefaultProviders = (): ProviderEntry[] =>

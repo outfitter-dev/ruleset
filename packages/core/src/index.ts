@@ -15,12 +15,18 @@ export * from "./api";
 export { compile, compile as Compiler } from "./compiler";
 export { AgentsComposer } from "./compiler/agents-composer";
 export { GlobalConfig } from "./config/global-config";
+export { GlobalHistory, type HistoryEntry, type GlobalHistoryOptions } from "./history/global-history";
 export {
   DESTINATION_IDS,
   FILE_EXTENSIONS,
   RESOURCE_LIMITS,
 } from "./config/limits";
-export { loadProjectConfig } from "./config/project-config";
+export {
+  loadProjectConfig,
+  saveProjectConfig,
+  type SaveProjectConfigOptions,
+  type ProjectConfigFormat,
+} from "./config/project-config";
 export {
   destinations,
   destinations as DestinationProviderRegistry,

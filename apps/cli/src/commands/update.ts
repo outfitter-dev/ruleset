@@ -2,14 +2,12 @@ import { GlobalConfig, PresetManager } from "@rulesets/lib";
 import chalk from "chalk";
 import { Command } from "commander";
 import { logger } from "../utils/logger";
+import { addLoggingOptions } from "../utils/options";
 import { createSpinner } from "../utils/spinner";
 
 export function updateCommand(): Command {
-  return new Command("update")
+  const command = new Command("update")
     .description("Update installed preset rules to their latest versions")
-    .option("--json", "Output JSON logs for machine consumption")
-    .option("--log-level <level>", "Log level: debug|info|warn|error")
-    .option("-q, --quiet", "Quiet mode: only errors are printed")
     .option(
       "--write-back",
       "Force update even if versions match (re-download rules)"
@@ -76,4 +74,6 @@ export function updateCommand(): Command {
         process.exit(1);
       }
     });
+
+  return addLoggingOptions(command, { includeDeprecatedJsonAlias: true });
 }

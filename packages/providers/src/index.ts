@@ -280,6 +280,10 @@ export {
   createAgentsMdProvider,
 } from "./providers/agents-md";
 export {
+  type AmpProvider,
+  createAmpProvider,
+} from "./providers/amp";
+export {
   type ClaudeCodeProvider,
   createClaudeCodeProvider,
 } from "./providers/claude-code";
@@ -304,6 +308,14 @@ export {
   createCursorProvider,
 } from "./providers/cursor";
 export {
+  createGeminiProvider,
+  type GeminiProvider,
+} from "./providers/gemini";
+export {
+  createOpenCodeProvider,
+  type OpenCodeProvider,
+} from "./providers/opencode";
+export {
   createRooCodeProvider,
   type RooCodeProvider,
 } from "./providers/roo-code";
@@ -311,6 +323,10 @@ export {
   createWindsurfProvider,
   type WindsurfProvider,
 } from "./providers/windsurf";
+export {
+  createZedProvider,
+  type ZedProvider,
+} from "./providers/zed";
 export type { ProviderSettings } from "./utils";
 export {
   buildHandlebarsOptions,
