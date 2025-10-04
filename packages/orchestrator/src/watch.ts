@@ -1,7 +1,7 @@
 import { type FSWatcher, watch as watchFs } from "node:fs";
 import path from "node:path";
 
-import type { CompilationOutput } from "@rulesets/types";
+import type { CompilationOutput } from "@ruleset/types";
 
 const DEFAULT_DEBOUNCE_MS = 150;
 

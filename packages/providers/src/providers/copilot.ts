@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { type CompileTarget, RULESET_CAPABILITIES } from "@rulesets/types";
+import { type CompileTarget, RULESET_CAPABILITIES } from "@ruleset/types";
 
 import { hasCapability } from "../shared";
 import { createSimpleFilesystemProvider } from "./simple";

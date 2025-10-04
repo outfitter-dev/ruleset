@@ -48,8 +48,8 @@ function preParseGlobalFlags(argv: string[]) {
 preParseGlobalFlags(process.argv.slice(2));
 
 const program = new Command()
-  .name("rulesets")
-  .description("AI rules compiler - manage and compile rulesets for AI tools")
+  .name("rules")
+  .description("AI rules compiler - manage and compile rules for AI tools")
   .version("0.2.0")
   .enablePositionalOptions();
 

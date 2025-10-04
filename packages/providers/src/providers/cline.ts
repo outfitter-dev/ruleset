@@ -5,7 +5,7 @@ import {
   type JsonValue,
   RULESET_CAPABILITIES,
   type RulesetDiagnostics,
-} from "@rulesets/types";
+} from "@ruleset/types";
 
 import {
   defineProvider,

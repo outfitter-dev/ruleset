@@ -1,17 +1,17 @@
 import { promises as fsPromises } from "node:fs";
 import path, { resolve } from "node:path";
 
-import { loadProjectConfig } from "@rulesets/core";
+import { loadProjectConfig } from "@ruleset/core";
 import {
   type CompilationEvent,
   compileRulesetsStream,
   type WatchExecutor,
   watchRulesets,
-} from "@rulesets/orchestrator";
+} from "@ruleset/orchestrator";
 import {
   createDefaultProviders,
   type ProviderEntry,
-} from "@rulesets/providers";
+} from "@ruleset/providers";
 import {
   type CompilationInput,
   type CompilationOutput,
@@ -23,10 +23,9 @@ import {
   type RulesetRuntimeContext,
   type RulesetSource,
   type RulesetSourceEntry,
-} from "@rulesets/types";
+} from "@ruleset/types";
 import chalk from "chalk";
 import { Command } from "commander";
-import picomatch from "picomatch";
 import { collectDependencyWatchPaths } from "../utils/dependency-watch";
 import { type LogLevel, logger } from "../utils/logger";
 import { addLoggingOptions } from "../utils/options";
@@ -385,14 +384,12 @@ const normalizeGlobFilter = (
     return () => true;
   }
 
-  const matchers = globs.map((pattern) =>
-    picomatch(pattern, { dot: true, posixSlashes: true })
-  );
+  const matchers = globs.map((pattern) => new Bun.Glob(pattern));
 
   return (file, baseDir) => {
     const relative =
       path.relative(baseDir, file).replace(/\\/g, "/") || path.basename(file);
-    return matchers.some((matches) => matches(relative));
+    return matchers.some((glob) => glob.match(relative));
   };
 };
 

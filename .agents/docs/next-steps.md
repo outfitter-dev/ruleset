@@ -1,4 +1,4 @@
-# Rulesets v0.2.0 – Remaining Work (Updated 2025-09-24)
+# Ruleset v0.2.0 – Remaining Work (Updated 2025-09-24)
 
 This list reflects the current status after the latest changes. Anything unchecked still needs attention before we can consider the v0.2.0 plan complete.
 

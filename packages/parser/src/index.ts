@@ -8,7 +8,7 @@ import {
   type RulesetDocumentMetadata,
   type RulesetSource,
   type RulesetVersionTag,
-} from "@rulesets/types";
+} from "@ruleset/types";
 import { load as yamlLoad } from "js-yaml";
 import { validateObjectDepth } from "./object-depth";
 import { validateFrontmatterSchema } from "./schema-validator";

@@ -1,4 +1,4 @@
-import { GlobalConfig, initializeProject } from "@rulesets/lib";
+import { GlobalConfig, initializeProject } from "@ruleset/lib";
 import chalk from "chalk";
 import { Command } from "commander";
 import { logger } from "../utils/logger";

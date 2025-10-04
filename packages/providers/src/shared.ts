@@ -11,7 +11,7 @@ import {
   type RulesetDocument,
   type RulesetProjectConfig,
   type RulesetRuntimeContext,
-} from "@rulesets/types";
+} from "@ruleset/types";
 import type { ProviderCompileInput } from "./index";
 
 import { readProviderConfig } from "./utils";

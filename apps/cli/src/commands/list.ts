@@ -6,10 +6,9 @@ import {
   PresetManager,
   RulesetManager,
   sanitizePath,
-} from "@rulesets/lib";
+} from "@ruleset/lib";
 import chalk from "chalk";
 import { Command } from "commander";
-import picomatch from "picomatch";
 import { parseFrontmatter } from "../utils/frontmatter";
 import { logger } from "../utils/logger";
 import { addLoggingOptions } from "../utils/options";
@@ -257,14 +256,12 @@ function createGlobMatchers(
     return;
   }
 
-  return patterns.map((pattern) =>
-    picomatch(pattern, { dot: true, posixSlashes: true })
-  );
+  return patterns.map((pattern) => new Bun.Glob(pattern));
 }
 
 async function listRuleFiles(
   resolvedSource: string,
-  matchers?: picomatch.Matcher[]
+  matchers?: Bun.Glob[]
 ): Promise<string[]> {
   const results: string[] = [];
 
@@ -287,7 +284,7 @@ async function listRuleFiles(
     }
     if (matchers) {
       const rel = basename(resolvedSource);
-      if (!matchers.some((matcher) => matcher(rel))) {
+      if (!matchers.some((glob) => glob.match(rel))) {
         return results;
       }
     }
@@ -316,7 +313,7 @@ async function listRuleFiles(
       }
       if (matchers) {
         const rel = relative(resolvedSource, full).split(sep).join("/");
-        if (!matchers.some((matcher) => matcher(rel))) {
+        if (!matchers.some((glob) => glob.match(rel))) {
           continue;
         }
       }
@@ -330,7 +327,7 @@ async function listRuleFiles(
 function extractProviders(frontmatter: Record<string, unknown>): string[] {
   const providers = new Set<string>();
   for (const [key, value] of Object.entries(frontmatter)) {
-    if (key === "rule" || key === "rulesets" || key === "description") {
+    if (key === "rule" || key === "ruleset" || key === "description") {
       continue;
     }
     if (typeof value === "boolean") {
@@ -402,7 +399,7 @@ async function discoverLocalRules(
             ? (frontmatter.rule as Record<string, unknown>)
             : undefined;
 
-        const hasRule = Boolean(ruleSection || frontmatter.rulesets);
+        const hasRule = Boolean(ruleSection || frontmatter.ruleset);
         if (!hasRule) {
           continue;
         }

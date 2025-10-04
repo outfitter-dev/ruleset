@@ -4,7 +4,7 @@ import type {
   ProviderCompileInput,
   ProviderCompileResult,
   ProviderEntry,
-} from "@rulesets/providers";
+} from "@ruleset/providers";
 import {
   type CompileArtifact,
   createResultErr,
@@ -12,7 +12,7 @@ import {
   type RulesetDiagnostics,
   type RulesetDocument,
   type RulesetRuntimeContext,
-} from "@rulesets/types";
+} from "@ruleset/types";
 
 const BUN_COMMAND = "bun";
 

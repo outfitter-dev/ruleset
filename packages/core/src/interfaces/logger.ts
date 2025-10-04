@@ -44,7 +44,7 @@ export class StructuredLogger implements Logger {
     this.logger = pino({
       level,
       base: {
-        name: "rulesets",
+        name: "ruleset",
         ...baseContext,
       },
       transport: prettyPrint

@@ -1,5 +1,5 @@
 {
-  "name": "@rulesets/orchestrator",
+  "name": "@ruleset/orchestrator",
   "description": "Source → Parse → Validate → Transform → Render orchestration for Rulesets v0.4.",
   "version": "0.4.0-next.0",
   "license": "MIT",
@@ -31,12 +31,12 @@
     "typecheck": "bunx tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@rulesets/parser": "workspace:*",
-    "@rulesets/providers": "workspace:*",
-    "@rulesets/renderer": "workspace:*",
-    "@rulesets/transform": "workspace:*",
-    "@rulesets/types": "workspace:*",
-    "@rulesets/validator": "workspace:*"
+    "@ruleset/parser": "workspace:*",
+    "@ruleset/providers": "workspace:*",
+    "@ruleset/renderer": "workspace:*",
+    "@ruleset/transform": "workspace:*",
+    "@ruleset/types": "workspace:*",
+    "@ruleset/validator": "workspace:*"
   },
   "publishConfig": {
     "access": "public"

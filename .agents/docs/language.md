@@ -1,6 +1,6 @@
-# Rulesets Project Language Specification
+# Ruleset Project Language Specification
 
-Consistent language keeps Rulesets documentation and tooling aligned. This guide reflects the v0.2.0 authoring model: Markdown source files with YAML front matter, provider-focused outputs, and optional Handlebars templating.
+Consistent language keeps Ruleset documentation and tooling aligned. This guide reflects the v0.2.0 authoring model: Markdown source files with YAML front matter, provider-focused outputs, and optional Handlebars templating.
 
 ## Key Terminology
 
@@ -15,7 +15,7 @@ Consistent language keeps Rulesets documentation and tooling aligned. This guide
 | **Project config** | The canonical configuration file (`.ruleset/config.yaml`) that sets workspace defaults. | "Update the project config to enable the AGENTS provider." |
 | **Preset** | A packaged set of rules installable via `rules install` and `rules update`. | "Install the onboarding preset to bootstrap a new project." |
 | **AGENTS composer** | Shared provider that aggregates outputs for multiple tools. | "The AGENTS composer ensures IDE and CLI instructions stay in sync." |
-| **Rulesets CLI** | Thin wrapper over `@rulesets/core` exposing commands such as `rules init`, `rules compile`, and preset management. | "Run `rules compile` after editing your source rules." |
+| **Ruleset CLI** | Thin wrapper over `@rulesets/core` exposing commands such as `rules init`, `rules compile`, and preset management. | "Run `rules compile` after editing your source rules." |
 
 ## Retired Terminology
 
@@ -75,9 +75,9 @@ Consistent language keeps Rulesets documentation and tooling aligned. This guide
 
 ## Referencing Versions
 
-- Use "Rulesets v0.2.0" for the upcoming release.
-- Refer to prereleases as "Rulesets v0.2.0-beta.n".
-- When describing the project generally, "Rulesets v0.x" is acceptable.
+- Use "Ruleset v0.2.0" for the upcoming release.
+- Refer to prereleases as "Ruleset v0.2.0-beta.n".
+- When describing the project generally, "Ruleset v0.x" is acceptable.
 
 ## Changelog
 

@@ -1,5 +1,5 @@
-import { parseRuleset } from "@rulesets/parser";
-import { validateDocument } from "@rulesets/validator";
+import { parseRuleset } from "@ruleset/parser";
+import { validateDocument } from "@ruleset/validator";
 import { describe, expect, it } from "vitest";
 
 const EXPECTED_STRICT_ERROR_COUNT = 4;
@@ -12,7 +12,7 @@ const parse = (contents: string) =>
     format: "rule",
   });
 
-describe("@rulesets/validator", () => {
+describe("@ruleset/validator", () => {
   it("warns when frontmatter is missing in non-strict mode", () => {
     const { document } = parse("# Hello\n\nBody");
     const result = validateDocument(document);

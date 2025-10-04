@@ -1,5 +1,5 @@
-import { isPlainObject, resolveProviderSettings } from "@rulesets/providers";
-import type { JsonValue } from "@rulesets/types";
+import { isPlainObject, resolveProviderSettings } from "@ruleset/providers";
+import type { JsonValue } from "@ruleset/types";
 import type { HelperDelegate } from "handlebars";
 import type { CompiledDoc, ParsedDoc } from "../interfaces";
 import type { Logger } from "../interfaces/logger";

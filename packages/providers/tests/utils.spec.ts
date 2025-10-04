@@ -2,8 +2,8 @@ import {
   buildHandlebarsOptions,
   readProviderConfig,
   resolveProviderSettings,
-} from "@rulesets/providers";
-import type { JsonValue, RulesetDocument } from "@rulesets/types";
+} from "@ruleset/providers";
+import type { JsonValue, RulesetDocument } from "@ruleset/types";
 import { describe, expect, it, vi } from "vitest";
 
 const makeDocument = (
@@ -27,7 +27,7 @@ const makeDocument = (
   },
 });
 
-describe("@rulesets/providers utils", () => {
+describe("@ruleset/providers utils", () => {
   const makeLogger = () => ({
     warn: vi.fn(),
     info: vi.fn(),

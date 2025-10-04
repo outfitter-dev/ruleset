@@ -15,18 +15,16 @@
       },
     },
     "apps/cli": {
-      "name": "@rulesets/cli",
+      "name": "@ruleset/cli",
       "version": "0.4.0-next.0",
       "bin": {
         "rulesets": "./dist/index.js",
       },
       "dependencies": {
-        "@rulesets/core": "0.4.0-next.0",
+        "@ruleset/core": "0.4.0-next.0",
         "chalk": "^5.6.2",
         "commander": "^14.0.1",
-        "js-yaml": "^4.1.0",
         "ora": "^9.0.0",
-        "picomatch": "^4.0.2",
       },
       "devDependencies": {
         "@types/node": "^24.5.2",
@@ -34,20 +32,17 @@
       },
     },
     "packages/core": {
-      "name": "@rulesets/core",
+      "name": "@ruleset/core",
       "version": "0.4.0-next.0",
       "dependencies": {
         "@iarna/toml": "^2.2.5",
         "handlebars": "^4.7.8",
-        "js-yaml": "^4.1.0",
         "json5": "^2.2.3",
         "pino": "^9.5.0",
         "pino-pretty": "^13.0.0",
-        "semver": "^7.7.2",
         "type-fest": "^4.41.0",
       },
       "devDependencies": {
-        "@types/js-yaml": "^4.0.9",
         "@types/json-schema": "^7.0.15",
         "@types/node": "^24.5.2",
         "@types/semver": "^7.7.1",
@@ -57,31 +52,31 @@
       },
     },
     "packages/lib": {
-      "name": "@rulesets/lib",
+      "name": "@ruleset/lib",
       "version": "0.4.0-next.0",
       "dependencies": {
-        "@rulesets/core": "workspace:*",
-        "@rulesets/orchestrator": "workspace:*",
-        "@rulesets/types": "workspace:*",
+        "@ruleset/core": "workspace:*",
+        "@ruleset/orchestrator": "workspace:*",
+        "@ruleset/types": "workspace:*",
       },
     },
     "packages/orchestrator": {
-      "name": "@rulesets/orchestrator",
+      "name": "@ruleset/orchestrator",
       "version": "0.4.0-next.0",
       "dependencies": {
-        "@rulesets/parser": "workspace:*",
-        "@rulesets/providers": "workspace:*",
-        "@rulesets/renderer": "workspace:*",
-        "@rulesets/transform": "workspace:*",
-        "@rulesets/types": "workspace:*",
-        "@rulesets/validator": "workspace:*",
+        "@ruleset/parser": "workspace:*",
+        "@ruleset/providers": "workspace:*",
+        "@ruleset/renderer": "workspace:*",
+        "@ruleset/transform": "workspace:*",
+        "@ruleset/types": "workspace:*",
+        "@ruleset/validator": "workspace:*",
       },
     },
     "packages/parser": {
-      "name": "@rulesets/parser",
+      "name": "@ruleset/parser",
       "version": "0.4.0-next.0",
       "dependencies": {
-        "@rulesets/types": "workspace:*",
+        "@ruleset/types": "workspace:*",
         "js-yaml": "^4.1.0",
       },
       "devDependencies": {
@@ -90,33 +85,33 @@
       },
     },
     "packages/providers": {
-      "name": "@rulesets/providers",
+      "name": "@ruleset/providers",
       "version": "0.4.0-next.0",
       "dependencies": {
-        "@rulesets/renderer": "workspace:*",
-        "@rulesets/types": "workspace:*",
+        "@ruleset/renderer": "workspace:*",
+        "@ruleset/types": "workspace:*",
         "glob": "^10.3.10",
         "handlebars": "^4.7.8",
       },
     },
     "packages/renderer": {
-      "name": "@rulesets/renderer",
+      "name": "@ruleset/renderer",
       "version": "0.4.0-next.0",
       "dependencies": {
-        "@rulesets/transform": "workspace:*",
-        "@rulesets/types": "workspace:*",
+        "@ruleset/transform": "workspace:*",
+        "@ruleset/types": "workspace:*",
         "handlebars": "^4.7.8",
       },
     },
     "packages/transform": {
-      "name": "@rulesets/transform",
+      "name": "@ruleset/transform",
       "version": "0.4.0-next.0",
       "dependencies": {
-        "@rulesets/types": "workspace:*",
+        "@ruleset/types": "workspace:*",
       },
     },
     "packages/types": {
-      "name": "@rulesets/types",
+      "name": "@ruleset/types",
       "version": "0.4.0-next.0",
       "dependencies": {
         "type-fest": "^4.41.0",
@@ -125,11 +120,10 @@
       },
     },
     "packages/validator": {
-      "name": "@rulesets/validator",
+      "name": "@ruleset/validator",
       "version": "0.4.0-next.0",
       "dependencies": {
-        "@rulesets/types": "workspace:*",
-        "semver": "^7.7.2",
+        "@ruleset/types": "workspace:*",
       },
     },
   },
@@ -328,25 +322,25 @@
 
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.52.0", "", { "os": "win32", "cpu": "x64" }, "sha512-6iKDCVSIUQ8jPMoIV0OytRKniaYyy5EbY/RRydmLW8ZR3cEBhxbWl5ro0rkUNe0ef6sScvhbY79HrjRm8i3vDQ=="],
 
-    "@rulesets/cli": ["@rulesets/cli@workspace:apps/cli"],
+    "@ruleset/cli": ["@ruleset/cli@workspace:apps/cli"],
 
-    "@rulesets/core": ["@rulesets/core@workspace:packages/core"],
+    "@ruleset/core": ["@ruleset/core@workspace:packages/core"],
 
-    "@rulesets/lib": ["@rulesets/lib@workspace:packages/lib"],
+    "@ruleset/lib": ["@ruleset/lib@workspace:packages/lib"],
 
-    "@rulesets/orchestrator": ["@rulesets/orchestrator@workspace:packages/orchestrator"],
+    "@ruleset/orchestrator": ["@ruleset/orchestrator@workspace:packages/orchestrator"],
 
-    "@rulesets/parser": ["@rulesets/parser@workspace:packages/parser"],
+    "@ruleset/parser": ["@ruleset/parser@workspace:packages/parser"],
 
-    "@rulesets/providers": ["@rulesets/providers@workspace:packages/providers"],
+    "@ruleset/providers": ["@ruleset/providers@workspace:packages/providers"],
 
-    "@rulesets/renderer": ["@rulesets/renderer@workspace:packages/renderer"],
+    "@ruleset/renderer": ["@ruleset/renderer@workspace:packages/renderer"],
 
-    "@rulesets/transform": ["@rulesets/transform@workspace:packages/transform"],
+    "@ruleset/transform": ["@ruleset/transform@workspace:packages/transform"],
 
-    "@rulesets/types": ["@rulesets/types@workspace:packages/types"],
+    "@ruleset/types": ["@ruleset/types@workspace:packages/types"],
 
-    "@rulesets/validator": ["@rulesets/validator@workspace:packages/validator"],
+    "@ruleset/validator": ["@ruleset/validator@workspace:packages/validator"],
 
     "@sindresorhus/merge-streams": ["@sindresorhus/merge-streams@2.3.0", "", {}, "sha512-LtoMMhxAlorcGhmFYI+LhPgbPZCkgP6ra1YL604EeF6U98pLlQ3iWIGMdWSC+vWmPBWBNgmDBAhnAobLROJmwg=="],
 

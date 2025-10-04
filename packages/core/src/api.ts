@@ -1,6 +1,5 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import picomatch from "picomatch";
 import { compile } from "./compiler";
 import { loadProjectConfig } from "./config/project-config";
 import { destinations } from "./destinations";
@@ -84,10 +83,8 @@ function hasSupportedExtension(filePath: string): boolean {
 /**
  * Create glob matchers from patterns.
  */
-function createGlobMatchers(patterns: string[]): picomatch.Matcher[] {
-  return patterns.map((pattern) =>
-    picomatch(pattern.trim(), { dot: true, posixSlashes: true })
-  );
+function createGlobMatchers(patterns: string[]): Bun.Glob[] {
+  return patterns.map((pattern) => new Bun.Glob(pattern.trim()));
 }
 
 /**
@@ -119,7 +116,7 @@ export async function discoverRulesFiles(
     if (globs && globs.length > 0) {
       const matchers = createGlobMatchers(globs);
       const relativePath = path.basename(resolvedPath);
-      const matches = matchers.some((matcher) => matcher(relativePath));
+      const matches = matchers.some((glob) => glob.match(relativePath));
       if (!matches) {
         return [];
       }
@@ -152,7 +149,7 @@ export async function discoverRulesFiles(
             .relative(resolvedPath, fullPath)
             .split(path.sep)
             .join("/");
-          const matches = matchers.some((matcher) => matcher(relativePath));
+          const matches = matchers.some((glob) => glob.match(relativePath));
           if (!matches) {
             continue;
           }

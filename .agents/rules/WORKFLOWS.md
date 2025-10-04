@@ -1,6 +1,6 @@
-# Rulesets Development Workflows
+# Ruleset Development Workflows
 
-Quick reference guide for common development workflows in the Rulesets project. Each workflow file contains detailed commands and step-by-step instructions.
+Quick reference guide for common development workflows in the Ruleset project. Each workflow file contains detailed commands and step-by-step instructions.
 
 ## Core Development
 

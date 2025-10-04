@@ -4,7 +4,7 @@ import {
   createResultOk,
   type JsonValue,
   RULESET_CAPABILITIES,
-} from "@rulesets/types";
+} from "@ruleset/types";
 
 import {
   defineProvider,

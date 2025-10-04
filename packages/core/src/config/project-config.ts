@@ -1,13 +1,12 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import TOML from "@iarna/toml";
-import { load as yamlLoad } from "js-yaml";
+import { parse as tomlParse, stringify as tomlStringify } from "@iarna/toml";
 import JSON5 from "json5";
 import {
   RULESET_SCHEMA_IDS,
   rulesetProjectConfigSchema,
   type RulesetProjectConfig,
-} from "@rulesets/types";
+} from "@ruleset/types";
 
 export type ProjectConfigFormat = "yaml" | "json" | "jsonc" | "toml";
 
@@ -91,13 +90,13 @@ function parseConfigContents(
 ): RawProjectConfig {
   switch (format) {
     case "yaml":
-      return ensurePlainObject(yamlLoad(contents));
+      return ensurePlainObject(Bun.YAML.parse(contents));
     case "json":
       return ensurePlainObject(JSON.parse(contents));
     case "jsonc":
       return ensurePlainObject(JSON5.parse(contents));
     case "toml":
-      return ensurePlainObject(TOML.parse(contents));
+      return ensurePlainObject(tomlParse(contents));
     default: {
       const exhaustive: never = format;
       throw new Error(`Unsupported project config format: ${exhaustive}`);
@@ -273,24 +272,15 @@ function serializeConfig(
   }
 
   switch (format) {
-    case "yaml": {
-      const { dump } = require("js-yaml");
-      return dump(minimalConfig, {
-        indent: 2,
-        lineWidth: 120,
-        noRefs: true,
-        sortKeys: false
-      });
-    }
+    case "yaml":
+      return Bun.YAML.stringify(minimalConfig, null, 2);
     case "json":
       return JSON.stringify(minimalConfig, null, 2) + "\n";
     case "jsonc":
       // For JSONC, we use regular JSON but could add comments in the future
       return JSON.stringify(minimalConfig, null, 2) + "\n";
-    case "toml": {
-      const { stringify } = require("@iarna/toml");
-      return stringify(minimalConfig as any);
-    }
+    case "toml":
+      return tomlStringify(minimalConfig as any);
     default:
       throw new Error(`Unsupported config format: ${format}`);
   }

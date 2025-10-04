@@ -1,5 +1,3 @@
-import { dump as yamlDump, load as yamlLoad } from "js-yaml";
-
 export type FrontmatterResult = {
   frontmatter: Record<string, unknown>;
   body: string;
@@ -29,7 +27,7 @@ export function parseFrontmatter(content: string): FrontmatterResult {
   const body = lines.slice(closingIndex + 1).join("\n");
 
   try {
-    const parsed = yamlLoad(frontmatterSegment);
+    const parsed = Bun.YAML.parse(frontmatterSegment);
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       return { frontmatter: parsed as Record<string, unknown>, body };
     }
@@ -42,7 +40,7 @@ export function parseFrontmatter(content: string): FrontmatterResult {
 export function stringifyFrontmatter(
   frontmatter: Record<string, unknown>
 ): string {
-  const serialized = yamlDump(frontmatter, { lineWidth: 0 }).trimEnd();
+  const serialized = Bun.YAML.stringify(frontmatter, null, 0).trimEnd();
   return `${FRONTMATTER_DELIMITER}\n${serialized}\n${FRONTMATTER_DELIMITER}\n\n`;
 }
 

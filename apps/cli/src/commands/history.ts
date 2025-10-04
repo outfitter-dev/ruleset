@@ -1,4 +1,4 @@
-import { GlobalHistory, type HistoryEntry } from "@rulesets/core";
+import { GlobalHistory, type HistoryEntry } from "@ruleset/core";
 import chalk from "chalk";
 import { Command } from "commander";
 import { logger } from "../utils/logger";

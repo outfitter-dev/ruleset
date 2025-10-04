@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import { dirname, join } from "node:path";
 import type { GlobalConfig } from "../config/global-config";
-import { RulesetManager } from "../rulesets/ruleset-manager";
+import { RulesetManager } from "../ruleset/ruleset-manager";
 import { isValidPackageName } from "../utils/security";
 
 export type InstallationRecord = {

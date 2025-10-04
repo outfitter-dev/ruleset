@@ -1,4 +1,4 @@
-// Vitest configuration for the @rulesets/core package. Enables global test utilities and coverage reporting.
+// Vitest configuration for the @ruleset/core package. Enables global test utilities and coverage reporting.
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({

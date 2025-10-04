@@ -1,4 +1,4 @@
-import { GlobalConfig, PresetManager } from "@rulesets/lib";
+import { GlobalConfig, PresetManager } from "@ruleset/lib";
 import chalk from "chalk";
 import { Command } from "commander";
 import { logger } from "../utils/logger";

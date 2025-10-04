@@ -9,7 +9,7 @@ const createdDirs: string[] = [];
 async function createTempProject(
   setup?: (dir: string) => Promise<void>
 ): Promise<string> {
-  const root = await mkdtemp(path.join(tmpdir(), "rulesets-config-"));
+  const root = await mkdtemp(path.join(tmpdir(), "ruleset-config-"));
   createdDirs.push(root);
   if (setup) {
     await setup(root);

@@ -1,7 +1,7 @@
 /**
  * Shared type definitions for the Rulesets v0.4 toolchain.
  *
- * These contracts are extracted from the legacy `@rulesets/core` interfaces
+ * These contracts are extracted from the legacy `@ruleset/core` interfaces
  * so that packages can collaborate without depending on the monolithic core
  * bundle.
  */

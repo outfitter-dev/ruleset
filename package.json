@@ -23,9 +23,9 @@
   "private": true,
   "scripts": {
     "build": "bun run build:libs",
-    "build:libs": "bun run --filter \"@rulesets/types\" build && bun run --filter \"@rulesets/parser\" build && bun run --filter \"@rulesets/validator\" build && bun run --filter \"@rulesets/transform\" build && bun run --filter \"@rulesets/renderer\" build && bun run --filter \"@rulesets/providers\" build && bun run --filter \"@rulesets/orchestrator\" build && bun run --filter \"@rulesets/core\" build && bun run --filter \"@rulesets/lib\" build",
-    "build:cli": "bun run --filter \"@rulesets/cli\" build:bundle",
-    "build:binary": "bun run --filter \"@rulesets/cli\" build:binary",
+    "build:libs": "bun run --filter \"@ruleset/types\" build && bun run --filter \"@ruleset/parser\" build && bun run --filter \"@ruleset/validator\" build && bun run --filter \"@ruleset/transform\" build && bun run --filter \"@ruleset/renderer\" build && bun run --filter \"@ruleset/providers\" build && bun run --filter \"@ruleset/orchestrator\" build && bun run --filter \"@ruleset/core\" build && bun run --filter \"@ruleset/lib\" build",
+    "build:cli": "bun run --filter \"@ruleset/cli\" build:bundle",
+    "build:binary": "bun run --filter \"@ruleset/cli\" build:binary",
     "build:release": "bun run build:libs && bun run build:cli",
     "install:binary": "bash scripts/install-binary.sh",
     "uninstall:binary": "bash scripts/uninstall-binary.sh",
@@ -39,7 +39,7 @@
     "dev": "bun run --filter '*' dev",
     "format": "bunx ultracite format .",
     "lint": "bunx ultracite check .",
-    "release": "bun run build --filter=@rulesets/core && changeset publish",
+    "release": "bun run build --filter=@ruleset/core && changeset publish",
     "test": "bun run --filter '*' test",
     "typecheck": "bun run build:libs && bunx tsc --project tsconfig.json --noEmit",
     "version-packages": "changeset version"

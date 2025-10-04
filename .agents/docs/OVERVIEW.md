@@ -1,10 +1,10 @@
-# Rulesets v0.2.0 - Project Overview
+# Ruleset v0.2.0 - Project Overview
 
-Rulesets is a universal AI rules compiler that enables you to author AI assistant rules once in Markdown and compile them for multiple AI tools. This document provides a comprehensive overview of the v0.2.0 architecture, workflows, and key concepts.
+Ruleset is a universal AI rules compiler that enables you to author AI assistant rules once in Markdown and compile them for multiple AI tools. This document provides a comprehensive overview of the v0.2.0 architecture, workflows, and key concepts.
 
 ## Core Philosophy
 
-Rulesets v0.2.0 embraces simplicity and standards:
+Ruleset v0.2.0 embraces simplicity and standards:
 - **Plain Markdown**: Rules are standard Markdown documents with YAML front matter
 - **Opt-in complexity**: Advanced features like Handlebars templating are explicitly enabled
 - **Provider-centric**: Each AI tool has a dedicated provider that understands its specific requirements
@@ -16,7 +16,7 @@ Rulesets v0.2.0 embraces simplicity and standards:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Rulesets CLI                             │
+│                    Ruleset CLI                             │
 ├─────────────────────────────────────────────────────────────┤
 │                  @rulesets/core                            │
 │  ┌─────────────┬─────────────┬─────────────┬─────────────┐ │
@@ -101,7 +101,7 @@ The front matter uses a structured namespace approach:
 ---
 # Core rule metadata
 rule:
-  version: '0.2.0'       # Required: Rulesets format version
+  version: '0.2.0'       # Required: Ruleset format version
   template: false        # Optional: Enable Handlebars templating
   globs: ['**/*.ts']     # Optional: File patterns for this rule
 

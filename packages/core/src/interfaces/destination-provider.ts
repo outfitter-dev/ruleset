@@ -1,4 +1,4 @@
-import type { CompiledDoc, ParsedDoc } from "@rulesets/types";
+import type { CompiledDoc, ParsedDoc } from "@ruleset/types";
 import type { HelperDelegate } from "handlebars";
 import type { JSONSchema7 } from "json-schema";
 import type { Logger } from "./logger";

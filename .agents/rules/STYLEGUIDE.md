@@ -10,7 +10,7 @@
 
 ### Project Naming Conventions
 
-- Use "Rulesets" (uppercase) for the project name
+- Use "Ruleset" (uppercase) for the project name
 - Use "ruleset" (lowercase) in most other cases, such as the name of a project's ruleset directory
 - Use "rulesets" (lowercase) for a plural form of "ruleset"
 
@@ -20,6 +20,6 @@
 
 ## Migration Guide
 
-- This project was previously called "Mixdown" and we need to migrate to the new name "Rulesets"
+- This project was previously called "Mixdown" and we need to migrate to the new name "Ruleset"
 - This may require updating all documentation and code to use the new name
 - Any mention of `mixd` should be carefully reviewed and updated accordingly

@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
-import { resolveProviderSettings } from "@rulesets/providers";
-import type { JsonValue } from "@rulesets/types";
+import { resolveProviderSettings } from "@ruleset/providers";
+import type { JsonValue } from "@ruleset/types";
 import { type CompileOptions, compile } from "./compiler";
 import { destinations } from "./destinations";
 import type { CompiledDoc, Logger, ParsedDoc } from "./interfaces";
@@ -532,8 +532,8 @@ async function processDestinations(
  *
  * @example
  * ```typescript
- * import { runRulesetsV0 } from '@rulesets/core';
- * import { createDefaultLogger } from '@rulesets/core';
+ * import { runRulesetsV0 } from '@ruleset/core';
+ * import { createDefaultLogger } from '@ruleset/core';
  *
  * async function main() {
  *   const logger = createDefaultLogger();

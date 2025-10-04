@@ -1,5 +1,5 @@
 {
-  "name": "@rulesets/parser",
+  "name": "@ruleset/parser",
   "description": "Markdown and front-matter parser that produces the Rulesets v0.4 AST.",
   "version": "0.4.0-next.0",
   "license": "MIT",
@@ -31,7 +31,7 @@
     "typecheck": "bunx tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@rulesets/types": "workspace:*",
+    "@ruleset/types": "workspace:*",
     "js-yaml": "^4.1.0"
   },
   "devDependencies": {

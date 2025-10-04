@@ -2,13 +2,13 @@ import { describe, expect, it } from "bun:test";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { compile, compileStream, createCompiler } from "@rulesets/lib";
+import { compile, compileStream, createCompiler } from "@ruleset/lib";
 import {
   createNoopProvider,
   PROVIDER_SDK_VERSION,
   providerCapability,
-} from "@rulesets/providers";
-import { RULESETS_VERSION_TAG } from "@rulesets/types";
+} from "@ruleset/providers";
+import { RULESETS_VERSION_TAG } from "@ruleset/types";
 
 type MinimalContext = Parameters<typeof compile>[0]["context"];
 
@@ -34,7 +34,7 @@ const createProvider = () =>
     capabilities: [providerCapability("render:markdown")],
   });
 
-describe("@rulesets/lib compile helpers", () => {
+describe("@ruleset/lib compile helpers", () => {
   const source = {
     id: "sample.rule.md",
     contents: "# Hello",

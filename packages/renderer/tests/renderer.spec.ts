@@ -7,8 +7,8 @@ import {
   registerRendererFormat,
   resetRendererFormatsForTest,
   unregisterRendererFormat,
-} from "@rulesets/renderer";
-import { createResultOk, type RulesetDocument } from "@rulesets/types";
+} from "@ruleset/renderer";
+import { createResultOk, type RulesetDocument } from "@ruleset/types";
 
 const createDocument = (
   contents: string,

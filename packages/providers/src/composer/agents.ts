@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
-import type { RulesetDiagnostic, RulesetDiagnostics } from "@rulesets/types";
+import type { RulesetDiagnostic, RulesetDiagnostics } from "@ruleset/types";
 import { glob } from "glob";
 
 import { createDiagnostic } from "../shared";

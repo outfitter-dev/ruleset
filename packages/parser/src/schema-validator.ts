@@ -1,7 +1,7 @@
 import {
   type RulesetFrontmatter,
   rulesetFrontmatterSchema,
-} from "@rulesets/types";
+} from "@ruleset/types";
 
 export type ValidationError = {
   path: string;

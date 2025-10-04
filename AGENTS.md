@@ -1,6 +1,6 @@
-# AGENTS.md - AI Assistant Guide for Rulesets Project
+# AGENTS.md - AI Assistant Guide for Ruleset Project
 
-This file provides comprehensive guidance for AI assistants (Claude Code, Cursor, Cline, etc.) working with the Rulesets codebase.
+This file provides comprehensive guidance for AI assistants (Claude Code, Cursor, Cline, etc.) working with the Ruleset codebase.
 
 > **Note:** Content is being refreshed for the v0.4 rewrite. When in doubt, defer to @REFACTOR.md and @PLAN.md for the latest direction.
 
@@ -16,7 +16,7 @@ As you complete major chunks of work, create a new log in `.agents/logs/` with `
 
 ## Overview
 
-Rulesets is a CommonMark-compliant rules compiler that lets you author a single source rules file in Markdown and compile it into provider-specific rules files (`.cursor/rules.mdc`, `.roo/rules.md`, and more). Think of it as Terraform for AI rules: write once, compile for many providers, your agents, no matter the tool, on the (literal) same page.
+Ruleset is a CommonMark-compliant rules compiler that lets you author a single source rules file in Markdown and compile it into provider-specific rules files (`.cursor/rules.mdc`, `.roo/rules.md`, and more). Think of it as Terraform for AI rules: write once, compile for many providers, your agents, no matter the tool, on the (literal) same page.
 
 ## Critical Instructions
 
@@ -35,7 +35,7 @@ Rulesets is a CommonMark-compliant rules compiler that lets you author a single 
   - `.agents/docs/language.md`: Terminology and language spec for consistent communication
   - `.agents/docs/overview.md`: Project overview and guidance
   - `.agents/docs/architecture.md`: Technical architecture details
-  - `.agents/docs/notes/README.md`: Curated Rulesets research notes
+  - `.agents/docs/notes/README.md`: Curated Ruleset research notes
 - `/apps`: Runtime surfaces powered by the library stack
   - `apps/cli`: Bun-based CLI exposing the `rules` / `rulesets` command (builds with `bun build`)
 - `/packages`: Monorepo packages where AI agents will implement code
@@ -49,7 +49,7 @@ Rulesets is a CommonMark-compliant rules compiler that lets you author a single 
 
 - Source files defining rules, written in 100% previewable Markdown
 - Use `.rule.md` extension (preferred); `.ruleset.md` remains supported for backward compatibility.
-- Written in Rulesets notation and use `{{...}}` notation markers to direct the compiler
+- Written in Ruleset notation and use `{{...}}` notation markers to direct the compiler
 - Compiled into provider-specific rules files (for example, `.ruleset/dist/cursor/my-rule.md`).
 
 ### Provider
@@ -70,9 +70,9 @@ Rulesets is a CommonMark-compliant rules compiler that lets you author a single 
 ### Notation Marker
 
 - Syntax: `{{...}}`
-- Fundamental building block of Rulesets notation
+- Fundamental building block of Ruleset notation
 - Used to direct the compiler for various purposes (sections, imports, variables)
-- All Rulesets directives use marker notation, but serve different functions
+- All Ruleset directives use marker notation, but serve different functions
 - Similar to `<xml-tags>`, but fully Markdown-previewable
 
 ### Section
@@ -116,7 +116,7 @@ Rulesets is a CommonMark-compliant rules compiler that lets you author a single 
 | `codex-cli`   | OpenAI Codex CLI   | CLI               |
 | `codex-agent` | OpenAI Codex Agent | Web agent         |
 
-## Rulesets Notation Reference
+## Ruleset Notation Reference
 
 ### Basic Example
 
@@ -167,7 +167,7 @@ Content without surrounding XML tags
 ### Raw Notation
 
 ```markdown
-{{{examples}}} <!-- Triple braces preserve Rulesets notation -->
+{{{examples}}} <!-- Triple braces preserve Ruleset notation -->
 {{example}}
 
 - Instructions
@@ -189,7 +189,7 @@ Content without surrounding XML tags
 ---
 # .ruleset/rules/my-rule.rule.md
 rulesets:
-  version: 0.1.0 # version number for the Rulesets format used
+  version: 0.1.0 # version number for the Ruleset format used
   compiler: handlebars # optional: opt into Handlebars renderer
 description: 'Rules for this project' # useful for tools that use descriptions
 globs: ['**/*.{txt,md,mdc}'] # globs re-written based on provider-specific needs

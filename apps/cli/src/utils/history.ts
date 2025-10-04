@@ -1,4 +1,4 @@
-import { GlobalHistory } from "@rulesets/lib";
+import { GlobalHistory } from "@ruleset/lib";
 import type { Command } from "commander";
 
 /**

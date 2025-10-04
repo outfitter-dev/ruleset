@@ -1,4 +1,4 @@
-import type { JsonValue } from "@rulesets/types";
+import type { JsonValue } from "@ruleset/types";
 import type { HelperDelegate } from "handlebars";
 import Handlebars from "handlebars";
 import type { CompiledDoc, ParsedDoc } from "../interfaces";

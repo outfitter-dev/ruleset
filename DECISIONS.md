@@ -1,4 +1,4 @@
-# Decisions – Rulesets v0.4.0
+# Decisions – Ruleset v0.4.0
 
 > Reference: Historical v0.2.x decisions now live under `.agents/.archive/DECISIONS-v0.2.0-*.md`.
 
