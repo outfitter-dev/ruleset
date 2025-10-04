@@ -50,6 +50,14 @@ export function compileCommand(): Command {
     )
     .option("-d, --destination <dest>", "Deprecated alias for --provider")
     .option("-w, --watch", "Watch for changes and recompile")
+    .option(
+      "--write",
+      "Write compiled artifacts to provider-specific output paths (default: only writes to dist/)"
+    )
+    .option(
+      "--dry-run",
+      "Show what would be compiled without writing any files"
+    )
     .option("--why", "Show detailed diagnostics with explanations")
     .option("--explain", "Alias for --why, shows detailed diagnostics")
     .action(async (source: string, options, cmd) => {
@@ -66,6 +74,8 @@ type CompileOptions = {
   provider?: string;
   destination?: string; // Deprecated alias, kept for backwards compatibility
   watch?: boolean;
+  write?: boolean;
+  dryRun?: boolean;
   why?: boolean;
   explain?: boolean;
 };
@@ -79,7 +89,17 @@ async function runCompile(
   options: CompileOptions,
   usedDefaultSource: boolean
 ): Promise<void> {
-  const spinner = createSpinner("Compiling rulesets...");
+  // Validate flag combinations
+  if (options.dryRun && options.write) {
+    logger.error(
+      chalk.red("Cannot use --write and --dry-run together")
+    );
+    process.exit(1);
+  }
+
+  const spinner = createSpinner(
+    options.dryRun ? "Analyzing rulesets..." : "Compiling rulesets..."
+  );
   const targetProvider = options.provider ?? options.destination;
 
   if (options.destination && !options.provider) {
@@ -233,7 +253,11 @@ async function runCompile(
       reporter
     );
 
-    await writeArtifacts(output.artifacts, cwd);
+    if (!options.dryRun) {
+      await writeArtifacts(output.artifacts, cwd, {
+        writeToProviderPaths: options.write ?? false,
+      });
+    }
     const explainMode = options.why || options.explain;
     reportDiagnostics(output.diagnostics, { explain: explainMode });
 
@@ -241,9 +265,13 @@ async function runCompile(
     const summary =
       output.artifacts.length === 0
         ? "No artifacts produced"
-        : `Produced ${output.artifacts.length} artifact${
-            output.artifacts.length === 1 ? "" : "s"
-          }`;
+        : options.dryRun
+          ? `Would produce ${output.artifacts.length} artifact${
+              output.artifacts.length === 1 ? "" : "s"
+            }`
+          : `Produced ${output.artifacts.length} artifact${
+              output.artifacts.length === 1 ? "" : "s"
+            }`;
 
     spinner.succeed(chalk.green(`${summary} in ${duration}ms`));
   };
@@ -289,7 +317,11 @@ async function runCompile(
       reporter
     );
 
-    await writeArtifacts(output.artifacts, cwd);
+    if (!options.dryRun) {
+      await writeArtifacts(output.artifacts, cwd, {
+        writeToProviderPaths: options.write ?? false,
+      });
+    }
     const explainMode = options.why || options.explain;
     reportDiagnostics(output.diagnostics, { explain: explainMode });
 
@@ -297,9 +329,13 @@ async function runCompile(
     const summary =
       output.artifacts.length === 0
         ? "No artifacts produced"
-        : `Produced ${output.artifacts.length} artifact${
-            output.artifacts.length === 1 ? "" : "s"
-          }`;
+        : options.dryRun
+          ? `Would produce ${output.artifacts.length} artifact${
+              output.artifacts.length === 1 ? "" : "s"
+            }`
+          : `Produced ${output.artifacts.length} artifact${
+              output.artifacts.length === 1 ? "" : "s"
+            }`;
 
     if (!prepared.hadSources) {
       spinner.warn(
@@ -964,15 +1000,34 @@ const createProgressReporter = ({
   };
 };
 
+type WriteArtifactsOptions = {
+  writeToProviderPaths: boolean;
+};
+
 async function writeArtifacts(
   artifacts: readonly CompileArtifact[],
-  cwd: string
+  cwd: string,
+  options: WriteArtifactsOptions
 ) {
+  const distDir = path.resolve(cwd, ".ruleset", "dist");
+
   for (const artifact of artifacts) {
     const destPath = artifact.target.outputPath;
-    await fsPromises.mkdir(path.dirname(destPath), { recursive: true });
-    await fsPromises.writeFile(destPath, artifact.contents, "utf8");
-    logger.info(chalk.dim(`Wrote ${path.relative(cwd, destPath)}`));
+    const isInDistDir = path.resolve(destPath).startsWith(distDir);
+
+    // Always write staging artifacts (in .ruleset/dist/)
+    // Only write canonical artifacts (outside .ruleset/dist/) if --write is enabled
+    if (isInDistDir || options.writeToProviderPaths) {
+      await fsPromises.mkdir(path.dirname(destPath), { recursive: true });
+      await fsPromises.writeFile(destPath, artifact.contents, "utf8");
+
+      const relativePath = path.relative(cwd, destPath);
+      const label = isInDistDir ? "staged" : "wrote";
+      logger.info(chalk.dim(`${label}: ${relativePath}`));
+    } else {
+      const relativePath = path.relative(cwd, destPath);
+      logger.info(chalk.dim(`skipped: ${relativePath} (use --write to output)`));
+    }
   }
 }
 
