@@ -94,6 +94,17 @@ Tracking work toward the Ruleset v0.4.0 rewrite.
 
 ## Recent Notes
 
+### 2025-10-04
+
+**CLI Compile Output Control:**
+- Implemented `--write` and `--dry-run` flags for `rules compile` command
+- **Default behavior** (`rules compile`): Writes only to staging area (`.ruleset/dist/<provider>/`), shows skipped provider-specific paths
+- **With `--write`**: Writes to both staging area AND provider-specific paths (`.cursor/rules/`, `CLAUDE.md`, etc.)
+- **With `--dry-run`**: Performs compilation without writing any files (validation only)
+- Prevents combining `--write` and `--dry-run` flags (mutual exclusion)
+- Updated `writeArtifacts()` to distinguish staging vs canonical artifacts based on path detection
+- Provides clear user feedback: "staged", "wrote", or "skipped" labels for each artifact
+
 ### 2025-10-02
 
 **Documentation Consolidation:**
