@@ -4,8 +4,8 @@ import type { JsonMap } from "@iarna/toml";
 import { parse as tomlParse, stringify as tomlStringify } from "@iarna/toml";
 import { GlobalConfig } from "../config/global-config";
 import { RESOURCE_LIMITS } from "../config/limits";
-import type { ComposedRuleset } from "../rulesets/ruleset-manager";
-import { RulesetManager } from "../rulesets/ruleset-manager";
+import type { ComposedRuleset } from "../ruleset/ruleset-manager";
+import { RulesetManager } from "../ruleset/ruleset-manager";
 
 // JSON-compatible types for TOML serialization
 export type JsonValue =

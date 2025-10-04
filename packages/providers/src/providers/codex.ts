@@ -5,7 +5,7 @@ import {
   type JsonValue,
   RULESET_CAPABILITIES,
   type RulesetRuntimeContext,
-} from "@rulesets/types";
+} from "@ruleset/types";
 import {
   defineProvider,
   PROVIDER_SDK_VERSION,

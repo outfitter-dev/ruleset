@@ -1,4 +1,3 @@
-import { valid as semverValid } from "semver";
 import type { ParsedDoc } from "../interfaces";
 
 export type LinterConfig = {
@@ -123,13 +122,27 @@ function validateRuleMetadata(
       });
     } else {
       const version = rawVersion.trim();
-      if (!semverValid(version)) {
+      // Require strict X.Y.Z format (matching old semver.valid() behavior)
+      const isValidFormat = /^\d+\.\d+\.\d+/.test(version);
+      if (!isValidFormat) {
         results.push({
           message: `Invalid ${getFieldName("/rule/version")}. Expected a semantic version (e.g., "0.2.0").`,
           line: 1,
           column: 1,
           severity,
         });
+      } else {
+        try {
+          // Additional validation via Bun.semver
+          Bun.semver.order(version, "0.0.0");
+        } catch {
+          results.push({
+            message: `Invalid ${getFieldName("/rule/version")}. Expected a semantic version (e.g., "0.2.0").`,
+            line: 1,
+            column: 1,
+            severity,
+          });
+        }
       }
     }
   } else {

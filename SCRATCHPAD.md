@@ -1,6 +1,6 @@
 # AGENT SCRATCHPAD
 
-Tracking work toward the Rulesets v0.4.0 rewrite.
+Tracking work toward the Ruleset v0.4.0 rewrite.
 
 ## Progress Overview
 

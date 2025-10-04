@@ -4,7 +4,7 @@ import {
   isPathWithinBoundary,
   isPathWithinBoundaryReal,
   sanitizePath,
-} from "@rulesets/lib";
+} from "@ruleset/lib";
 import chalk from "chalk";
 import { Command } from "commander";
 import {

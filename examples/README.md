@@ -1,43 +1,72 @@
-# Rulesets Examples & Testing Sandbox
+# Ruleset Examples & Testing Sandbox
 
-This directory contains example projects and a testing sandbox for Rulesets.
+Real-world examples showing the **dramatic simplification** achieved with slots & variables.
+
+## 📚 Start Here
+
+**[COMPARISON.md](./COMPARISON.md)** - See before/after examples with **8x code reduction**
 
 ## Structure
 
 ```
 examples/
-  templates/          # Example projects (tracked in git)
-    basic/            # Minimal ruleset project
-  sandbox/            # Testing workspaces (gitignored)
-    basic/            # Created from templates/basic
-    my-test/          # Custom test workspaces
+  COMPARISON.md           # Before/after comparison guide
+  templates/              # Example projects (tracked in git)
+    simple-project/       # Basic slots & variables (recommended start)
+    monorepo-project/     # Advanced: code inclusion, provider modes
+  sandbox/                # Testing workspaces (gitignored)
+    simple-project/       # Created from templates
+    my-test/              # Custom test workspaces
 ```
 
 ## Quick Start
 
 ```bash
-# Create a sandbox from the 'basic' template
-bun run sandbox:setup basic
+# Create sandbox from template
+bun run sandbox:setup simple-project
 
-# This creates: examples/sandbox/basic/
+cd examples/sandbox/simple-project
 
-# Work in the sandbox
-cd examples/sandbox/basic
+# Compile for all providers
 rules compile
-rules compile --watch
 
-# Clean up all sandbox workspaces
+# Check outputs
+ls -la .cursor/rules/
+cat AGENTS.md
+
+# Clean up when done
 bun run sandbox:clean
 ```
 
 ## Templates
 
-### `basic/`
-Minimal project demonstrating:
-- Single rules file (coding-standards.rule.md)
-- One partial (license.md)
-- Multi-provider configuration
-- Expected output structure
+### `simple-project/` (Recommended Start)
+
+**What it shows:**
+- Variables: `[[ $project.name ]]`, `[[ $package.name ]]`
+- File composition: `[[ @_typescript.md ]]`
+- Smart wrapping: XML tags auto-applied
+- Provider-specific outputs
+
+**Key files:**
+- `BEFORE.md` - Traditional approach (600+ lines, lots of duplication)
+- `.ruleset/rules/conventions.md` - Slots approach (25 lines, zero duplication)
+
+**Result:** **8x code reduction**, single source of truth
+
+### `monorepo-project/` (Advanced)
+
+**What it shows:**
+- Dynamic code inclusion from source files
+- Security guardrails (gitignore, deny patterns, size limits)
+- Provider-specific modes (Cursor: reference, Claude: embed)
+- Package-aware variables (`$package.name` resolves per-package)
+- Nested wrapping (code → XML → callout)
+
+**Key features:**
+- Live code examples that auto-update
+- Monorepo-aware variable resolution
+- Advanced security configuration
 
 ## Usage Patterns
 

@@ -1,4 +1,4 @@
-import type { JsonValue } from "@rulesets/types";
+import type { JsonValue } from "@ruleset/types";
 import type { ParsedDoc } from "../interfaces";
 
 export const extractFrontmatter = (

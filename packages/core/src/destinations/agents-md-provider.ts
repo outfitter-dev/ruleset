@@ -3,8 +3,8 @@ import path from "node:path";
 import {
   buildHandlebarsOptions,
   resolveProviderSettings,
-} from "@rulesets/providers";
-import type { JsonValue } from "@rulesets/types";
+} from "@ruleset/providers";
+import type { JsonValue } from "@ruleset/types";
 import { AgentsComposer } from "../compiler/agents-composer";
 import type {
   CompiledDoc,

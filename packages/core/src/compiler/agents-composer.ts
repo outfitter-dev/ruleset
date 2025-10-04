@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import type { JsonValue } from "@rulesets/types";
+import type { JsonValue } from "@ruleset/types";
 import { glob } from "glob";
 import type { CompiledDoc, Logger, ParsedDoc } from "../interfaces";
 import type { RulesetParser } from "../parser";

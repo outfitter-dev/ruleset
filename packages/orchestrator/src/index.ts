@@ -8,7 +8,7 @@ import {
   type ParserOptions,
   type ParserOutput,
   type RulesetParserFn,
-} from "@rulesets/parser";
+} from "@ruleset/parser";
 import {
   createNoopProvider,
   evaluateProviderCompatibility,
@@ -16,7 +16,7 @@ import {
   type ProviderCompileInput,
   type ProviderEntry,
   type ProviderHandshake,
-} from "@rulesets/providers";
+} from "@ruleset/providers";
 import {
   createHandlebarsRenderer,
   type HandlebarsHelper,
@@ -24,12 +24,12 @@ import {
   type RendererFormat,
   type RendererOptions,
   type RulesetRenderer,
-} from "@rulesets/renderer";
+} from "@ruleset/renderer";
 import {
   identityTransform,
   type RulesetTransform,
   runTransforms,
-} from "@rulesets/transform";
+} from "@ruleset/transform";
 import {
   type CompilationInput,
   type CompilationOutput,
@@ -51,12 +51,12 @@ import {
   type RulesetRuntimeContext,
   type RulesetSource,
   resolveRulesetCapabilities,
-} from "@rulesets/types";
+} from "@ruleset/types";
 import {
   createNoopValidator,
   type RulesetValidator,
   type ValidationOptions,
-} from "@rulesets/validator";
+} from "@ruleset/validator";
 import { executeProviderCompile } from "./provider-executor";
 
 export type PipelineStartEvent = {

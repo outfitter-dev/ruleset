@@ -2,7 +2,7 @@ import {
   type CompileTarget,
   createResultOk,
   RULESET_CAPABILITIES,
-} from "@rulesets/types";
+} from "@ruleset/types";
 import {
   defineProvider,
   PROVIDER_SDK_VERSION,

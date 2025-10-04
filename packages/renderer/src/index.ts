@@ -2,7 +2,7 @@ import {
   identityTransform,
   type RulesetTransform,
   runTransforms,
-} from "@rulesets/transform";
+} from "@ruleset/transform";
 import {
   type CompileArtifact,
   type CompileTarget,
@@ -12,7 +12,7 @@ import {
   type RulesetDiagnostic,
   type RulesetDiagnostics,
   type RulesetDocument,
-} from "@rulesets/types";
+} from "@ruleset/types";
 import Handlebars, { type HelperDelegate } from "handlebars";
 
 export const RENDERER_FORMAT_MARKDOWN = "markdown" as const;

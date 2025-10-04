@@ -1,6 +1,6 @@
 # Basic Template
 
-This is a minimal Rulesets template demonstrating the basic structure and workflow.
+This is a minimal Ruleset template demonstrating the basic structure and workflow.
 
 > **Note:** This is a template. Use `bun run sandbox:setup basic` to create a working sandbox from this template. See [examples/README.md](../../README.md) for details.
 

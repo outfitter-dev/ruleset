@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import type { RulesetProjectConfig } from "@rulesets/types";
+import type { RulesetProjectConfig } from "@ruleset/types";
 
 const DEFAULT_DEPENDENCY_PATHS = [
   ".ruleset/partials",

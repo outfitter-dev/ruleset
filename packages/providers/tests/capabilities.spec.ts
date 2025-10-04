@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { RULESET_CAPABILITIES, type RulesetVersionTag } from "@rulesets/types";
+import { RULESET_CAPABILITIES, type RulesetVersionTag } from "@ruleset/types";
 
 import {
   defineProvider,

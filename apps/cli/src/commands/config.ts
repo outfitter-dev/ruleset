@@ -1,5 +1,5 @@
-import { loadProjectConfig, saveProjectConfig } from "@rulesets/lib";
-import type { RulesetProjectConfig } from "@rulesets/types";
+import { loadProjectConfig, saveProjectConfig } from "@ruleset/lib";
+import type { RulesetProjectConfig } from "@ruleset/types";
 import chalk from "chalk";
 import { Command } from "commander";
 import { logger } from "../utils/logger";

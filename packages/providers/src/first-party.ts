@@ -5,7 +5,7 @@ import {
   type CompileArtifact,
   createResultOk,
   RULESET_CAPABILITIES,
-} from "@rulesets/types";
+} from "@ruleset/types";
 
 import {
   defineProvider,

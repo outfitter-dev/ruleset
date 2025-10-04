@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import type { JsonValue } from "@rulesets/types";
+import type { JsonValue } from "@ruleset/types";
 
 /**
  * Command history entry
@@ -60,7 +60,7 @@ export class GlobalHistory {
       this.historyPath = options.historyPath;
     } else {
       const configHome = process.env.XDG_CONFIG_HOME || path.join(homedir(), ".config");
-      this.historyPath = path.join(configHome, "rulesets", "history.json");
+      this.historyPath = path.join(configHome, "ruleset", "history.json");
     }
   }
 

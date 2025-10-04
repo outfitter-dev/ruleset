@@ -1,4 +1,4 @@
-import type { JsonValue, RulesetDocument } from "@rulesets/types";
+import type { JsonValue, RulesetDocument } from "@ruleset/types";
 import type { HelperDelegate } from "handlebars";
 import type { DestinationCompilationOptions, ProviderLogger } from "./index";
 

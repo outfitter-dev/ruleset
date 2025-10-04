@@ -1,4 +1,4 @@
-import { GlobalConfig, InstallationManager } from "@rulesets/lib";
+import { GlobalConfig, InstallationManager } from "@ruleset/lib";
 import chalk from "chalk";
 import { Command } from "commander";
 import { logger } from "../utils/logger";

@@ -5,4 +5,4 @@ export type {
   ParsedDoc,
   Section,
   Variable,
-} from "@rulesets/types";
+} from "@ruleset/types";

@@ -1,4 +1,4 @@
-# PLAN – Rulesets v0.4 Rewrite
+# PLAN – Ruleset v0.4 Rewrite
 
 > This plan tracks the sequential work required to deliver the full rewrite described in `REFACTOR.md`. Each section should complete before moving to the next unless explicitly noted.
 

@@ -5,9 +5,8 @@ import type {
   RulesetDocument,
   RulesetFrontmatter,
   RulesetRuleFrontmatter,
-} from "@rulesets/types";
-import { rulesetFrontmatterSchema } from "@rulesets/types";
-import { valid as semverValid } from "semver";
+} from "@ruleset/types";
+import { rulesetFrontmatterSchema } from "@ruleset/types";
 
 export type ValidationOptions = {
   readonly strict?: boolean;
@@ -229,12 +228,27 @@ const validateRuleMetadata = (
         "Missing required `rule.version`. Provide a semver-compatible version string."
       )
     );
-  } else if (!semverValid(rule.version)) {
-    diagnostics.push(
-      toError(
-        `Invalid semantic version in rule.version: "${rule.version}". Use a valid semver identifier (e.g., 0.4.0).`
-      )
-    );
+  } else {
+    // Require strict X.Y.Z format (matching old semver.valid() behavior)
+    const isValidFormat = /^\d+\.\d+\.\d+/.test(rule.version);
+    if (!isValidFormat) {
+      diagnostics.push(
+        toError(
+          `Invalid semantic version in rule.version: "${rule.version}". Use a valid semver identifier (e.g., 0.4.0).`
+        )
+      );
+    } else {
+      try {
+        // Additional validation via Bun.semver
+        Bun.semver.order(rule.version, "0.0.0");
+      } catch {
+        diagnostics.push(
+          toError(
+            `Invalid semantic version in rule.version: "${rule.version}". Use a valid semver identifier (e.g., 0.4.0).`
+          )
+        );
+      }
+    }
   }
 
   return diagnostics;

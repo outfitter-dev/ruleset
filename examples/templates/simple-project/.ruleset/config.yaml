@@ -1,0 +1,35 @@
+# Ruleset Configuration - Simple Project Example
+
+project:
+  name: "Simple Project"
+  version: "1.0.0"
+  author: "Engineering Team"
+
+# Slot definitions (can also be in frontmatter)
+slots:
+  # Simple partials
+  team-contact: partials/_team-contact.md
+
+  # TypeScript rules with XML wrapper
+  typescript:
+    file: rules/_typescript.md
+    wrap: xmlTag  # Uses 'typescript' as tag name
+
+  # Commit rules with XML wrapper
+  commits:
+    file: rules/_commits.md
+    wrap: xmlTag  # Uses 'commits' as tag name
+
+# Provider configuration
+providers:
+  cursor:
+    enabled: true
+    output: .cursor/rules
+
+  claude:
+    enabled: true
+    # Claude aggregates into AGENTS.md
+
+  windsurf:
+    enabled: true
+    output: .windsurf/rules

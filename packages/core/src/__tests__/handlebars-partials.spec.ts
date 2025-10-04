@@ -16,7 +16,7 @@ const createLogger = (): Logger => ({
 
 describe("Handlebars partial discovery", () => {
   it("loads project and global partials with correct precedence", async () => {
-    const tmpRoot = await mkdtemp(path.join(tmpdir(), "rulesets-partials-"));
+    const tmpRoot = await mkdtemp(path.join(tmpdir(), "ruleset-partials-"));
     const originalHome = process.env.RULESETS_HOME;
     const globalHome = path.join(tmpRoot, "global-home");
     process.env.RULESETS_HOME = globalHome;

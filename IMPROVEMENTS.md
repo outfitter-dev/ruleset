@@ -1,4 +1,4 @@
-# Rulesets Improvements & Design Ideas
+# Ruleset Improvements & Design Ideas
 
 This document captures design ideas and planned improvements that aren't yet ready for implementation. Think of this as the design incubator—ideas mature here before moving into PLAN.md or implementation.
 
@@ -520,7 +520,7 @@ Build manifest (`.rules/history.json`) tracks content hashes for integrity check
     Expected: sha256:def456...
     Actual:   sha256:xyz789...
 
-    This file was modified outside of Rulesets.
+    This file was modified outside of Ruleset.
     Run `rules sync` to update source or recompile to overwrite.
 ```
 

@@ -4,7 +4,7 @@ import {
   type CompileTarget,
   type JsonValue,
   RULESET_CAPABILITIES,
-} from "@rulesets/types";
+} from "@ruleset/types";
 
 import { hasCapability } from "../shared";
 import { createSimpleFilesystemProvider } from "./simple";

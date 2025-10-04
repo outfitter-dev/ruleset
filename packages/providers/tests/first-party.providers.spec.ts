@@ -17,13 +17,13 @@ import {
   createWindsurfProvider,
   createZedProvider,
   type ProviderEntry,
-} from "@rulesets/providers";
+} from "@ruleset/providers";
 import type {
   CompileArtifact,
   RulesetDocument,
   RulesetProjectConfig,
   RulesetRuntimeContext,
-} from "@rulesets/types";
+} from "@ruleset/types";
 
 const createRuntimeContext = (cwd: string): RulesetRuntimeContext => ({
   version: "0.4.0-next.0",

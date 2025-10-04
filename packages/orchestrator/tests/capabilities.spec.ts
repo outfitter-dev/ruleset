@@ -10,7 +10,7 @@ import {
   type ProviderCompileInput,
   type ProviderEntry,
   providerCapability,
-} from "@rulesets/providers";
+} from "@ruleset/providers";
 import {
   type CompileArtifact,
   type CompileTarget,
@@ -19,7 +19,7 @@ import {
   type RulesetRuntimeContext,
   type RulesetSource,
   type RulesetVersionTag,
-} from "@rulesets/types";
+} from "@ruleset/types";
 
 import {
   type ArtifactEmittedEvent,

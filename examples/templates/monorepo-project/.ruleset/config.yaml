@@ -1,0 +1,51 @@
+# Monorepo Configuration Example
+
+project:
+  name: "Example Monorepo"
+  version: "1.0.0"
+  author: "Engineering Team"
+
+# Security settings for code inclusion
+security:
+  allowedPaths:
+    - .ruleset/**
+    - packages/**/src/**
+    - packages/**/lib/**
+
+  denyPatterns:
+    - '**/.env*'
+    - '**/*.key'
+    - '**/*.pem'
+    - '**/secrets/**'
+    - '**/node_modules/**'
+
+  respectGitignore: true
+  maxFileSizeKb: 500
+
+# Slot definitions
+slots:
+  # Simple text partial
+  team-info: partials/_team-info.md
+
+  # Code example with provider-specific rendering
+  auth-example:
+    file: partials/_auth-example.md
+    cursor:
+      mode: reference  # Cursor gets: `@_auth-example.md`
+    claude:
+      mode: embed      # Claude gets: full content
+      wrap: xmlTag.example
+
+# Provider outputs
+providers:
+  cursor:
+    enabled: true
+    # Outputs to each package's .cursor/rules/
+
+  claude:
+    enabled: true
+    # Aggregates to root AGENTS.md
+
+  windsurf:
+    enabled: true
+    # Outputs to each package's .windsurf/rules/

@@ -18,7 +18,7 @@ import {
   type RulesetProjectConfig,
   type RulesetRuntimeContext,
   type RulesetVersionTag,
-} from "@rulesets/types";
+} from "@ruleset/types";
 import type { HelperDelegate } from "handlebars";
 
 export type ProviderCapabilityId = RulesetCapabilityId;

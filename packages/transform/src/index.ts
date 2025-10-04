@@ -2,7 +2,7 @@ import type {
   RulesetDependency,
   RulesetDiagnostics,
   RulesetDocument,
-} from "@rulesets/types";
+} from "@ruleset/types";
 
 export type RulesetTransform = (document: RulesetDocument) => RulesetDocument;
 

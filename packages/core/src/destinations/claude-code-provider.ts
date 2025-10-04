@@ -3,7 +3,7 @@ import path from "node:path";
 import {
   buildHandlebarsOptions,
   resolveProviderSettings,
-} from "@rulesets/providers";
+} from "@ruleset/providers";
 import type {
   CompiledDoc,
   DestinationProvider,

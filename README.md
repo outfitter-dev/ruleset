@@ -1,15 +1,15 @@
-# Rulesets
+# Ruleset
 
-Write AI assistant rules once in Markdown and compile them for every tool you use. Rulesets v0.2.0 embraces a simple workflow: Markdown + YAML metadata, optional Handlebars templating, and provider-specific outputs managed through a single CLI.
+Write AI assistant rules once in Markdown and compile them for every tool you use. Ruleset v0.2.0 embraces a simple workflow: Markdown + YAML metadata, optional Handlebars templating, and provider-specific outputs managed through a single CLI.
 
 ## Install
 
 ```bash
 # Install globally
-npm install -g @rulesets/cli@latest
+npm install -g @ruleset/cli@latest
 
 # OR run ad-hoc
-npx @rulesets/cli@latest --help
+npx @ruleset/cli@latest --help
 ```
 
 ## Quick Start
@@ -59,7 +59,7 @@ Project-wide defaults live in `.ruleset/config.yaml`. YAML is the canonical form
 
 ## Providers
 
-Rulesets ships provider packages for common tools (Cursor, Windsurf, Claude Code, AGENTS, GitHub Copilot, Codex). Each provider decides where outputs land (for example `.cursor/rules/`, `.codex/AGENTS.md`). Shared behaviour is exposed through `@rulesets/core` so you can build custom providers or workflows.
+Ruleset ships provider packages for common tools (Cursor, Windsurf, Claude Code, AGENTS, GitHub Copilot, Codex). Each provider decides where outputs land (for example `.cursor/rules/`, `.codex/AGENTS.md`). Shared behaviour is exposed through `@rulesets/core` so you can build custom providers or workflows.
 
 ## Documentation
 

@@ -5,8 +5,8 @@ import {
   identityTransform,
   type RulesetTransform,
   runTransforms,
-} from "@rulesets/transform";
-import type { RulesetDocument } from "@rulesets/types";
+} from "@ruleset/transform";
+import type { RulesetDocument } from "@ruleset/types";
 
 const createDocument = (
   overrides: Partial<RulesetDocument> = {}
