@@ -67,20 +67,20 @@ claude-code:
 - Follow AAA pattern (Arrange, Act, Assert)
 ```
 
-## Compile Your Rules
+## Build Your Rules
 
 ```bash
-# Compile all rules for all providers
-rulesets compile
+# Build all rules for all providers
+rulesets build
 
-# Compile for specific provider only
-rulesets compile --provider cursor
+# Build for specific provider only
+rulesets build --provider cursor
 
-# Watch for changes and auto-compile
-rulesets compile --watch
+# Watch for changes and auto-build
+rulesets build --watch
 
 # Emit structured JSON logs (useful for agents/automation)
-rulesets compile --format json   # `--json` alias still works
+rulesets build --format json   # `--json` alias still works
 ```
 
 This generates compiled rules in `.ruleset/dist/`:
@@ -192,12 +192,12 @@ rulesets promote .ruleset/rules/common.md --name shared-guidelines
 
 # Get help
 rulesets --help
-rulesets compile --help
+rulesets build --help
 ```
 
 ## Project Structure
 
-After initialization and compilation:
+After initialization and a build:
 
 ```
 your-project/

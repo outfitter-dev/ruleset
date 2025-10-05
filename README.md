@@ -1,6 +1,6 @@
 # Ruleset
 
-Write AI assistant rules once in Markdown and compile them for every tool you use. Ruleset v0.2.0 embraces a simple workflow: Markdown + YAML metadata, optional Handlebars templating, and provider-specific outputs managed through a single CLI.
+Write AI assistant rules once in Markdown and build them for every tool you use. Ruleset v0.2.0 embraces a simple workflow: Markdown + YAML metadata, optional Handlebars templating, and provider-specific outputs managed through a single CLI.
 
 ## Install
 
@@ -21,8 +21,8 @@ rulesets init
 # 2. Edit .ruleset/rules/example.rule.md
 #    (front matter lives under the `rule` namespace)
 
-# 3. Compile for all providers configured in .ruleset/config.yaml
-rulesets compile
+# 3. Build for all providers configured in .ruleset/config.yaml
+rulesets build
 ```
 
 Every rule file begins with YAML front matter:
@@ -48,7 +48,7 @@ Project-wide defaults live in `.ruleset/config.yaml`. YAML is the canonical form
 | Command | Description |
 |---------|-------------|
 | `rulesets init` | Scaffold `.ruleset/` (config, sample rule, starter partials). |
-| `rulesets compile` | Compile rule files for the enabled providers. |
+| `rulesets build` | Build rule files for the enabled providers. |
 | `rulesets list` | Show discovered rules and provider enablement. |
 | `rulesets install --preset <name>` | Install rules from a preset into your project. |
 | `rulesets update` | Refresh installed presets. |
