@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
-import { compileCommand } from "./commands/compile.js";
+import { buildCommand } from "./commands/build.js";
 import { configCommand } from "./commands/config.js";
 import { historyCommand } from "./commands/history.js";
 import { importCommand } from "./commands/import.js";
@@ -93,7 +93,7 @@ program.addCommand(withHistoryTracking(importCommand()));
 program.addCommand(withHistoryTracking(promoteCommand()));
 program.addCommand(withHistoryTracking(listCommand()));
 program.addCommand(withHistoryTracking(configCommand()));
-program.addCommand(withHistoryTracking(compileCommand()));
+program.addCommand(withHistoryTracking(buildCommand()));
 program.addCommand(historyCommand()); // History command doesn't track itself
 
 program.parse();

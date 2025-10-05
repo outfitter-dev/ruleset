@@ -35,8 +35,8 @@ bun run sandbox:setup simple-project
 
 cd examples/sandbox/simple-project
 
-# Compile for all providers
-rules compile
+# Build for all providers
+rules build
 
 # Check outputs
 ls -la .cursor/rules/

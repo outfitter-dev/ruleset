@@ -15,7 +15,7 @@ Consistent language keeps Ruleset documentation and tooling aligned. This guide 
 | **Project config** | The canonical configuration file (`.ruleset/config.yaml`) that sets workspace defaults. | "Update the project config to enable the AGENTS provider." |
 | **Preset** | A packaged set of rules installable via `rules install` and `rules update`. | "Install the onboarding preset to bootstrap a new project." |
 | **AGENTS composer** | Shared provider that aggregates outputs for multiple tools. | "The AGENTS composer ensures IDE and CLI instructions stay in sync." |
-| **Ruleset CLI** | Thin wrapper over `@rulesets/core` exposing commands such as `rules init`, `rules compile`, and preset management. | "Run `rules compile` after editing your source rules." |
+| **Ruleset CLI** | Thin wrapper over `@rulesets/core` exposing commands such as `rules init`, `rules build`, and preset management. | "Run `rules build` after editing your source rules." |
 
 ## Retired Terminology
 
@@ -55,7 +55,7 @@ Consistent language keeps Ruleset documentation and tooling aligned. This guide 
 
 ### CLI & Workflow Language
 
-- Use the wording "Run `rules compile`" or "Use `rules install <preset>`" for commands.
+- Use the wording "Run `rules build`" or "Use `rules install <preset>`" for commands.
 - Frame CLI functionality as delegating to `@rulesets/core`.
 - State that `rules sync` and `rules diff` are backlog features when relevant.
 

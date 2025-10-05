@@ -27,8 +27,8 @@ bun run sandbox:setup simple-project
 
 cd examples/sandbox/simple-project
 
-# Compile for all providers
-rules compile
+# Build for all providers
+rules build
 
 # Check outputs
 ls -la .cursor/rules/
@@ -78,14 +78,14 @@ bun run sandbox:setup basic
 # Or with custom name
 bun run sandbox:setup basic my-custom-test
 
-# Test compilation
+# Test build
 cd examples/sandbox/basic
-rules compile
+rules build
 
 # Test watch mode
-rules compile --watch
+rules build --watch
 
-# Edit files and observe recompilation
+# Edit files and observe rebuild
 ```
 
 ### Agent Testing
@@ -95,9 +95,9 @@ Agents can use the sandbox for automated testing:
 # 1. Create isolated environment
 bun run sandbox:setup basic agent-test
 
-# 2. Compile and verify
+# 2. Build and verify
 cd examples/sandbox/agent-test
-rules compile
+rules build
 [ -f .cursor/rules/coding-standards.mdc ] && echo "✓ Cursor output exists"
 [ -f AGENTS.md ] && echo "✓ AGENTS.md exists"
 

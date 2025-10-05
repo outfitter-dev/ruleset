@@ -69,7 +69,7 @@ Tracking work toward the Ruleset v0.4.0 rewrite.
 
 ### Open Questions
 
-- Should we add performance benchmarks for compile/watch operations?
+- Should we add performance benchmarks for build/watch operations?
 - Do we want "AI-assisted rule authoring" verification harness (Claude Code SDK)?
 - Memory/leak detection for long-running watch mode?
 
@@ -94,11 +94,20 @@ Tracking work toward the Ruleset v0.4.0 rewrite.
 
 ## Recent Notes
 
+### 2025-10-05
+
+**Completed: `compile` → `build` Command Migration:**
+- Renamed primary command from `rules compile` to `rules build` for better UX
+- Kept `compile` as deprecated alias during transition period
+- Updated all documentation to reflect new command name
+- See implementation details: `.agents/logs/202510051135-compile-to-build-migration.md`
+- Explored universal `--history` flag design for future (deferred to post-v0.4.0)
+
 ### 2025-10-04
 
-**CLI Compile Output Control:**
-- Implemented `--write` and `--dry-run` flags for `rules compile` command
-- **Default behavior** (`rules compile`): Writes only to staging area (`.ruleset/dist/<provider>/`), shows skipped provider-specific paths
+**CLI Build Output Control:**
+- Implemented `--write` and `--dry-run` flags for `rules build` command
+- **Default behavior** (`rules build`): Writes only to staging area (`.ruleset/dist/<provider>/`), shows skipped provider-specific paths
 - **With `--write`**: Writes to both staging area AND provider-specific paths (`.cursor/rules/`, `CLAUDE.md`, etc.)
 - **With `--dry-run`**: Performs compilation without writing any files (validation only)
 - Prevents combining `--write` and `--dry-run` flags (mutual exclusion)

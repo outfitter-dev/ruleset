@@ -294,10 +294,10 @@ providers:
     enabled: true
 ```
 
-### Step 5: Compile
+### Step 5: Build
 
 ```bash
-rules compile
+rules build
 ```
 
 **Output:**
@@ -315,7 +315,7 @@ rm .windsurf/rules.md
 
 **Done!** You now have:
 - ✅ Single source of truth
-- ✅ Automatic compilation
+- ✅ Automatic build process
 - ✅ Provider-specific outputs
 - ✅ Zero duplication
 
@@ -342,7 +342,7 @@ rm .windsurf/rules.md
 | Add TypeScript rule | Edit `_typescript.md` (5 min) |
 | Update team contact | Edit 4-line file (1 min) |
 | Add new provider | Add 3 lines to config.yaml (2 min) |
-| Keep in sync | Automatic on compile |
+| Keep in sync | Automatic on build |
 | Review changes | Review focused diffs in source files |
 
 **Total maintenance:** Low, automated, reliable
@@ -369,7 +369,7 @@ bun run sandbox:setup monorepo-project
 
 # Experiment freely!
 cd examples/sandbox/simple-project
-rules compile
+rules build
 ```
 
 See individual template READMEs for more details.

@@ -19,22 +19,22 @@ This is a minimal Ruleset template demonstrating the basic structure and workflo
 ## Usage
 
 ```bash
-# Compile rules for all enabled providers
-rules compile
+# Build rules for all enabled providers
+rules build
 
 # Watch for changes
-rules compile --watch
+rules build --watch
 
-# Compile for specific providers
-rules compile --provider cursor --provider claude-code
+# Build for specific providers
+rules build --provider cursor --provider claude-code
 
 # View detailed diagnostics
-rules compile --why
+rules build --why
 ```
 
 ## Expected Outputs
 
-After compilation, you'll see:
+After building, you'll see:
 - `.cursor/rules/coding-standards.mdc` - Cursor rules
 - `CLAUDE.md` - Claude Code rules
 - `.windsurf/rules/coding-standards.md` - Windsurf rules

@@ -33,43 +33,41 @@ import { createSpinner } from "../utils/spinner";
 
 const DEFAULT_WATCH_DEBOUNCE_MS = 150;
 
-// Compile source rules from a file or directory into per-provider outputs
-
 /**
- * Creates the `rulesets compile` sub-command. The command compiles source rules
- * into provider-specific artefacts and can optionally watch for changes.
+ * Creates the `rules build` command. Builds source rules into provider-specific
+ * artifacts and can optionally watch for changes.
  */
-export function compileCommand(): Command {
-  const command = new Command("compile")
-    .description("Compile source rules to provider formats")
+export function buildCommand(): Command {
+  const command = new Command("build")
+    .description("Build source rules to provider formats")
     .argument("[source]", "Source file or directory", "./.ruleset/rules")
     .option("-o, --output <dir>", "Output directory", "./.ruleset/dist")
     .option(
       "-p, --provider <id>",
-      "Specific provider to compile for (preferred)"
+      "Specific provider to build for (preferred)"
     )
     .option("-d, --destination <dest>", "Deprecated alias for --provider")
-    .option("-w, --watch", "Watch for changes and recompile")
+    .option("-w, --watch", "Watch for changes and rebuild")
     .option(
       "--write",
-      "Write compiled artifacts to provider-specific output paths (default: only writes to dist/)"
+      "Write built artifacts to provider-specific output paths (default: only writes to dist/)"
     )
     .option(
       "--dry-run",
-      "Show what would be compiled without writing any files"
+      "Show what would be built without writing any files"
     )
     .option("--why", "Show detailed diagnostics with explanations")
     .option("--explain", "Alias for --why, shows detailed diagnostics")
     .action(async (source: string, options, cmd) => {
       const usedDefaultSource = cmd.args.length === 0;
-      await runCompile(source, options, usedDefaultSource);
+      await runBuild(source, options, usedDefaultSource);
     });
 
   return addLoggingOptions(command, { includeDeprecatedJsonAlias: true });
 }
 
-/** Options supported by the CLI compile command. */
-type CompileOptions = {
+/** Options supported by the CLI build command. */
+type BuildOptions = {
   output: string;
   provider?: string;
   destination?: string; // Deprecated alias, kept for backwards compatibility
@@ -81,12 +79,12 @@ type CompileOptions = {
 };
 
 /**
- * Entry point for the compile command. Handles non-watch and watch flows, and
+ * Entry point for the build command. Handles non-watch and watch flows, and
  * renders user-friendly status messages through the CLI spinner.
  */
-async function runCompile(
+async function runBuild(
   source: string,
-  options: CompileOptions,
+  options: BuildOptions,
   usedDefaultSource: boolean
 ): Promise<void> {
   // Validate flag combinations
@@ -98,7 +96,7 @@ async function runCompile(
   }
 
   const spinner = createSpinner(
-    options.dryRun ? "Analyzing rulesets..." : "Compiling rulesets..."
+    options.dryRun ? "Analyzing rulesets..." : "Building rulesets..."
   );
   const targetProvider = options.provider ?? options.destination;
 
@@ -131,7 +129,7 @@ async function runCompile(
       chalk.red(
         list.length > 0
           ? `No providers found matching: ${list}`
-          : "No providers available to compile with"
+          : "No providers available to build with"
       )
     );
     process.exit(1);
@@ -147,14 +145,15 @@ async function runCompile(
 
   const context = buildRuntimeContext(cwd);
   const targets = buildTargets(outputDir, providers);
-  type PreparedCompilation = {
+
+  type PreparedBuild = {
     input: CompilationInput;
     watchRoots: Set<string>;
     hadSources: boolean;
     emptyMessage?: string;
   };
 
-  const prepareCompilation = async (): Promise<PreparedCompilation> => {
+  const prepareBuild = async (): Promise<PreparedBuild> => {
     const projectConfigResult = await loadProjectConfig({ startPath: cwd });
     const configWatchPaths = new Set<string>();
     if (projectConfigResult.path) {
@@ -218,7 +217,7 @@ async function runCompile(
     let emptyMessage: string | undefined;
     if (!hadSources) {
       emptyMessage = usedDefaultSource
-        ? "No rules files found to compile"
+        ? "No rules files found to build"
         : `No matching rules found for ${source}`;
     }
 
@@ -230,12 +229,12 @@ async function runCompile(
     };
   };
 
-  const runInitialCompilation = async () => {
-    const prepared = await prepareCompilation();
+  const runInitialBuild = async () => {
+    const prepared = await prepareBuild();
 
     if (!prepared.hadSources) {
       spinner.warn(
-        chalk.yellow(prepared.emptyMessage ?? "No rules files found to compile")
+        chalk.yellow(prepared.emptyMessage ?? "No rules files found to build")
       );
       return;
     }
@@ -247,7 +246,7 @@ async function runCompile(
       phase: "initial",
     });
 
-    const output = await runCompilationWithProgress(
+    const output = await runBuildWithProgress(
       prepared.input,
       { providers },
       reporter
@@ -278,9 +277,9 @@ async function runCompile(
 
   if (!options.watch) {
     try {
-      await runInitialCompilation();
+      await runInitialBuild();
     } catch (error) {
-      spinner.fail(chalk.red("Failed to compile rulesets"));
+      spinner.fail(chalk.red("Failed to build rulesets"));
       logger.error(error instanceof Error ? error : String(error));
       process.exit(1);
     }
@@ -288,14 +287,14 @@ async function runCompile(
   }
 
   const executeWatch: WatchExecutor = async (phase, changedPaths) => {
-    const prepared = await prepareCompilation();
+    const prepared = await prepareBuild();
     const watchPaths = new Set<string>(prepared.watchRoots);
     if (watchPaths.size === 0) {
       watchPaths.add(cwd);
     }
 
     const phaseLabel =
-      phase === "initial" ? "Compiling rulesets..." : "Recompiling...";
+      phase === "initial" ? "Building rulesets..." : "Rebuilding...";
     spinner.start(phaseLabel);
 
     const reporter = createProgressReporter({
@@ -305,7 +304,7 @@ async function runCompile(
     });
 
     const startTime = Date.now();
-    const output = await runCompilationWithProgress(
+    const output = await runBuildWithProgress(
       prepared.input,
       {
         providers,
@@ -339,7 +338,7 @@ async function runCompile(
 
     if (!prepared.hadSources) {
       spinner.warn(
-        chalk.yellow(prepared.emptyMessage ?? "No rules files found to compile")
+        chalk.yellow(prepared.emptyMessage ?? "No rules files found to build")
       );
     } else if (phase === "initial") {
       spinner.succeed(chalk.green(`${summary} in ${duration}ms`));
@@ -390,13 +389,14 @@ async function runCompile(
     }
   } catch (error) {
     await stopIterator();
-    spinner.fail(chalk.red("Failed to compile rulesets"));
+    spinner.fail(chalk.red("Failed to build rulesets"));
     logger.error(error instanceof Error ? error : String(error));
     process.exit(1);
   }
 
   await stopIterator();
 }
+
 // --- helpers -----------------------------------------------------------------
 
 type CollectRuleFilesOptions = {
@@ -621,12 +621,12 @@ function selectProviders(
     .filter((provider): provider is ProviderEntry => provider !== undefined);
 }
 
-type CompileProgressReporter = {
+type BuildProgressReporter = {
   handle(event: CompilationEvent): Promise<void> | void;
   complete(): void;
 };
 
-type CompilationRunOptions = {
+type BuildRunOptions = {
   providers: readonly ProviderEntry[];
   invalidatePaths?: readonly string[];
 };
@@ -691,10 +691,10 @@ type ProgressReporterOptions = {
   phase: "initial" | "incremental";
 };
 
-const runCompilationWithProgress = async (
+const runBuildWithProgress = async (
   input: CompilationInput,
-  options: CompilationRunOptions,
-  reporter: CompileProgressReporter
+  options: BuildRunOptions,
+  reporter: BuildProgressReporter
 ): Promise<CompilationOutput> => {
   let finalOutput: CompilationOutput | undefined;
   try {
@@ -720,7 +720,7 @@ const createProgressReporter = ({
   spinner,
   cwd,
   phase,
-}: ProgressReporterOptions): CompileProgressReporter => {
+}: ProgressReporterOptions): BuildProgressReporter => {
   const logLevel = resolveLogLevel();
   const infoEnabled = levelIndex(logLevel) <= levelIndex("info");
   const debugEnabled = logLevel === "debug";
@@ -913,7 +913,7 @@ const createProgressReporter = ({
         }
         case "target:start": {
           const label = `${describeSource(event.source)} → ${describeTarget(event.target)}`;
-          spinner.text = `Compiling ${label}`;
+          spinner.text = `Building ${label}`;
           break;
         }
         case "target:capabilities": {
@@ -951,8 +951,8 @@ const createProgressReporter = ({
           );
           const message = summary ? `${label} (${summary})` : label;
           if (event.ok) {
-            spinner.text = `Compiled ${label}`;
-            logInfo(chalk.green(`Compiled ${message}`));
+            spinner.text = `Built ${label}`;
+            logInfo(chalk.green(`Built ${message}`));
           } else {
             spinner.text = `Failed ${label}`;
             logger.error(chalk.red(`Provider failed ${message}`));
@@ -987,7 +987,7 @@ const createProgressReporter = ({
           break;
         }
         case "pipeline:end": {
-          spinner.text = "Finalizing compilation";
+          spinner.text = "Finalizing build";
           break;
         }
         default:
