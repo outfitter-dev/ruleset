@@ -49,7 +49,7 @@ preParseGlobalFlags(process.argv.slice(2));
 
 const program = new Command()
   .name("rules")
-  .description("AI rules compiler - manage and compile rules for AI tools")
+  .description("AI rules builder - manage and build rules for AI tools")
   .version("0.2.0")
   .enablePositionalOptions();
 
@@ -94,6 +94,15 @@ program.addCommand(withHistoryTracking(promoteCommand()));
 program.addCommand(withHistoryTracking(listCommand()));
 program.addCommand(withHistoryTracking(configCommand()));
 program.addCommand(withHistoryTracking(buildCommand()));
+program
+  .command("compile")
+  .description("Deprecated. Use 'rules build' instead.")
+  .allowUnknownOption(true)
+  .allowExcessArguments(true)
+  .action(() => {
+    console.error("Unknown command 'compile'. Did you mean 'build'?");
+    process.exit(1);
+  });
 program.addCommand(historyCommand()); // History command doesn't track itself
 
 program.parse();

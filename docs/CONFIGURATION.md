@@ -517,13 +517,13 @@ lint:
 Use environment-specific configs:
 ```bash
 # Development
-RULESETS_CONFIG=.ruleset/config.dev.yaml rulesets compile
+RULESETS_CONFIG=.ruleset/config.dev.yaml rulesets build
 
 # Production
-RULESETS_CONFIG=.ruleset/config.prod.yaml rulesets compile
+RULESETS_CONFIG=.ruleset/config.prod.yaml rulesets build
 
 # CI/CD
-RULESETS_CONFIG=.ruleset/config.ci.yaml rulesets compile
+RULESETS_CONFIG=.ruleset/config.ci.yaml rulesets build
 ```
 
 ## Team Configuration
@@ -642,13 +642,13 @@ Rulesets v0.2.0 maintains backward compatibility:
 Validate your configuration:
 ```bash
 # Check configuration syntax
-rulesets compile --dry-run
+rulesets build --dry-run
 
 # Verbose output for debugging
-rulesets compile --verbose
+rulesets build --verbose
 
 # Structured JSON logging (alias: --json)
-rulesets compile --format json
+rulesets build --format json
 
 # List discovered configuration
 rulesets list --config
@@ -665,7 +665,7 @@ log:
 
 Or via environment:
 ```bash
-DEBUG=rulesets:* rulesets compile
+DEBUG=rulesets:* rulesets build
 ```
 
 ---

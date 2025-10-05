@@ -9,4 +9,4 @@
 - Updated directory references to the `.ruleset/` layout (`rules/`, `_mixins/`, `dist/`) across guidance and onboarding materials.
 
 ### Deprecated
-- `rulesets compile --destination` now emits a warning and is documented as a compatibility alias for `--provider`. Plan to remove in a future v0.3.x release — update scripts to use the new flag.
+- `rulesets build --destination` now emits a warning and is documented as a compatibility alias for `--provider`. Plan to remove in a future v0.3.x release — update scripts to use the new flag.

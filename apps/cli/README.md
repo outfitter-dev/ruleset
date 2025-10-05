@@ -17,8 +17,8 @@ bunx @rulesets/cli --help
 # Initialize Rulesets in your project
 rulesets init
 
-# Compile rules to AI tool formats
-rulesets compile
+# Build rules to AI tool formats
+rulesets build
 
 # List installed rulesets
 rulesets list
@@ -43,21 +43,21 @@ Options:
   -g, --global  Initialize global configuration
 ```
 
-### compile
+### build
 
-Compile source rules to provider formats.
+Build source rules to provider formats.
 
 ```bash
-rulesets compile [source] [options]
+rulesets build [source] [options]
 
 Arguments:
   source  Source file or directory (default: "./rules")
 
 Options:
   -o, --output <dir>     Output directory (default: "./.ruleset/dist")
-  -p, --provider <id>    Specific provider to compile for
+  -p, --provider <id>    Specific provider to build for
       --destination <id> Deprecated alias for --provider
-  -w, --watch            Watch for changes and recompile
+  -w, --watch            Watch for changes and rebuild
 ```
 
 ### list
