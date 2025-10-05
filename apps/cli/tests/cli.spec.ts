@@ -113,16 +113,16 @@ describe("rulesets CLI smoke", () => {
     expect(stdout.trim().length === 0 || !NON_WS_RE.test(stdout)).toBeTruthy();
   });
 
-  // TODO(gt-v0.4): Re-enable compile smoke tests once the new orchestrator-backed
+  // TODO(gt-v0.4): Re-enable build smoke tests once the new orchestrator-backed
   // pipeline is finished. The interim CLI flow uses a simplified provider stub.
-  const legacyCompileCases = [
+  const legacyBuildCases = [
     { ext: ".ruleset.md", label: "legacy .ruleset.md extension" },
     { ext: ".md", label: "plain .md with rule frontmatter" },
   ] as const;
 
-  for (const { ext, label } of legacyCompileCases) {
-    it(`compiles a rules directory to output (${label})`, () => {
-      const tmp = mkdtempSync(join(tmpdir(), "rulesets-cli-compile-"));
+  for (const { ext, label } of legacyBuildCases) {
+    it(`builds a rules directory to output (${label})`, () => {
+      const tmp = mkdtempSync(join(tmpdir(), "rulesets-cli-build-"));
       const rulesDir = join(tmp, ".ruleset", "rules");
       mkdirSync(rulesDir, { recursive: true });
 
@@ -135,7 +135,7 @@ describe("rulesets CLI smoke", () => {
       const outDirAbs = join(tmp, outDirRel);
       const { code, stdout } = runCli(
         [
-          "compile",
+          "build",
           "--output",
           outDirRel,
           "--provider",
@@ -178,15 +178,15 @@ describe("rulesets CLI smoke", () => {
         fileName
       );
       expect(existsSync(cursorOutput)).toBe(true);
-      const compiled = readFileSync(cursorOutput, "utf-8");
-      expect(compiled).toContain(`# ${label}`);
+      const built = readFileSync(cursorOutput, "utf-8");
+      expect(built).toContain(`# ${label}`);
 
       rmSync(tmp, { recursive: true, force: true });
     });
   }
 
   it("warns when using deprecated --destination alias", () => {
-    const tmp = mkdtempSync(join(tmpdir(), "rulesets-cli-compile-alias-"));
+    const tmp = mkdtempSync(join(tmpdir(), "rulesets-cli-build-alias-"));
     const rulesDir = join(tmp, ".ruleset", "rules");
     mkdirSync(rulesDir, { recursive: true });
     writeFileSync(
@@ -197,7 +197,7 @@ describe("rulesets CLI smoke", () => {
     const outDirRel = join(".ruleset", "dist");
     const { code, stderr } = runCli(
       [
-        "compile",
+        "build",
         "--output",
         outDirRel,
         "--destination",
@@ -227,7 +227,7 @@ describe("rulesets CLI smoke", () => {
     expect(warningEntry?.message).toContain("`--destination` is deprecated");
   });
 
-  it("compiles using project-configured sources", () => {
+  it("builds using project-configured sources", () => {
     const tmp = mkdtempSync(join(tmpdir(), "rulesets-cli-config-sources-"));
     const configDir = join(tmp, ".ruleset");
     const primaryRules = join(configDir, "rules");
@@ -259,7 +259,7 @@ describe("rulesets CLI smoke", () => {
     const outDirAbs = join(tmp, outDirRel);
     const { code } = runCli(
       [
-        "compile",
+        "build",
         "--output",
         outDirRel,
         "--provider",
@@ -318,7 +318,7 @@ describe("rulesets CLI smoke", () => {
     const outDirAbs = join(tmp, outDirRel);
     const { code } = runCli(
       [
-        "compile",
+        "build",
         "--output",
         outDirRel,
         "--provider",

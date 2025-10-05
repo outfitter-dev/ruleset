@@ -42,7 +42,7 @@ project/
 
 ## Workflow Tips
 
-1. Compile rules with the OpenCode provider (`rules compile --providers opencode`).
+1. Build rules with the OpenCode provider (`rules build --providers opencode`).
 2. Copy generated files into `.opencode/rules/` or keep them in `.ruleset/dist`; the compiler now emits both the rendered rule and a sibling `AGENTS.md` for each directory so you can choose whichever layout fits your workflow.
 3. Commit rule files so teammates inherit the same guidance.
 4. Reload OpenCode or restart the workspace to pick up the updates.

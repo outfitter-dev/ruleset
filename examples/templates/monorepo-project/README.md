@@ -65,8 +65,8 @@ bun run sandbox:setup monorepo-project
 
 cd examples/sandbox/monorepo-project
 
-# Compile (outputs to both packages)
-rules compile
+# Build (outputs to both packages)
+rules build
 
 # Check frontend output
 cat packages/frontend/.cursor/rules/architecture.mdc

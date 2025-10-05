@@ -176,7 +176,7 @@ Windsurf provides a dedicated UI for managing rules:
 
 ## Rulesets Integration
 
-Generate Windsurf artifacts with `rules compile --providers windsurf`. The compiler writes files beneath `.ruleset/dist/windsurf/...` and also creates a canonical `AGENTS.md` beside each document so you can copy either the provider-specific file or a shared agents reference. Configure `windsurf.outputPath` to publish directly into `.windsurf/rules/` (or another directory), and set `windsurf.agentsOutputPath` if the canonical file should land somewhere else, such as a repo-level `AGENTS.md`.
+Generate Windsurf artifacts with `rules build --providers windsurf`. The compiler writes files beneath `.ruleset/dist/windsurf/...` and also creates a canonical `AGENTS.md` beside each document so you can copy either the provider-specific file or a shared agents reference. Configure `windsurf.outputPath` to publish directly into `.windsurf/rules/` (or another directory), and set `windsurf.agentsOutputPath` if the canonical file should land somewhere else, such as a repo-level `AGENTS.md`.
 
 ## Version Information
 

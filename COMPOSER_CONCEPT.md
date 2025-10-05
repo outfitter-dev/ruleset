@@ -802,14 +802,14 @@ async function validateFileAccess(
 # Initialize project with config stub
 rules init
 
-# Compile with default settings
-rules compile
+# Build with default settings
+rules build
 
-# Compile with diagnostics
-rules compile --why
+# Build with diagnostics
+rules build --why
 
 # Override provider mode
-rules compile --cursor-mode=reference
+rules build --cursor-mode=reference
 
 # Show resolved configuration
 rules config show

@@ -129,7 +129,7 @@ When working with Copilot, the rules are processed as follows:
 
 ## Rulesets Integration
 
-Compile with `rules compile --providers copilot` to generate repository instructions from your Rulesets sources. The provider writes rendered Markdown under `.ruleset/dist/copilot/...` and automatically creates a sibling `AGENTS.md` in each directory so you can either sync the repository-specific `.md` files or the canonical agents view. Use `copilot.outputPath` to publish directly into `.github/copilot-instructions.md` (or another directory), and set `copilot.agentsOutputPath` if you want the canonical file to land somewhere else such as the repo root.
+Build with `rules build --providers copilot` to generate repository instructions from your Rulesets sources. The provider writes rendered Markdown under `.ruleset/dist/copilot/...` and automatically creates a sibling `AGENTS.md` in each directory so you can either sync the repository-specific `.md` files or the canonical agents view. Use `copilot.outputPath` to publish directly into `.github/copilot-instructions.md` (or another directory), and set `copilot.agentsOutputPath` if you want the canonical file to land somewhere else such as the repo root.
 
 ## Version Information
 

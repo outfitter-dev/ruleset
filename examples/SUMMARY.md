@@ -174,10 +174,10 @@ providers:
   claude: { enabled: true }
 ```
 
-### Step 4: Compile & Verify
+### Step 4: Build & Verify
 
 ```bash
-rules compile
+rules build
 
 # Check outputs
 diff .cursor/rules/conventions.mdc .ruleset/rules/_old-cursor.md

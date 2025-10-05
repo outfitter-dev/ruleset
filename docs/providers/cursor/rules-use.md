@@ -262,7 +262,7 @@ Cursor provides a dedicated UI for managing rules:
 
 ## Rulesets Integration
 
-Run `bun run rules compile --providers cursor` (or `rulesets compile`) to generate Cursor-ready artifacts. By default the compiler writes rendered files under `.ruleset/dist/cursor/...` and produces a sibling `AGENTS.md` beside each document so you can publish either the provider-specific `.mdc` file or a canonical agents file. Override `cursor.outputPath` in project config or front matter to target `.cursor/rules/` directly, and set `cursor.agentsOutputPath` when you want the canonical file written somewhere else (for example the repo root `AGENTS.md`).
+Run `bun run rules build --providers cursor` (or `rulesets build`) to generate Cursor-ready artifacts. By default the compiler writes rendered files under `.ruleset/dist/cursor/...` and produces a sibling `AGENTS.md` beside each document so you can publish either the provider-specific `.mdc` file or a canonical agents file. Override `cursor.outputPath` in project config or front matter to target `.cursor/rules/` directly, and set `cursor.agentsOutputPath` when you want the canonical file written somewhere else (for example the repo root `AGENTS.md`).
 
 ## Version Information
 

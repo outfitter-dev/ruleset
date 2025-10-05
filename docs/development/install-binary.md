@@ -69,11 +69,11 @@ rules --version
 # View help
 rules --help
 
-# Compile rules
-rules compile
+# Build rules
+rules build
 
 # Watch mode
-rules compile --watch
+rules build --watch
 ```
 
 ## Notes
