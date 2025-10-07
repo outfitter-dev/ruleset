@@ -9,15 +9,9 @@ ruleset:
 
 [[ team-contact ]]
 
----
-
 [[ @_typescript.md ]]
 
----
-
 [[ @_commits.md ]]
-
----
 
 ## Getting Help
 

@@ -1,0 +1,11 @@
+# Hidden Settings
+# CONTEXT LABEL: 🔒 Hidden Config (testing/.config/settings.yml)
+
+features:
+  - auto_load
+  - strict_mode
+  - debug
+
+defaults:
+  theme: dark
+  language: en

@@ -1,0 +1,7 @@
+CONTEXT LABEL: 📦 Manifest (testing/tests/MANIFEST)
+
+This is a manifest file with no extension.
+It contains important project metadata.
+
+version: 1.0.0
+build: 2024-01-01

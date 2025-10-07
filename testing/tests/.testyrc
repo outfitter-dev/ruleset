@@ -1,0 +1,6 @@
+# Testy Configuration
+# CONTEXT LABEL: 🎛️ RC File (testing/tests/.testyrc)
+
+mode=test
+verbose=true
+auto_discover=true

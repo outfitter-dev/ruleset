@@ -1,0 +1,10 @@
+# Application Configuration
+# CONTEXT LABEL: ⚙️ Config (testing/src/config.toml)
+
+[app]
+name = "testy"
+version = "1.0.0"
+
+[database]
+host = "localhost"
+port = 5432

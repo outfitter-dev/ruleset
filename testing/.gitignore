@@ -1,0 +1,4 @@
+# Ignore secrets
+secrets.md
+*.secret.md
+.env
