@@ -19,7 +19,12 @@ reviews:
     labels:
       - "!wip"  # Don't review PRs with 'wip' label
     base_branches:
-      - ".*"    # Review all branches
+      - "main"
+      - "fix/.*"
+      - "feat/.*"
+      - "gt/.*"      # Graphite stacked branches with slash prefix
+      - "gt-.*"      # Graphite stacked branches with dash prefix
+      - ".*-rule-[0-9]+"  # Linear-generated branches like feature-rule-123
 
   tools:
     gitleaks:
@@ -36,9 +41,9 @@ knowledge_base:
   linear:
     usage: enabled
     team_keys:
-      - "RULE"
-      - "ID"
-      - "MONO"
+      - "RULE"  # Ruleset project team
+      - "ID"    # Outfitter team
+      - "MONO"  # Outfitter Monorepo team
 
 chat:
   integrations:
